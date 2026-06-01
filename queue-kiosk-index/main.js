@@ -2,7 +2,7 @@ const { app, BrowserWindow, shell } = require('electron');
 const path = require('path');
 
 const DISPLAY_URL = process.env.KIOSK_INDEX_URL
-  || 'http://localhost:5000/';
+  || 'https://queue-production-2a11.up.railway.app/';
 const CRASH_RECOVERY_DELAY = 2000;
 
 let mainWindow = null;

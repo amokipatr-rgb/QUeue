@@ -2244,7 +2244,7 @@ if __name__ == '__main__':
     print("=" * 55)
     print("MAKERERE UNIVERSITY QUEUE SYSTEM API")
     print("=" * 55)
-    print(f"http://localhost:{PORT}")
+    print(f"Server starting on port {PORT}")
     print()
     print("Office Hierarchy Enabled:")
     print("  - Academic Registrar Office (AR) -> Registry, Testimonials, General")

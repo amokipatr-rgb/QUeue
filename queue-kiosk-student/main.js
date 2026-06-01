@@ -2,7 +2,7 @@ const { app, BrowserWindow, screen, powerSaveBlocker, globalShortcut } = require
 const path = require('path');
 
 const DISPLAY_URL = process.env.KIOSK_STUDENT_URL
-  || 'http://localhost:5000/student-token.html';
+  || 'https://queue-production-2a11.up.railway.app/student-token.html';
 const RETRY_INTERVAL = 3000;
 const CRASH_RECOVERY_DELAY = 2000;
 
