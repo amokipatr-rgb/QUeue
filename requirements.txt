@@ -1,0 +1,5 @@
+flask==3.1.1
+flask-cors==6.0.2
+mysql-connector-python==9.6.0
+edge-tts==7.2.8
+gunicorn==23.0.0

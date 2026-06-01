@@ -1,0 +1,1411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Officer Dashboard — Makerere University</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+    :root {
+      --green-dark:    #14532D;
+      --green-mid:     #166534;
+      --green-accent:  #22C55E;
+      --green-soft:    rgba(34,197,94,0.1);
+      --green-border:  rgba(34,197,94,0.25);
+      --gold:          #FBBF24;
+      --gold-soft:     rgba(251,191,36,0.12);
+      --gold-border:   rgba(251,191,36,0.3);
+      --bg:            #F6F7F9;
+      --bg-card:       #FFFFFF;
+      --bg-panel:      #FAFBFC;
+      --border:        #E8EAED;
+      --border-mid:    #D1D5DB;
+      --text-primary:  #111827;
+      --text-secondary:#4B5563;
+      --text-muted:    #9CA3AF;
+      --red:           #EF4444;
+      --red-soft:      rgba(239,68,68,0.08);
+      --red-border:    rgba(239,68,68,0.2);
+      --blue:          #3B82F6;
+      --blue-soft:     rgba(59,130,246,0.08);
+      --amber:         #F59E0B;
+      --amber-soft:    rgba(245,158,11,0.08);
+      --purple:        #8B5CF6;
+      --purple-soft:   rgba(139,92,246,0.08);
+      --shadow-sm:     0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md:     0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
+      --shadow-lg:     0 10px 30px rgba(0,0,0,0.10), 0 4px 8px rgba(0,0,0,0.06);
+      --radius:        12px;
+      --radius-lg:     16px;
+      --font:          'Outfit', system-ui, sans-serif;
+      --mono:          'DM Mono', monospace;
+    }
+    html, body { height: 100%; background: var(--bg); font-family: var(--font); color: var(--text-primary); -webkit-font-smoothing: antialiased; }
+    body { display: flex; flex-direction: column; }
+
+    svg { display: inline-block; vertical-align: middle; flex-shrink: 0; }
+
+    /* TOAST */
+    .toast-container { position: fixed; top: 72px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; width: max-content; max-width: 90vw; }
+    .toast { display: flex; align-items: center; gap: 9px; padding: 10px 18px; border-radius: 100px; font-size: 13px; font-weight: 500; box-shadow: var(--shadow-lg); animation: toast-in 0.3s cubic-bezier(0.34,1.56,0.64,1) forwards; pointer-events: all; border: 1px solid transparent; white-space: nowrap; }
+    .toast.hiding { animation: toast-out 0.25s ease forwards; }
+    .toast-success { background: #ECFDF5; color: #065F46; border-color: rgba(16,185,129,0.25); }
+    .toast-error   { background: #FEF2F2; color: #991B1B; border-color: rgba(239,68,68,0.2); }
+    .toast-warning { background: #FFFBEB; color: #92400E; border-color: rgba(245,158,11,0.25); }
+    .toast-info    { background: #EFF6FF; color: #1E40AF; border-color: rgba(59,130,246,0.2); }
+    @keyframes toast-in  { from { opacity:0; transform:translateY(-12px) scale(0.95); } to { opacity:1; transform:translateY(0) scale(1); } }
+    @keyframes toast-out { from { opacity:1; transform:translateY(0) scale(1); } to { opacity:0; transform:translateY(-8px) scale(0.96); } }
+
+    /* HEADER */
+    .header { background: linear-gradient(135deg, var(--green-dark) 0%, var(--green-mid) 100%); color: white; padding: 0 28px; height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 16px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 12px rgba(0,0,0,0.2); }
+    .brand { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+    .brand-icon { width: 34px; height: 34px; background: var(--gold); border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .brand-name { font-size: 16px; font-weight: 700; letter-spacing: -0.3px; }
+    .brand-name span { color: var(--gold); }
+    .header-center { display: flex; align-items: center; }
+    .office-pill { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.15); padding: 6px 14px; border-radius: 100px; text-align: center; }
+    .office-pill-name { font-size: 13px; font-weight: 600; }
+    .office-pill-loc  { font-size: 10px; opacity: 0.65; margin-top: 1px; }
+    .header-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+    .officer-pill { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.15); padding: 6px 14px; border-radius: 100px; display: flex; align-items: center; gap: 10px; }
+    .officer-name-text { font-size: 13px; font-weight: 500; }
+    .status-dot  { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .status-text { font-size: 11px; font-weight: 600; font-family: var(--mono); }
+    .dot-green { background: var(--green-accent); box-shadow: 0 0 6px var(--green-accent); animation: pulse-dot 2s ease-in-out infinite; }
+    .dot-amber { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+    @keyframes pulse-dot { 0%,100%{opacity:1;} 50%{opacity:0.5;} }
+    .token-tag { background: var(--gold); color: #000; font-family: var(--mono); font-size: 11px; font-weight: 500; padding: 3px 8px; border-radius: 6px; }
+    .icon-btn { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.15); color: white; width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; position: relative; transition: background 0.2s; }
+    .icon-btn:hover { background: rgba(255,255,255,0.22); }
+    .msg-badge { position: absolute; top: -4px; right: -4px; background: var(--red); color: white; font-size: 9px; font-weight: 700; width: 16px; height: 16px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 1.5px solid var(--green-dark); }
+    .sound-badge { position: absolute; top: -2px; right: -2px; width: 10px; height: 10px; border-radius: 50%; display: none; }
+    .sound-badge.active { display: block; background: #00e676; box-shadow: 0 0 4px #00e676; animation: pulse-dot 1.5s infinite; }
+    .sound-badge.muted { display: block; background: #ff9800; }
+    .avail-toggle { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 500; font-family: var(--font); transition: all 0.2s; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+    .avail-toggle:hover { filter: brightness(1.15); }
+    .avail-toggle.available { background: rgba(34,197,94,0.25); border-color: var(--green-accent); }
+    .avail-toggle.unavailable { background: rgba(239,68,68,0.25); border-color: var(--red); }
+    .logout-btn { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 500; font-family: var(--font); transition: background 0.2s; display: flex; align-items: center; gap: 6px; }
+    .logout-btn:hover { background: rgba(239,68,68,0.5); border-color: var(--red); }
+
+    /* CONTENT */
+    .content { max-width: 1360px; margin: 0 auto; padding: 24px 24px 40px; width: 100%; }
+
+    /* STATS */
+    .stats-row { display: grid; grid-template-columns: repeat(3,1fr); gap: 16px; margin-bottom: 22px; }
+    .stat-card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 20px 22px; box-shadow: var(--shadow-sm); display: flex; align-items: center; gap: 16px; }
+    .stat-icon { width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .icon-amber { background: var(--amber-soft); color: var(--amber); }
+    .icon-green { background: var(--green-soft); color: var(--green-accent); }
+    .icon-blue  { background: var(--blue-soft);  color: var(--blue); }
+    .stat-num { font-size: 30px; font-weight: 700; font-family: var(--mono); color: var(--text-primary); line-height: 1; }
+    .stat-lbl { font-size: 12px; color: var(--text-muted); margin-top: 4px; font-weight: 500; }
+
+    /* GRID */
+    .grid-two { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px; }
+
+    /* CARD */
+    .card { background: var(--bg-card); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); overflow: hidden; }
+    .card-header { padding: 14px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; background: var(--bg-panel); }
+    .card-title { font-size: 14px; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 8px; }
+    .card-body { padding: 16px 20px; }
+
+    /* BTNS */
+    .btn-sm { font-size: 11px; font-weight: 600; padding: 5px 12px; border-radius: 8px; border: none; cursor: pointer; font-family: var(--font); transition: all 0.15s; display: inline-flex; align-items: center; gap: 5px; }
+    .btn-sm:hover { filter: brightness(0.92); }
+    .btn-blue { background: var(--blue-soft); color: var(--blue); border: 1px solid rgba(59,130,246,0.2); }
+    .btn-red  { background: var(--red-soft);  color: var(--red);  border: 1px solid var(--red-border); }
+
+    /* QUEUE */
+    .queue-scroll { max-height: 440px; overflow-y: auto; }
+    .queue-scroll::-webkit-scrollbar { width: 4px; }
+    .queue-scroll::-webkit-scrollbar-track { background: transparent; }
+    .queue-scroll::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 4px; }
+    .queue-item { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--radius); border: 1px solid var(--border); margin-bottom: 8px; transition: border-color 0.2s, box-shadow 0.2s; }
+    .queue-item:hover { border-color: var(--green-accent); box-shadow: 0 0 0 3px var(--green-soft); }
+    .q-token   { font-family: var(--mono); font-size: 18px; font-weight: 500; color: var(--text-primary); min-width: 62px; flex-shrink: 0; }
+    .q-info    { flex: 1; min-width: 0; }
+    .q-service { font-size: 11px; font-weight: 600; color: var(--amber); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 2px; }
+    .q-student { font-size: 12px; color: var(--text-secondary); }
+    .q-wait    { font-size: 11px; color: var(--text-muted); margin-top: 2px; font-family: var(--mono); display: flex; align-items: center; gap: 4px; }
+    .call-btn  { background: var(--green-soft); color: var(--green-dark); border: 1px solid var(--green-border); padding: 7px 14px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; font-family: var(--font); flex-shrink: 0; transition: all 0.15s; display: flex; align-items: center; gap: 6px; }
+    .call-btn:hover { background: var(--green-accent); color: white; border-color: var(--green-accent); }
+
+    .empty { text-align: center; padding: 44px 20px; color: var(--text-muted); }
+    .empty-icon { display: flex; justify-content: center; margin-bottom: 10px; opacity: 0.35; }
+    .empty-text { font-size: 13px; }
+
+    /* SERVING */
+    .serving-hero { background: linear-gradient(135deg, var(--green-dark) 0%, #1a6b3e 100%); border-radius: var(--radius); padding: 22px; text-align: center; color: white; margin-bottom: 14px; position: relative; overflow: hidden; }
+    .serving-hero::before { content:''; position: absolute; top:-30px; right:-30px; width:100px; height:100px; background: rgba(255,255,255,0.05); border-radius: 50%; }
+    .serving-label       { font-size: 10px; font-weight: 600; letter-spacing: 2px; text-transform: uppercase; opacity: 0.6; margin-bottom: 10px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .serving-token-num   { font-family: var(--mono); font-size: 52px; font-weight: 500; letter-spacing: 4px; color: var(--gold); line-height: 1; }
+    .serving-service-name{ font-size: 13px; opacity: 0.75; margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .serving-status-text { font-size: 12px; font-weight: 600; margin-top: 6px; color: var(--green-accent); display: flex; align-items: center; justify-content: center; gap: 5px; }
+
+    /* ACTION BTNS */
+    .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    .action-btn  { padding: 11px 10px; border: none; border-radius: var(--radius); font-size: 12px; font-weight: 600; font-family: var(--font); cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 7px; }
+    .action-btn:hover  { transform: translateY(-1px); box-shadow: var(--shadow-md); }
+    .action-btn:active { transform: translateY(0); }
+    .btn-serve    { background: var(--amber-soft);  color: #92400E; border: 1px solid var(--gold-border); }
+    .btn-complete { background: var(--blue-soft);   color: #1E40AF; border: 1px solid rgba(59,130,246,0.2); }
+    .btn-recall   { background: var(--purple-soft); color: #5B21B6; border: 1px solid rgba(139,92,246,0.2); }
+    .btn-skip     { background: var(--red-soft);    color: #991B1B; border: 1px solid var(--red-border); }
+    .btn-next     { background: var(--green-soft);  color: var(--green-dark); border: 1px solid var(--green-border); grid-column: span 2; }
+    .btn-reset    { background: #F3F4F6; color: var(--text-secondary); border: 1px solid var(--border); grid-column: span 2; font-size: 11px; }
+
+    /* LOG */
+    .log-list { max-height: 180px; overflow-y: auto; font-family: var(--mono); font-size: 11.5px; }
+    .log-list::-webkit-scrollbar { width: 4px; }
+    .log-list::-webkit-scrollbar-track { background: transparent; }
+    .log-list::-webkit-scrollbar-thumb { background: var(--border-mid); border-radius: 4px; }
+    .log-row { display: flex; align-items: center; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--border); color: var(--text-secondary); }
+    .log-row:last-child { border-bottom: none; }
+    .log-time    { color: var(--text-muted); flex-shrink: 0; font-size: 10.5px; }
+    .log-success { color: #065F46; }
+    .log-error   { color: #991B1B; }
+    .log-warning { color: #92400E; }
+
+    /* OVERLAYS */
+    .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.45); backdrop-filter: blur(3px); z-index: 2000; justify-content: center; align-items: center; }
+    .overlay.open { display: flex; }
+    .modal-box { background: var(--bg-card); border-radius: var(--radius-lg); padding: 28px; max-width: 400px; width: 90%; box-shadow: var(--shadow-lg); animation: modal-in 0.25s cubic-bezier(0.34,1.56,0.64,1); }
+    @keyframes modal-in { from { opacity:0; transform:scale(0.92) translateY(10px); } to { opacity:1; transform:scale(1) translateY(0); } }
+    .modal-icon   { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; margin-bottom: 14px; }
+    .modal-title  { font-size: 17px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px; }
+    .modal-body   { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 22px; }
+    .modal-footer { display: flex; gap: 10px; }
+    .mbtn         { flex: 1; padding: 11px; border-radius: 10px; font-size: 13px; font-weight: 600; font-family: var(--font); cursor: pointer; border: none; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .mbtn:hover   { filter: brightness(0.92); }
+    .mbtn-confirm { background: var(--red); color: white; }
+    .mbtn-cancel  { background: var(--border); color: var(--text-primary); }
+
+    /* MESSAGE MODAL */
+    .msg-modal-box    { background: var(--bg-card); border-radius: var(--radius-lg); width: 480px; max-width: 93vw; max-height: 82vh; display: flex; flex-direction: column; box-shadow: var(--shadow-lg); animation: modal-in 0.25s cubic-bezier(0.34,1.56,0.64,1); overflow: hidden; }
+    .msg-modal-header { background: linear-gradient(135deg, var(--green-dark), var(--green-mid)); color: white; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; gap: 10px; }
+    .msg-modal-header h3 { font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+    .close-btn  { background: rgba(255,255,255,0.15); border: none; color: white; width: 28px; height: 28px; border-radius: 7px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.2s; }
+    .close-btn:hover { background: rgba(255,255,255,0.25); }
+    .msg-modal-body { padding: 18px 20px; overflow-y: auto; flex: 1; }
+    .msg-input-row  { display: flex; gap: 8px; margin-bottom: 18px; }
+    .msg-input      { flex: 1; padding: 10px 14px; border: 1.5px solid var(--border-mid); border-radius: 10px; font-size: 13px; font-family: var(--font); outline: none; transition: border-color 0.2s; }
+    .msg-input:focus { border-color: var(--green-accent); }
+    .post-btn   { background: var(--green-dark); color: white; border: none; padding: 10px 16px; border-radius: 10px; font-size: 12px; font-weight: 600; font-family: var(--font); cursor: pointer; flex-shrink: 0; transition: background 0.2s; display: flex; align-items: center; gap: 6px; }
+    .post-btn:hover { background: var(--green-mid); }
+    .msg-item   { display: flex; align-items: flex-start; gap: 10px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 8px; }
+    .msg-text   { font-size: 13px; color: var(--text-primary); margin-bottom: 4px; }
+    .msg-time   { font-size: 10px; color: var(--text-muted); font-family: var(--mono); display: flex; align-items: center; gap: 4px; }
+    .msg-active { font-size: 10px; color: var(--green-accent); margin-top: 4px; display: flex; align-items: center; gap: 4px; }
+    .del-btn    { background: var(--red-soft); color: var(--red); border: 1px solid var(--red-border); padding: 5px 10px; border-radius: 7px; font-size: 11px; font-weight: 600; font-family: var(--font); cursor: pointer; flex-shrink: 0; transition: all 0.15s; display: flex; align-items: center; gap: 5px; }
+    .del-btn:hover { background: var(--red); color: white; }
+
+    /* NOTIFICATION STATUS */
+    .notif-status {
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        z-index: 1000;
+        background: rgba(0,0,0,0.85);
+        backdrop-filter: blur(10px);
+        padding: 8px 18px;
+        border-radius: 40px;
+        font-size: 11px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-family: var(--mono);
+        pointer-events: none;
+        border: 1px solid rgba(255,255,255,0.1);
+    }
+    .notif-status .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        animation: pulse-dot 1.5s infinite;
+    }
+    .notif-status .dot.granted { background: #00e676; box-shadow: 0 0 6px #00e676; }
+    .notif-status .dot.denied { background: #ff9800; animation: none; }
+    .notif-status .dot.default { background: #ffd700; animation: none; }
+    .notif-status .text { color: rgba(255,255,255,0.7); }
+
+    @media (max-width: 1024px) {
+      .content { padding: 18px 16px 32px; }
+      .grid-two { grid-template-columns: 1fr; }
+      .stats-row { gap: 12px; }
+      .card-header { padding: 12px 14px; }
+      .card-body { padding: 12px 14px; }
+    }
+    @media (max-width: 768px) {
+      .header {
+        height: auto;
+        min-height: 64px;
+        padding: 10px 12px;
+        flex-wrap: wrap;
+        row-gap: 8px;
+      }
+      .header-center { order: 3; width: 100%; display: flex; justify-content: flex-start; }
+      .office-pill { width: 100%; border-radius: 10px; text-align: left; }
+      .header-right { margin-left: auto; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+      .officer-pill { padding: 6px 10px; gap: 7px; }
+      .officer-name-text { max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .logout-btn { padding: 6px 10px; }
+      .stats-row { grid-template-columns: 1fr; margin-bottom: 14px; }
+      .stat-card { padding: 14px; gap: 12px; }
+      .stat-num { font-size: 24px; }
+      .q-token { min-width: 52px; font-size: 16px; }
+      .queue-scroll { max-height: 360px; }
+      .serving-token-num { font-size: 40px; letter-spacing: 2px; }
+      .notif-status { bottom: 10px; right: 10px; padding: 5px 10px; font-size: 9px; max-width: calc(100vw - 20px); }
+    }
+    @media (max-width: 520px) {
+      .brand-name { font-size: 14px; }
+      .brand-icon { width: 30px; height: 30px; }
+      .header-right { width: 100%; justify-content: space-between; }
+      .officer-pill { flex: 1; min-width: 0; }
+      .officer-name-text { max-width: 95px; }
+      .status-text { font-size: 10px; }
+      .icon-btn, .logout-btn { flex-shrink: 0; }
+      .logout-btn { font-size: 11px; padding: 6px 8px; }
+      .content { padding: 12px 10px 24px; }
+      .card-title { font-size: 13px; }
+      .btn-sm { font-size: 10px; padding: 5px 8px; }
+      .queue-item { flex-wrap: wrap; align-items: flex-start; gap: 8px; padding: 10px; }
+      .q-info { width: 100%; order: 3; }
+      .call-btn { width: 100%; justify-content: center; order: 4; }
+      .action-grid { grid-template-columns: 1fr; }
+      .btn-next, .btn-reset { grid-column: span 1; }
+      .action-btn { padding: 10px; font-size: 11px; }
+      .serving-hero { padding: 16px 12px; }
+      .serving-token-num { font-size: 32px; }
+      .serving-service-name { font-size: 12px; }
+      .modal-box { padding: 20px; }
+      .modal-footer { flex-direction: column; }
+      .msg-modal-header { padding: 12px 14px; }
+      .msg-modal-body { padding: 12px 14px; }
+      .msg-input-row { flex-direction: column; }
+      .post-btn { width: 100%; justify-content: center; }
+      .notif-status { left: 10px; right: 10px; bottom: 8px; justify-content: center; }
+    }
+    /* ── SEARCH MODAL ── */
+    .search-input-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 10px 14px; margin-bottom: 16px;
+      border: none; border-radius: var(--radius);
+      background: rgba(255,255,255,0.15);
+    }
+    .search-input-row svg { flex-shrink: 0; color: rgba(255,255,255,0.6); }
+    .search-input-row input { color: white; }
+    .search-input-row input::placeholder { color: rgba(255,255,255,0.5); }
+    .search-input-row:focus-within { background: rgba(255,255,255,0.25); }
+    .search-input-row input {
+      flex: 1; border: none; outline: none;
+      font-size: 13.5px; font-family: inherit;
+      background: transparent;
+    }
+    .search-clear {
+      background: none; border: none; cursor: pointer;
+      font-size: 18px; color: rgba(255,255,255,0.5); line-height: 1;
+      padding: 0 4px;
+    }
+    .search-clear:hover { color: white; }
+    /* ── SEARCH MODAL ── */
+    .search-modal-box {
+      background: var(--white); border-radius: var(--radius-lg);
+      width: 90%; max-width: 720px; max-height: 80vh;
+      display: flex; flex-direction: column;
+      box-shadow: var(--shadow-md);
+    }
+    .search-modal-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px;
+      background: linear-gradient(135deg, var(--green-dark) 0%, var(--green-mid) 100%);
+      color: white;
+    }
+    .search-modal-header h3 {
+      display: flex; align-items: center; gap: 8px;
+      font-size: 15px; font-weight: 700; color: white;
+    }
+    .search-modal-body {
+      padding: 16px 20px; overflow-y: auto; flex: 1;
+      background: linear-gradient(135deg, var(--green-dark) 0%, var(--green-mid) 100%);
+    }
+    .search-empty {
+      text-align: center; padding: 32px 0;
+      font-size: 13px; color: rgba(255,255,255,0.7);
+    }
+    .search-result-item {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 16px; border-radius: var(--radius-sm);
+      font-size: 13px; transition: background 0.15s;
+      background: var(--white);
+    }
+    .search-result-item:nth-child(even) { background: #f8fafb; }
+    .search-result-item:hover { background: #eef5f1; }
+    .search-result-item + .search-result-item { margin-top: 6px; }
+    .search-result-item .sr-token {
+      font-family: 'JetBrains Mono', monospace; font-weight: 800;
+      font-size: 16px; min-width: 76px; color: var(--green-dark);
+    }
+    .search-result-item .sr-info { flex: 1; }
+    .search-result-item .sr-info .sr-name { font-weight: 700; color: var(--text-primary); font-size: 14px; }
+    .search-result-item .sr-info .sr-meta { font-size: 11.5px; color: var(--text-secondary); margin-top: 2px; }
+    .search-result-item .sr-status {
+      font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+      padding: 4px 12px; border-radius: 5px; white-space: nowrap;
+    }
+    .sr-status.waiting { background: #fff3e0; color: #bf6c00; }
+    .sr-status.called { background: #e3f2fd; color: #0d47a1; }
+    .sr-status.serving { background: #e8f5e9; color: #1b7a30; }
+    .sr-status.completed { background: #1a3c2c; color: #ffffff; }
+    .sr-status.skipped,
+    .sr-status.cancelled,
+    .sr-status.expired { background: #eceff1; color: #546e7a; }
+    .sr-officer {
+      display: inline-block; font-size: 11.5px; font-weight: 500;
+      margin-top: 4px; padding: 3px 10px; border-radius: 5px;
+    }
+    .sr-officer svg { vertical-align: middle; margin-right: 4px; }
+    .sr-officer.attended { background: #e8f5e9; color: #1b7a30; }
+    .sr-officer.unattended { background: #fff3e0; color: #bf6c00; }
+    .pin-input-wrap { display:flex; align-items:center; border:1px solid var(--border); border-radius:8px; background:var(--white); transition:border-color .2s; }
+    .pin-input-wrap:focus-within { border-color:var(--green-mid); }
+    .pin-input-wrap input { flex:1; border:none!important; outline:none; padding:10px 0 10px 12px; font-size:14px; font-family:inherit; background:transparent; }
+    .pin-toggle-eye { display:flex; align-items:center; justify-content:center; width:38px; height:40px; cursor:pointer; color:var(--text-muted); background:none; border:none; padding:0; flex-shrink:0; }
+    .pin-toggle-eye:hover { color:var(--text-secondary); }
+    .pin-toggle-eye svg { width:18px; height:18px; }
+  </style>
+</head>
+<body>
+
+<div class="toast-container" id="toastContainer"></div>
+
+<header class="header">
+  <div class="brand">
+    <div class="brand-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14532D" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1.657 2.686 3 6 3s6-1.343 6-3v-5"/></svg></div>
+    <div class="brand-name">Makerere <span>Queue</span></div>
+  </div>
+  <div class="header-center">
+    <div class="office-pill">
+      <div class="office-pill-name" id="officeName">Loading…</div>
+      <div class="office-pill-loc" id="officeLocation"></div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="officer-pill">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span class="officer-name-text" id="officerName">Loading…</span>
+      <div class="status-dot dot-green" id="statusDot"></div>
+      <span class="status-text" id="officerStatus">Available</span>
+      <span class="token-tag" id="currentTokenBadge" style="display:none;"></span>
+    </div>
+    <button class="icon-btn" id="soundToggleBtn" title="Notification Sound">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+        <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+      </svg>
+      <span class="sound-badge" id="soundBadge"></span>
+    </button>
+    <!-- NOTIFICATION STATUS INDICATOR -->
+<div class="notif-status" id="notifStatus">
+  <div class="dot" id="notifDot"></div>
+  <span class="text" id="notifText">Checking notifications...</span>
+</div>
+    <button class="icon-btn" id="messageIconBtn" title="Messages">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span class="msg-badge" id="messageCountBadge" style="display:none;">0</span>
+    </button>
+    <button class="avail-toggle available" id="deskToggleBtn" onclick="toggleDeskStatus()" title="Toggle personal desk availability">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>
+      <span id="deskToggleText">Desk: Available</span>
+    </button>
+    <span id="deskReasonTag" style="display:none;font-size:11px;color:var(--text-muted);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:2px 8px;background:var(--red-soft);border:1px solid var(--red-border);border-radius:6px;cursor:help;" title=""></span>
+    <button class="avail-toggle available" id="availToggleBtn" onclick="toggleOfficeAvailability()" title="Toggle office availability">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span id="availToggleText">Office: Available</span>
+    </button>
+    <button class="icon-btn" onclick="openSearchModal()" title="Search tokens">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+    </button>
+    <button class="icon-btn" onclick="openChangePinModal()" title="Change PIN">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+    </button>
+    <button class="logout-btn" onclick="logout()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Logout
+    </button>
+  </div>
+</header>
+<div class="overlay" id="searchOverlay">
+  <div class="search-modal-box">
+    <div class="search-modal-header">
+      <h3><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg> Search Tokens</h3>
+      <button class="close-btn" onclick="closeSearchModal()"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="search-modal-body" id="searchResultsBody">
+      <div class="search-input-row">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="searchInput" placeholder="Enter token number or student name..." oninput="onSearchInput(this.value)" autofocus>
+        <button class="search-clear" id="searchClearBtn" onclick="clearSearch()" style="display:none">&times;</button>
+      </div>
+      <div id="searchResultsList"><div class="search-empty">Type a token number or student name to search tokens that came to your office.</div></div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="messageOverlay">
+  <div class="msg-modal-box">
+    <div class="msg-modal-header">
+      <h3><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg> Public Display Messages</h3>
+      <button class="close-btn" onclick="closeMessageModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="msg-modal-body">
+      <div class="msg-input-row">
+        <input class="msg-input" type="text" id="newMessage" placeholder="Enter message for students…" maxlength="200" />
+        <button class="post-btn" onclick="postOfficeMessage()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Post</button>
+      </div>
+      <div id="messagesList"><div class="empty"><div class="empty-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="empty-text">Loading messages…</div></div></div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="confirmOverlay">
+  <div class="modal-box">
+    <div class="modal-icon" style="background:var(--amber-soft);color:var(--amber);"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div>
+    <div class="modal-title" id="modalTitle">Confirm Action</div>
+    <div class="modal-body" id="modalMessage">Are you sure?</div>
+    <div class="modal-footer">
+      <button class="mbtn mbtn-confirm" onclick="confirmAction()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Yes, Proceed</button>
+      <button class="mbtn mbtn-cancel" onclick="closeModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="resetOverlay">
+  <div class="modal-box">
+    <div class="modal-icon" style="background:var(--red-soft);color:var(--red);"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg></div>
+    <div class="modal-title">Reset Queue</div>
+    <div class="modal-body">This will expire all waiting students. Only use at the start of the day.</div>
+    <div class="modal-footer">
+      <button class="mbtn mbtn-confirm" onclick="confirmReset()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Yes, Reset</button>
+      <button class="mbtn mbtn-cancel" onclick="closeResetModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="availReasonOverlay">
+  <div class="modal-box">
+    <div class="modal-icon" id="availReasonIcon" style="background:var(--amber-soft);color:var(--amber);"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+    <div class="modal-title" id="availReasonTitle">Mark Office Unavailable</div>
+    <div class="modal-body" id="availReasonBody">
+      <p style="margin-bottom:12px;font-size:13px;color:var(--text-secondary);" id="availReasonDesc">Please provide a reason so students see it on the kiosk and public display.</p>
+      <textarea id="availReasonInput" rows="3" placeholder="Enter reason for closing..." style="width:100%;padding:10px 12px;border:1.5px solid var(--border-mid);border-radius:10px;font-size:13px;font-family:var(--font);outline:none;resize:vertical;transition:border-color 0.2s;" onfocus="this.style.borderColor='var(--green-accent)'" onblur="this.style.borderColor='var(--border-mid)'"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="mbtn mbtn-confirm" id="availReasonConfirmBtn" onclick="confirmAvailabilityChange()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> <span id="availReasonConfirmText">Mark Unavailable</span></button>
+      <button class="mbtn mbtn-cancel" onclick="closeAvailReasonModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="deskReasonOverlay">
+  <div class="modal-box">
+    <div class="modal-icon" style="background:var(--red-soft);color:var(--red);"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>
+    <div class="modal-title">Mark Desk Unavailable</div>
+    <div class="modal-body">
+      <p style="margin-bottom:12px;font-size:13px;color:var(--text-secondary);">Let admins know why you're stepping away so they can manage coverage.</p>
+      <textarea id="deskReasonInput" rows="3" placeholder="Enter reason (e.g. Lunch break, Meeting, etc.)..." style="width:100%;padding:10px 12px;border:1.5px solid var(--border-mid);border-radius:10px;font-size:13px;font-family:var(--font);outline:none;resize:vertical;transition:border-color 0.2s;" onfocus="this.style.borderColor='var(--green-accent)'" onblur="this.style.borderColor='var(--border-mid)'"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="mbtn mbtn-confirm" onclick="confirmDeskStatusChange()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg> <span>Go Offline</span></button>
+      <button class="mbtn mbtn-cancel" onclick="closeDeskReasonModal()">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<div class="content">
+  <div class="stats-row">
+    <div class="stat-card"><div class="stat-icon icon-amber"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div><div class="stat-num" id="waitingCount">0</div><div class="stat-lbl">Waiting</div></div></div>
+    <div class="stat-card"><div class="stat-icon icon-green"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div><div class="stat-num" id="servingCount">0</div><div class="stat-lbl">Serving Now</div></div></div>
+    <div class="stat-card"><div class="stat-icon icon-blue"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div><div><div class="stat-num" id="completedToday">0</div><div class="stat-lbl">Served Today</div></div></div>
+  </div>
+
+  <div class="grid-two">
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg> Waiting Queue</div>
+        <button class="btn-sm btn-blue" onclick="loadQueue()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg> Refresh</button>
+      </div>
+      <div class="card-body"><div class="queue-scroll" id="queueContainer"><div class="empty"><div class="empty-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div class="empty-text">Loading…</div></div></div></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="card-title"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--green-accent)" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg> Currently Serving</div></div>
+      <div class="card-body"><div id="servingContainer"><div class="empty"><div class="empty-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div class="empty-text">No student being served</div></div></div></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <div class="card-title"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> Activity Log</div>
+      <button class="btn-sm btn-red" onclick="clearLog()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg> Clear</button>
+    </div>
+    <div class="card-body"><div class="log-list" id="logList"><div class="log-row"><span class="log-time">--:--</span><span>Dashboard ready.</span></div></div></div>
+  </div>
+</div>
+
+<footer style="border-top:1px solid var(--border);padding:14px 28px;font-size:12px;color:var(--text-muted);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;background:var(--white)">
+  <span>&copy; 2026 Makerere University Queue Management System</span>
+  <span>Officer Dashboard v1.0</span>
+</footer>
+
+    <!-- CHANGE PIN MODAL -->
+    <div class="overlay" id="changePinOverlay">
+      <div class="msg-modal-box" style="max-width:380px">
+        <div class="msg-modal-header">
+          <h3><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> Change PIN</h3>
+          <button class="close-btn" onclick="closeChangePinModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div class="msg-modal-body" style="padding:20px 24px">
+          <div class="form-group" style="margin-bottom:14px">
+            <label style="display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px">Current PIN</label>
+            <div class="pin-input-wrap">
+              <input type="password" id="currentPin" placeholder="Enter current PIN" maxlength="10">
+              <button type="button" class="pin-toggle-eye" onclick="togglePinVis('currentPin', this)" tabindex="-1" title="Show/hide PIN">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="eye-open"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="eye-closed" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:14px">
+            <label style="display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px">New PIN</label>
+            <div class="pin-input-wrap">
+              <input type="password" id="newPin" placeholder="Enter new PIN" maxlength="10">
+              <button type="button" class="pin-toggle-eye" onclick="togglePinVis('newPin', this)" tabindex="-1" title="Show/hide PIN">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="eye-open"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="eye-closed" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="form-group" style="margin-bottom:4px">
+            <label style="display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px">Confirm New PIN</label>
+            <div class="pin-input-wrap">
+              <input type="password" id="confirmPin" placeholder="Confirm new PIN" maxlength="10">
+              <button type="button" class="pin-toggle-eye" onclick="togglePinVis('confirmPin', this)" tabindex="-1" title="Show/hide PIN">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="eye-open"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" class="eye-closed" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+              </button>
+            </div>
+          </div>
+          <div id="changePinError" style="color:var(--red);font-size:12px;margin-top:8px;display:none"></div>
+          <div style="display:flex;gap:10px;margin-top:18px">
+            <button class="logout-btn" onclick="closeChangePinModal()" style="flex:1;justify-content:center">Cancel</button>
+            <button class="avail-toggle available" onclick="submitChangePin()" style="flex:1;justify-content:center;gap:6px">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              Save PIN
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <script>
+  const ic = {
+    phone: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.5 12.38a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.41 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.29 6.29l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>`,
+    play: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>`,
+    check: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`,
+    repeat: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>`,
+    skip: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 4 15 12 5 20 5 4"/><line x1="19" y1="5" x2="19" y2="19"/></svg>`,
+    reset: `<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg>`,
+    callnext: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.5 12.38a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.41 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.29 6.29l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/><polyline points="17 8 21 12 17 16"/><line x1="21" y1="12" x2="13" y2="12"/></svg>`,
+    clock: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`,
+    user: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>`,
+    tag: `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>`,
+    dot_live: `<svg width="8" height="8" viewBox="0 0 8 8"><circle cx="4" cy="4" r="4" fill="var(--green-accent)"/></svg>`
+  };
+
+  const API_BASE_URL = window.location.origin;
+
+  let currentOfficer = null;
+  let currentServing = null;
+  let pendingAction = null;
+  let audioQueue = [];
+  let isPlaying = false;
+  let allMessages = [];
+  let isProcessingCall = false;
+  let refreshInterval = null;
+
+  // ============================================
+  // NOTIFICATION SYSTEM
+  // ============================================
+  let soundEnabled = true;
+  let previousWaitingCount = 0;
+  let notificationStatus = 'default'; // default, granted, denied
+
+  function updateNotificationStatus() {
+    const dot = document.getElementById('notifDot');
+    const text = document.getElementById('notifText');
+    if (notificationStatus === 'granted') {
+      dot.className = 'dot granted';
+      text.innerHTML = soundEnabled ? '🔔 Notifications (Sound ON)' : '🔔 Notifications ON (Sound OFF)';
+      text.style.color = '#00e676';
+    } else if (notificationStatus === 'denied') {
+      dot.className = 'dot denied';
+      text.innerHTML = '🔕 Notifications blocked';
+      text.style.color = '#ff9800';
+    } else {
+      dot.className = 'dot default';
+      text.innerHTML = '🔔 Requesting permission...';
+      text.style.color = '#ffd700';
+    }
+  }
+
+  function autoRequestNotificationPermission() {
+    if (!('Notification' in window)) {
+      notificationStatus = 'denied';
+      updateNotificationStatus();
+      return;
+    }
+    if (Notification.permission === 'granted') {
+      notificationStatus = 'granted';
+      updateNotificationStatus();
+      return;
+    }
+    if (Notification.permission === 'denied') {
+      notificationStatus = 'denied';
+      updateNotificationStatus();
+      return;
+    }
+    if (Notification.permission === 'default') {
+      setTimeout(() => {
+        Notification.requestPermission().then(permission => {
+          if (permission === 'granted') {
+            notificationStatus = 'granted';
+            updateNotificationStatus();
+            showToast('🔔 Notifications enabled!', 'success');
+          } else {
+            notificationStatus = 'denied';
+            updateNotificationStatus();
+            showToast('🔕 Notifications blocked', 'warning');
+          }
+        });
+      }, 1500);
+    }
+  }
+
+  function loadSoundPreference() {
+    const saved = localStorage.getItem('officer_sound_enabled');
+    if (saved !== null) {
+      soundEnabled = saved === 'true';
+    } else {
+      soundEnabled = true;
+      localStorage.setItem('officer_sound_enabled', 'true');
+    }
+    updateSoundButtonUI();
+    updateNotificationStatus();
+  }
+
+  function saveSoundPreference(enabled) {
+    soundEnabled = enabled;
+    localStorage.setItem('officer_sound_enabled', enabled);
+    updateSoundButtonUI();
+    updateNotificationStatus();
+    showToast(soundEnabled ? '🔔 Sound notifications ON' : '🔕 Sound notifications OFF', 'info');
+  }
+
+  function updateSoundButtonUI() {
+    const btn = document.getElementById('soundToggleBtn');
+    const badge = document.getElementById('soundBadge');
+    if (soundEnabled) {
+      btn.style.backgroundColor = 'rgba(0,230,118,0.2)';
+      btn.style.borderColor = '#00e676';
+      badge.className = 'sound-badge active';
+      badge.style.backgroundColor = '#00e676';
+    } else {
+      btn.style.backgroundColor = 'rgba(255,255,255,0.12)';
+      btn.style.borderColor = 'rgba(255,255,255,0.15)';
+      badge.className = 'sound-badge muted';
+      badge.style.backgroundColor = '#ff9800';
+    }
+  }
+
+  function toggleSound() {
+    saveSoundPreference(!soundEnabled);
+  }
+
+  function playNotificationSound() {
+    if (!soundEnabled) return;
+    try {
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      const now = audioContext.currentTime;
+      const osc1 = audioContext.createOscillator();
+      const osc2 = audioContext.createOscillator();
+      const gain = audioContext.createGain();
+      osc1.connect(gain); osc2.connect(gain); gain.connect(audioContext.destination);
+      osc1.frequency.value = 880; osc2.frequency.value = 440;
+      gain.gain.value = 0.25;
+      osc1.start(); osc2.start();
+      gain.gain.exponentialRampToValueAtTime(0.00001, now + 0.25);
+      osc1.stop(now + 0.25); osc2.stop(now + 0.25);
+      if (audioContext.state === 'suspended') audioContext.resume();
+    } catch(e) { console.log('Audio error:', e); }
+  }
+
+  function showBrowserNotification(tokenNumber, studentName) {
+    if (!soundEnabled) return;
+    if (notificationStatus !== 'granted') return;
+    new Notification('🎫 New Token Arrived', {
+      body: `${studentName || 'A student'} has taken token ${tokenNumber}`,
+      icon: '/favicon.ico', silent: false, tag: 'new-token'
+    });
+  }
+
+  function checkAndNotifyNewTokens(waitingList) {
+    const currentCount = waitingList.length;
+    if (currentCount > previousWaitingCount && soundEnabled) {
+      const newest = waitingList[0];
+      if (newest) {
+        playNotificationSound();
+        showBrowserNotification(newest.token_number, newest.student_name);
+        showToast(`🎫 New token: ${newest.token_number} - ${newest.student_name || 'Student'}`, 'info');
+        addLog(`🔔 New token arrived: ${newest.token_number}`, 'info');
+      }
+    }
+    previousWaitingCount = currentCount;
+  }
+
+  function checkLogin() {
+    const loggedIn = sessionStorage.getItem('loggedInUser');
+    if (!loggedIn) { window.location.href = 'login.html'; return null; }
+    const user = JSON.parse(loggedIn);
+    if (user.role !== 'officer') { window.location.href = 'admin-dashboard.html'; return null; }
+    return user;
+  }
+
+  currentOfficer = checkLogin();
+  document.getElementById('officerName').textContent = currentOfficer.officer_name;
+  document.getElementById('officeName').textContent = currentOfficer.office_name;
+  document.getElementById('officeLocation').textContent = currentOfficer.location || 'Main Campus';
+
+  function logout() { sessionStorage.removeItem('loggedInUser'); window.location.href = 'index.html'; }
+
+  async function apiCall(endpoint, method = 'GET', data = null) {
+    try {
+      const options = { method, headers: { 'Content-Type': 'application/json' } };
+      if (data) options.body = JSON.stringify(data);
+      const response = await fetch(`${API_BASE_URL}${endpoint}`, options);
+      return await response.json();
+    } catch (error) {
+      addLog(`API Error: ${error.message}`, 'error');
+      return { success: false };
+    }
+  }
+
+  function showToast(message, type = 'info') {
+    const container = document.getElementById('toastContainer');
+    const svgs = {
+      success: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>`,
+      error: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+      warning: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`,
+      info: `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>`
+    };
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    toast.innerHTML = `${svgs[type] || svgs.info} ${message}`;
+    container.appendChild(toast);
+    setTimeout(() => { toast.classList.add('hiding'); setTimeout(() => toast.remove(), 280); }, 3200);
+  }
+
+  async function loadMessages() {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/officer/messages/${currentOfficer.id}`);
+      const data = await res.json();
+      if (data.success && data.messages) { allMessages = data.messages; updateMessageBadge(); renderMessages(); }
+    } catch (e) { console.error(e); }
+  }
+
+  function updateMessageBadge() {
+    const badge = document.getElementById('messageCountBadge');
+    const active = allMessages.filter(m => m.is_active === 1).length;
+    badge.textContent = active;
+    badge.style.display = active > 0 ? 'flex' : 'none';
+  }
+
+  function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+
+  function renderMessages() {
+    const container = document.getElementById('messagesList');
+    const active = allMessages.filter(m => m.is_active === 1);
+    if (!active.length) {
+      container.innerHTML = `<div class="empty"><div class="empty-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="empty-text">No messages posted yet</div></div>`;
+      return;
+    }
+    container.innerHTML = active.map(msg => `<div class="msg-item"><div style="flex:1;"><div class="msg-text">${escapeHtml(msg.message)}</div><div class="msg-time">${ic.clock} ${new Date(msg.created_at).toLocaleString()}</div><div class="msg-active">${ic.dot_live} Active on public display</div></div><button class="del-btn" onclick="deleteMessage(${msg.id})"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg> Delete</button></div>`).join('');
+  }
+
+  async function postOfficeMessage() {
+    const input = document.getElementById('newMessage');
+    const message = input.value.trim();
+    if (!message) { showToast('Please enter a message', 'warning'); return; }
+    const result = await apiCall('/api/office/message', 'POST', { office_id: currentOfficer.office_id, message, message_type: 'info', officer_id: currentOfficer.id });
+    if (result.success) { showToast('Message posted to public display', 'success'); input.value = ''; await loadMessages(); }
+    else { showToast('Failed to post message', 'error'); }
+  }
+
+  async function deleteMessage(id) {
+    const result = await apiCall(`/api/office/message/${id}`, 'DELETE', { officer_id: currentOfficer.id });
+    if (result.success) { showToast('Message deleted', 'success'); await loadMessages(); }
+    else { showToast(result.message || 'Failed to delete', 'error'); }
+  }
+
+  function openMessageModal() { document.getElementById('messageOverlay').classList.add('open'); loadMessages(); }
+  function closeMessageModal() { document.getElementById('messageOverlay').classList.remove('open'); }
+
+  async function generateWelcomeVoice(officerName, officeName) {
+    const text = `Welcome ${officerName}, you are now logged into ${officeName} digital space. You can now start serving students.`;
+    try {
+      const res = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const audio = new Audio(URL.createObjectURL(blob));
+        audio.play().catch(e => console.log('Welcome audio error:', e));
+      }
+    } catch (e) { console.error('Welcome voice error:', e); }
+  }
+
+
+  async function autoCompleteCurrentServing() {
+    if (currentServing) {
+      addLog(`Auto-completing previous student ${currentServing}...`, 'info');
+      const result = await apiCall('/api/officer/complete', 'POST', { officer_id: currentOfficer.id, token_number: currentServing });
+      if (result.success) {
+        addLog(`Auto-completed ${currentServing}`, 'success');
+        const completedEl = document.getElementById('completedToday');
+        completedEl.textContent = (parseInt(completedEl.textContent) || 0) + 1;
+        currentServing = null;
+        return true;
+      }
+    }
+    return false;
+  }
+
+  async function loadQueue() {
+    const result = await apiCall(`/api/officer/queue/${currentOfficer.id}`);
+    if (!result.success) return;
+    const waiting = result.waiting || [];
+    document.getElementById('waitingCount').textContent = waiting.length;
+    checkAndNotifyNewTokens(waiting);
+    const qEl = document.getElementById('queueContainer');
+    if (!waiting.length) {
+      qEl.innerHTML = `<div class="empty"><div class="empty-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div class="empty-text">No students waiting</div></div>`;
+    } else {
+      qEl.innerHTML = waiting.map(s => {
+        var idOrPhone = (s.service_code && s.service_code.toUpperCase() === 'PS')
+          ? (s.parent_phone || 'No phone')
+          : (s.student_id || 'No ID');
+        return `<div class="queue-item"><div class="q-token">${s.token_number}</div><div class="q-info"><div class="q-service">${ic.tag} ${s.service_name || s.service_code}</div><div class="q-student">${ic.user} ${s.student_name || 'Student'} · ${idOrPhone}</div><div class="q-wait">${ic.clock} ${s.waiting_minutes || 0} min waiting</div></div><button class="call-btn" onclick="callStudent('${s.token_number}')">${ic.phone} Call</button></div>`;
+      }).join('');
+    }
+    const servEl = document.getElementById('servingContainer');
+    const statusDot = document.getElementById('statusDot');
+    const statusText = document.getElementById('officerStatus');
+    const tokenBadge = document.getElementById('currentTokenBadge');
+    if (result.current && result.current.status !== 'completed') {
+      currentServing = result.current.token_number;
+      const isCalled = result.current.status === 'called';
+      servEl.innerHTML = `<div class="serving-hero"><div class="serving-label">${isCalled ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.5 12.38a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.41 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.29 6.29l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Now Called' : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Now Serving'}</div><div class="serving-token-num">${result.current.token_number}</div><div class="serving-service-name"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg> ${result.current.service_name || result.current.service_code}</div><div class="serving-status-text"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> ${isCalled ? 'Called — please proceed to window' : 'Being served now'}</div></div><div class="action-grid">${isCalled ? '<button class="action-btn btn-serve" onclick="serveStudent()">' + ic.play + ' Start Serving</button>' : '<button class="action-btn btn-complete" onclick="completeService()">' + ic.check + ' Complete</button>'}<button class="action-btn btn-recall" onclick="recallStudent()">${ic.repeat} Recall</button><button class="action-btn btn-skip" onclick="skipStudent()">${ic.skip} Skip</button><button class="action-btn btn-reset" onclick="resetQueue()">${ic.reset} Reset Queue</button></div>`;
+      statusDot.className = 'status-dot dot-amber';
+      statusText.textContent = isCalled ? 'Called' : 'Serving';
+      tokenBadge.textContent = result.current.token_number;
+      tokenBadge.style.display = 'inline-block';
+      document.getElementById('servingCount').textContent = 1;
+    } else {
+      currentServing = null;
+      servEl.innerHTML = `<div class="empty" style="margin-bottom:14px;"><div class="empty-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div class="empty-text">No student being served</div></div><div class="action-grid"><button class="action-btn btn-next" onclick="callNext()">${ic.callnext} Call Next Student</button><button class="action-btn btn-reset" onclick="resetQueue()">${ic.reset} Reset Queue</button></div>`;
+      statusDot.className = 'status-dot dot-green';
+      statusText.textContent = 'Available';
+      tokenBadge.style.display = 'none';
+      document.getElementById('servingCount').textContent = 0;
+    }
+  }
+
+  async function callNext() {
+    if (isProcessingCall) { showToast('Already processing a call, please wait...', 'warning'); return; }
+    isProcessingCall = true;
+    addLog('Calling next student…');
+    try {
+      await autoCompleteCurrentServing();
+      const result = await apiCall('/api/officer/call-next', 'POST', { officer_id: currentOfficer.id, officer_number: currentOfficer.officer_number });
+      if (result.success) {
+        addLog(`Called ${result.token_number}`, 'success');
+        showToast(`Called ${result.token_number}`, 'success');
+        await loadQueue();
+      } else {
+        addLog(result.message || 'No students waiting', 'error');
+        showToast(result.message || 'No students waiting', 'error');
+      }
+    } finally { isProcessingCall = false; }
+  }
+
+  async function callStudent(tokenNumber) {
+    if (isProcessingCall) { showToast('Already processing a call, please wait...', 'warning'); return; }
+    isProcessingCall = true;
+    addLog(`Calling ${tokenNumber}…`);
+    try {
+      await autoCompleteCurrentServing();
+      const result = await apiCall('/api/officer/call-specific', 'POST', { officer_id: currentOfficer.id, officer_number: currentOfficer.officer_number, token_number: tokenNumber });
+      if (result.success) {
+        addLog(`Called ${tokenNumber}`, 'success');
+        showToast(`Called ${tokenNumber}`, 'success');
+        await loadQueue();
+      } else {
+        showToast(result.message || 'Failed to call student', 'error');
+      }
+    } finally { isProcessingCall = false; }
+  }
+
+  async function serveStudent() {
+    if (!currentServing) return;
+    const result = await apiCall('/api/officer/serve', 'POST', { officer_id: currentOfficer.id, token_number: currentServing });
+    if (result.success) {
+      addLog(`Now serving ${currentServing}`, 'success');
+      showToast(`Now serving ${currentServing}`, 'success');
+      await loadQueue();
+    } else {
+      showToast(result.message || 'Failed to start serving', 'error');
+    }
+  }
+
+  async function completeService() {
+    if (!currentServing) return;
+    const result = await apiCall('/api/officer/complete', 'POST', { officer_id: currentOfficer.id, token_number: currentServing });
+    if (result.success) {
+      addLog(`Completed ${currentServing}`, 'success');
+      showToast(`Service completed for ${currentServing}`, 'success');
+      const completedEl = document.getElementById('completedToday');
+      completedEl.textContent = (parseInt(completedEl.textContent) || 0) + 1;
+      currentServing = null;
+      await loadQueue();
+    } else {
+      showToast(result.message || 'Failed to complete service', 'error');
+    }
+  }
+
+  async function skipStudent() {
+    if (!currentServing) return;
+    const result = await apiCall('/api/officer/skip', 'POST', { officer_id: currentOfficer.id, token_number: currentServing });
+    if (result.success) {
+      addLog(`Skipped ${currentServing}`, 'warning');
+      showToast(`${currentServing} skipped`, 'warning');
+      currentServing = null;
+      await loadQueue();
+    } else {
+      showToast(result.message || 'Failed to skip', 'error');
+    }
+  }
+
+  async function recallStudent() {
+    if (!currentServing) return;
+    addLog(`Recalling ${currentServing}…`);
+    const result = await apiCall('/api/officer/recall', 'POST', { officer_id: currentOfficer.id, token_number: currentServing });
+    if (result.success) {
+      addLog(`Recall sent for ${currentServing}`, 'success');
+      showToast(`Recall sent for ${currentServing}`, 'info');
+    } else {
+      showToast(result.message || 'Recall failed', 'error');
+    }
+  }
+
+  function resetQueue() { document.getElementById('resetOverlay').classList.add('open'); }
+
+  async function confirmReset() {
+    const result = await apiCall(`/api/admin/office/${currentOfficer.office_id}/reset`, 'POST', { officer_id: currentOfficer.id, is_admin: false });
+    if (result.success) {
+      addLog('Queue reset successfully', 'success');
+      showToast('Queue reset successfully', 'success');
+      await loadQueue();
+    } else {
+      addLog(`Reset failed: ${result.message}`, 'error');
+      showToast(result.message || 'Reset failed', 'error');
+    }
+    closeResetModal();
+  }
+
+  function addLog(message, type = 'info') {
+    const list = document.getElementById('logList');
+    const time = new Date().toLocaleTimeString();
+    const cls = type === 'success' ? 'log-success' : (type === 'error' ? 'log-error' : (type === 'warning' ? 'log-warning' : ''));
+    const row = document.createElement('div');
+    row.className = 'log-row';
+    row.innerHTML = `<span class="log-time">[${time}]</span><span class="${cls}">${message}</span>`;
+    list.insertBefore(row, list.firstChild);
+    while (list.children.length > 60) list.removeChild(list.lastChild);
+  }
+
+  function clearLog() { document.getElementById('logList').innerHTML = '<div class="log-row"><span class="log-time">--:--</span><span>Log cleared.</span></div>'; }
+
+  function showConfirm(title, message, onConfirm) {
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('modalMessage').textContent = message;
+    pendingAction = onConfirm;
+    document.getElementById('confirmOverlay').classList.add('open');
+  }
+
+  function confirmAction() { if (pendingAction) { pendingAction(); pendingAction = null; } closeModal(); }
+  function closeModal() { document.getElementById('confirmOverlay').classList.remove('open'); }
+  function closeResetModal() { document.getElementById('resetOverlay').classList.remove('open'); }
+
+  document.querySelectorAll('.overlay').forEach(el => { el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); }); });
+
+  async function loadOfficeStatus() {
+    const result = await apiCall(`/api/offices`);
+    if (!result.success || !result.offices) return;
+    const office = result.offices.find(o => o.id === currentOfficer.office_id);
+    if (!office) return;
+    updateOfficeAvailabilityUI(office.availability_status, office.unavailability_notice);
+  }
+
+  function updateOfficeAvailabilityUI(status, notice) {
+    const btn = document.getElementById('availToggleBtn');
+    const text = document.getElementById('availToggleText');
+    const isAvail = status === 'available';
+    btn.className = `avail-toggle ${isAvail ? 'available' : 'unavailable'}`;
+    text.textContent = isAvail ? 'Office: Available' : 'Office: Unavailable';
+    btn.title = isAvail ? 'Office is open — click to mark unavailable' : (notice || 'Office is closed — click to mark available');
+  }
+
+  let pendingAvailChange = null;
+
+  async function toggleOfficeAvailability() {
+    const result = await apiCall(`/api/offices`);
+    if (!result.success || !result.offices) return;
+    const office = result.offices.find(o => o.id === currentOfficer.office_id);
+    if (!office) return;
+    const currentStatus = office.availability_status || 'available';
+    const newStatus = currentStatus === 'available' ? 'unavailable' : 'available';
+    pendingAvailChange = { office, newStatus };
+    const overlay = document.getElementById('availReasonOverlay');
+    const icon = document.getElementById('availReasonIcon');
+    const title = document.getElementById('availReasonTitle');
+    const desc = document.getElementById('availReasonDesc');
+    const input = document.getElementById('availReasonInput');
+    const confirmBtn = document.getElementById('availReasonConfirmBtn');
+    const confirmText = document.getElementById('availReasonConfirmText');
+    input.value = '';
+    if (newStatus === 'available') {
+      icon.style.background = 'var(--green-soft)';
+      icon.style.color = 'var(--green-accent)';
+      icon.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>';
+      title.textContent = 'Reopen Office?';
+      desc.innerHTML = 'This will make the office available for students to take tokens again. Any closure notice will be removed.';
+      confirmText.textContent = 'Reopen Office';
+      confirmBtn.style.background = 'var(--green-accent, #22C55E)';
+      confirmBtn.style.color = '#fff';
+      input.style.display = 'none';
+    } else {
+      icon.style.background = 'var(--red-soft)';
+      icon.style.color = 'var(--red)';
+      icon.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>';
+      title.textContent = 'Mark Office Unavailable';
+      desc.innerHTML = '⚠️ <strong>Important:</strong> Perform this action only if you share this office alone, or ensure all other officers that work with you are aware the office will be off service. If you intend to make only your desk unavailable, use the <strong>Desk Status</strong> toggle instead (right next to this button). Students will not be able to take new tokens when the office is closed.';
+      confirmText.textContent = 'Mark Unavailable';
+      confirmBtn.style.background = '';
+      confirmBtn.style.color = '';
+      input.style.display = '';
+      input.focus();
+    }
+    overlay.classList.add('open');
+  }
+
+  async function confirmAvailabilityChange() {
+    if (!pendingAvailChange) return;
+    const { office, newStatus } = pendingAvailChange;
+    const input = document.getElementById('availReasonInput');
+    const reason = newStatus === 'available' ? '' : input.value.trim();
+    if (newStatus === 'unavailable' && !reason) {
+      showToast('Please enter a reason for closing the office', 'warning');
+      input.focus();
+      return;
+    }
+    closeAvailReasonModal();
+    const notice = newStatus === 'unavailable' ? reason : '';
+    const updateResult = await apiCall(`/api/admin/office/${currentOfficer.office_id}`, 'PUT', {
+      office_code: office.office_code,
+      office_name: office.office_name,
+      location: office.location,
+      description: office.description,
+      is_active: 1,
+      availability_status: newStatus,
+      unavailability_notice: notice,
+      officer_id: currentOfficer.id,
+      reason: reason
+    });
+    if (updateResult.success) {
+      showToast(`Office marked as ${newStatus}`, newStatus === 'available' ? 'success' : 'warning');
+      addLog(`Office availability changed to ${newStatus}${reason ? ': ' + reason : ''}`, newStatus === 'available' ? 'success' : 'warning');
+      await loadOfficeStatus();
+    } else {
+      showToast('Failed to update office status', 'error');
+    }
+    pendingAvailChange = null;
+  }
+
+  function closeAvailReasonModal() {
+    document.getElementById('availReasonOverlay').classList.remove('open');
+    pendingAvailChange = null;
+  }
+
+  // ============================================
+  // DESK STATUS (personal, not office-wide)
+  // ============================================
+  let deskStatusOverride = null;
+
+  function updateDeskStatusUI(status, reason) {
+    const btn = document.getElementById('deskToggleBtn');
+    const text = document.getElementById('deskToggleText');
+    const tag = document.getElementById('deskReasonTag');
+    const isAvail = status === 'available';
+    btn.className = `avail-toggle ${isAvail ? 'available' : 'unavailable'}`;
+    text.textContent = isAvail ? 'Desk: Available' : 'Desk: Unavailable';
+    btn.title = isAvail ? 'Your desk is open — click to mark unavailable' : 'Your desk is closed — click to mark available';
+    if (!isAvail && reason) {
+      tag.style.display = 'inline';
+      tag.textContent = reason;
+      tag.title = reason;
+    } else {
+      tag.style.display = 'none';
+    }
+  }
+
+  function toggleDeskStatus() {
+    const currentStatus = deskStatusOverride || currentOfficer.status;
+    if (currentStatus !== 'available' && currentStatus !== 'offline') {
+      showToast('Cannot change desk status while serving. Complete current service first.', 'warning');
+      return;
+    }
+    if (currentStatus === 'available') {
+      document.getElementById('deskReasonInput').value = '';
+      document.getElementById('deskReasonOverlay').classList.add('open');
+      setTimeout(() => document.getElementById('deskReasonInput').focus(), 100);
+    } else {
+      doDeskStatusChange('available', '');
+    }
+  }
+
+  function closeDeskReasonModal() {
+    document.getElementById('deskReasonOverlay').classList.remove('open');
+  }
+
+  async function confirmDeskStatusChange() {
+    const reason = document.getElementById('deskReasonInput').value.trim();
+    if (!reason) {
+      showToast('Please enter a reason for going offline', 'warning');
+      document.getElementById('deskReasonInput').focus();
+      return;
+    }
+    closeDeskReasonModal();
+    await doDeskStatusChange('offline', reason);
+  }
+
+  async function doDeskStatusChange(newStatus, reason) {
+    const body = { status: newStatus, status_reason: reason };
+    const result = await apiCall(`/api/admin/officer/${currentOfficer.id}`, 'PUT', body);
+    if (result.success) {
+      deskStatusOverride = newStatus;
+      currentOfficer.status = newStatus;
+      if (newStatus === 'offline') currentOfficer.status_reason = reason;
+      else currentOfficer.status_reason = '';
+      updateDeskStatusUI(newStatus, reason);
+      const msg = newStatus === 'available' ? 'Your desk is now available' : 'Your desk is now unavailable';
+      showToast(msg, newStatus === 'available' ? 'success' : 'warning');
+      addLog(msg, newStatus === 'available' ? 'success' : 'warning');
+      if (newStatus === 'available') {
+        document.getElementById('statusDot').className = 'status-dot dot-green';
+        document.getElementById('officerStatus').textContent = 'Available';
+      } else {
+        document.getElementById('statusDot').className = 'status-dot';
+        document.getElementById('statusDot').style.background = '#9CA3AF';
+        document.getElementById('officerStatus').textContent = 'Unavailable';
+      }
+    } else {
+      showToast('Failed to update desk status', 'error');
+    }
+  }
+
+  function loadDeskStatus() {
+    if (currentOfficer && currentOfficer.status) {
+      deskStatusOverride = currentOfficer.status;
+      updateDeskStatusUI(currentOfficer.status, currentOfficer.status_reason);
+    }
+  }
+
+  // ============================================
+  // SEARCH TOKENS
+  // ============================================
+  let searchTimeout = null;
+
+  function onSearchInput(val) {
+    document.getElementById('searchClearBtn').style.display = val ? 'block' : 'none';
+    clearTimeout(searchTimeout);
+    if (val.length < 2) {
+      document.getElementById('searchResultsList').innerHTML = '<div class="search-empty">Type at least 2 characters to search.</div>';
+      return;
+    }
+    searchTimeout = setTimeout(function(){ performSearch(val); }, 300);
+  }
+
+  async function performSearch(q) {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/officer/search-tokens?officer_id=${currentOfficer.id}&q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      const body = document.getElementById('searchResultsList');
+      if (!data.success) {
+        body.innerHTML = '<div class="search-empty">Search failed. Try again.</div>';
+        return;
+      }
+      if (!data.results.length) {
+        body.innerHTML = '<div class="search-empty">No tokens found matching "' + escapeHtml(q) + '"</div>';
+        return;
+      }
+      body.innerHTML = data.results.map(function(r){
+        var statusClass = r.status;
+        var idDisplay = (r.service_code && r.service_code.toUpperCase() === 'PS')
+          ? (r.parent_phone || '—')
+          : (r.student_id || '—');
+        var officerHtml = '';
+        if (r.assigned_officer_number && r.status !== 'waiting') {
+          var officerName = r.assigned_officer_name || ('Officer #' + r.assigned_officer_number);
+          officerHtml = '<div class="sr-officer attended"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> Attended by: ' + escapeHtml(officerName) + '</div>';
+        } else {
+          officerHtml = '<div class="sr-officer unattended"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg> Not yet attended to</div>';
+        }
+        return '<div class="search-result-item">' +
+          '<div class="sr-token">' + escapeHtml(r.token_number) + '</div>' +
+          '<div class="sr-info">' +
+            '<div class="sr-name">' + escapeHtml(r.student_name || '—') + '</div>' +
+            '<div class="sr-meta">' + escapeHtml(r.office_name) + ' · ' + idDisplay + ' · ' + escapeHtml(r.service_name || r.service_code) + '</div>' +
+            officerHtml +
+          '</div>' +
+          '<span class="sr-status ' + statusClass + '">' + r.status + '</span>' +
+        '</div>';
+      }).join('');
+    } catch(e) {
+      document.getElementById('searchResultsBody').innerHTML = '<div class="search-empty">Network error. Try again.</div>';
+    }
+  }
+
+  function openSearchModal() {
+    document.getElementById('searchOverlay').classList.add('open');
+    document.getElementById('searchInput').value = '';
+    document.getElementById('searchClearBtn').style.display = 'none';
+    document.getElementById('searchResultsList').innerHTML = '<div class="search-empty">Type a token number or student name to search tokens that came to your office.</div>';
+    setTimeout(function(){ document.getElementById('searchInput').focus(); }, 200);
+  }
+
+  function closeSearchModal() {
+    document.getElementById('searchOverlay').classList.remove('open');
+  }
+
+  function clearSearch() {
+    document.getElementById('searchInput').value = '';
+    document.getElementById('searchClearBtn').style.display = 'none';
+    document.getElementById('searchResultsList').innerHTML = '<div class="search-empty">Type a token number or student name to search tokens that came to your office.</div>';
+  }
+
+  // ============================================
+  // CHANGE PIN
+  // ============================================
+  function togglePinVis(inputId, btn) {
+    var inp = document.getElementById(inputId);
+    var isPass = inp.type === 'password';
+    inp.type = isPass ? 'text' : 'password';
+    btn.querySelector('.eye-open').style.display = isPass ? 'none' : '';
+    btn.querySelector('.eye-closed').style.display = isPass ? '' : 'none';
+  }
+
+  function openChangePinModal() {
+    document.getElementById('currentPin').value = '';
+    document.getElementById('newPin').value = '';
+    document.getElementById('confirmPin').value = '';
+    document.getElementById('changePinError').style.display = 'none';
+    document.getElementById('changePinOverlay').classList.add('open');
+  }
+
+  function closeChangePinModal() {
+    document.getElementById('changePinOverlay').classList.remove('open');
+  }
+
+  async function submitChangePin() {
+    var currentPin = document.getElementById('currentPin').value.trim();
+    var newPin = document.getElementById('newPin').value.trim();
+    var confirmPin = document.getElementById('confirmPin').value.trim();
+    var errEl = document.getElementById('changePinError');
+
+    if (!currentPin) { errEl.textContent = 'Please enter your current PIN.'; errEl.style.display = 'block'; return; }
+    if (!newPin) { errEl.textContent = 'Please enter a new PIN.'; errEl.style.display = 'block'; return; }
+    if (newPin !== confirmPin) { errEl.textContent = 'New PIN and confirmation do not match.'; errEl.style.display = 'block'; return; }
+    if (newPin.length < 4) { errEl.textContent = 'PIN must be at least 4 characters.'; errEl.style.display = 'block'; return; }
+
+    errEl.style.display = 'none';
+    try {
+      var res = await fetch(API_BASE_URL + '/api/officer/change-password', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          officer_id: currentOfficer.id,
+          current_pin: currentPin,
+          new_pin: newPin
+        })
+      });
+      var data = await res.json();
+      if (data.success) {
+        showToast('PIN changed successfully', 'success');
+        closeChangePinModal();
+      } else {
+        errEl.textContent = data.message || 'Failed to change PIN.';
+        errEl.style.display = 'block';
+      }
+    } catch(e) {
+      errEl.textContent = 'Network error. Try again.';
+      errEl.style.display = 'block';
+    }
+  }
+
+  async function init() {
+    addLog(`Logged in as ${currentOfficer.officer_name} — ${currentOfficer.office_name}`, 'success');
+    loadSoundPreference();
+    autoRequestNotificationPermission();
+    document.getElementById('soundToggleBtn').addEventListener('click', toggleSound);
+    await generateWelcomeVoice(currentOfficer.officer_name, currentOfficer.office_name);
+    loadDeskStatus();
+    await loadOfficeStatus();
+    await loadQueue();
+    refreshInterval = setInterval(loadQueue, 5000);
+    setInterval(loadOfficeStatus, 30000);
+    document.getElementById('messageIconBtn').addEventListener('click', openMessageModal);
+  }
+
+  window.callNext = callNext; window.callStudent = callStudent; window.serveStudent = serveStudent;
+  window.completeService = completeService; window.skipStudent = skipStudent; window.recallStudent = recallStudent;
+  window.resetQueue = resetQueue; window.loadQueue = loadQueue; window.clearLog = clearLog;
+  window.closeModal = closeModal; window.confirmAction = confirmAction; window.closeResetModal = closeResetModal;
+  window.toggleOfficeAvailability = toggleOfficeAvailability; window.loadOfficeStatus = loadOfficeStatus;
+  window.confirmAvailabilityChange = confirmAvailabilityChange; window.closeAvailReasonModal = closeAvailReasonModal;
+  window.confirmDeskStatusChange = confirmDeskStatusChange; window.closeDeskReasonModal = closeDeskReasonModal;
+  window.confirmReset = confirmReset; window.logout = logout; window.postOfficeMessage = postOfficeMessage;
+  window.deleteMessage = deleteMessage; window.closeMessageModal = closeMessageModal;
+  window.toggleSound = toggleSound; window.toggleDeskStatus = toggleDeskStatus;
+  window.openChangePinModal = openChangePinModal; window.closeChangePinModal = closeChangePinModal;
+  window.submitChangePin = submitChangePin; window.onSearchInput = onSearchInput;
+  window.clearSearch = clearSearch; window.closeSearchModal = closeSearchModal;
+
+  init();
+</script>
+</body>
+</html>

@@ -1,0 +1,46 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+piper/
+
+# Flask logs
+flask_err.txt
+flask_out.txt
+
+# Test files
+test_*
+test_*.py
+
+# Setup scripts (Windows production only)
+setup-*.ps1
+setup_*.ps1
+start_server.ps1
+health_check.ps1
+
+# Node
+node_modules
+package-lock.json
+package.json
+
+# Electron build output (dist)
+queue-kiosk/dist/
+queue-kiosk-student/dist/
+queue-kiosk-index/dist/
+
+# Electron NSIS build output
+queue-kiosk/nsis/
+queue-kiosk-student/nsis/
+queue-kiosk-index/nsis/
+
+# Binary / media
+*.exe
+*.mp3
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+Thumbs.db
+.DS_Store

@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rate Your Service – Makerere University</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --ink:#0c0e0b;--surface:#f7f6f2;--white:#ffffff;
+  --mak-green:#155c30;--mak-green-mid:#1e7d43;--mak-green-light:#e8f4ed;
+  --mak-gold:#b8890a;--mak-gold-light:#fdf3d8;--mak-gold-bright:#d4aa00;
+  --red:#c0392b;--red-light:#fdf0ef;
+  --border:#e2e0da;--muted:#6b7280;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.08);
+  --shadow-md:0 4px 16px rgba(0,0,0,.10);
+  --shadow-lg:0 12px 40px rgba(0,0,0,.13);
+  --r:10px;--r-lg:16px;
+}
+body{font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--ink);line-height:1.6;font-size:15px;min-height:100vh;display:flex;flex-direction:column}
+.header{background:var(--white);border-bottom:3px solid var(--mak-gold-bright);padding:16px 32px;box-shadow:var(--shadow-sm)}
+.header-inner{max-width:720px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:16px}
+.brand{display:flex;align-items:center;gap:12px;text-decoration:none}
+.brand-shield{width:40px;height:40px;background:linear-gradient(145deg,var(--mak-gold-bright),var(--mak-gold));border-radius:50%;display:flex;align-items:center;justify-content:center}
+.brand-shield svg{width:20px;height:20px;fill:var(--mak-green)}
+.brand-name{font-family:'DM Serif Display',serif;font-size:17px;color:var(--mak-green);line-height:1.2}
+.brand-name span{color:var(--mak-gold)}
+.main{flex:1;max-width:720px;margin:0 auto;padding:48px 32px 72px;width:100%}
+.card{background:var(--white);border:1px solid var(--border);border-radius:var(--r-lg);padding:40px 36px;box-shadow:var(--shadow-sm)}
+.step-content{display:none}
+.step-content.active{display:block;animation:fadeUp 0.35s ease}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+.error-bar{display:none;background:#fef2f2;border:1px solid #fecaca;color:var(--red);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:16px}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:11.5px;font-weight:600;color:var(--ink);margin-bottom:6px}
+.field input,.field textarea{width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--ink);background:var(--surface);transition:border-color .2s,box-shadow .2s}
+.field input:focus,.field textarea:focus{outline:none;border-color:var(--mak-green);box-shadow:0 0 0 3px rgba(21,92,48,.12);background:#fff}
+.field textarea{resize:vertical;min-height:70px;font-size:13.5px}
+.btn{width:100%;padding:13px;background:linear-gradient(135deg,var(--mak-green-mid),var(--mak-green));color:#fff;border:none;border-radius:8px;font-weight:700;font-size:15px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:opacity .2s,transform .15s}
+.btn:hover{opacity:.9;transform:translateY(-1px)}
+.btn:disabled{opacity:.55;cursor:not-allowed;transform:none}
+.token-info{background:var(--mak-green-light);border:1px solid #c3e6cb;border-radius:12px;padding:18px 20px;margin-bottom:24px}
+.token-info-row{display:flex;justify-content:space-between;font-size:13.5px;padding:6px 0;border-bottom:1px solid rgba(0,0,0,.06)}
+.token-info-row:last-child{border-bottom:none}
+.token-info-row .lbl{color:var(--muted)}
+.token-info-row .val{font-weight:600;color:var(--ink)}
+.rating-title{text-align:center;font-size:15px;font-weight:700;color:var(--ink);margin-bottom:6px}
+.rating-sub{text-align:center;font-size:12.5px;color:var(--muted);margin-bottom:16px}
+.stars{display:flex;justify-content:center;gap:6px;margin:0 0 18px;flex-direction:row-reverse}
+.star-btn{background:none;border:none;cursor:pointer;font-size:36px;line-height:1;color:#ddd;transition:color .12s,transform .12s;padding:0 3px}
+.star-btn:hover,.star-btn.active{color:var(--mak-gold-bright);transform:scale(1.15)}
+.stars:not(.rated) .star-btn:hover,.stars:not(.rated) .star-btn:hover ~ .star-btn{color:var(--mak-gold-bright)}
+.star-label{text-align:center;font-size:13px;color:var(--muted);margin-bottom:20px;min-height:20px;font-weight:500}
+.confirm-icon{width:64px;height:64px;background:var(--mak-green);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 18px}
+.confirm-icon svg{width:32px;height:32px;fill:var(--mak-gold-bright)}
+.confirm-title{font-family:'DM Serif Display',serif;font-size:24px;text-align:center;color:var(--mak-green);margin-bottom:6px}
+.confirm-desc{text-align:center;font-size:13.5px;color:var(--muted);margin-bottom:24px;line-height:1.7}
+.spinner{width:32px;height:32px;border:3px solid #eee;border-top-color:var(--mak-green);border-radius:50%;animation:spin .8s linear infinite;margin:20px auto}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{text-align:center;font-size:13px;color:var(--muted);margin-top:8px}
+.rate-labels{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-top:-10px;margin-bottom:6px;padding:0 8px}
+.already-rated{text-align:center;padding:24px 0}
+.already-rated .check-icon{width:56px;height:56px;background:#e8f5e9;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
+.already-rated .check-icon svg{width:28px;height:28px;fill:#2e7d32}
+@media(max-width:560px){
+  .main{padding:32px 16px 56px}
+  .card{padding:28px 20px}
+  .star-btn{font-size:30px}
+}
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="header-inner">
+    <a class="brand" href="index.html">
+      <div class="brand-shield"><svg viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3z"/></svg></div>
+      <div class="brand-name">MAKERERE <span>UNIVERSITY</span></div>
+    </a>
+    <a id="backLink" href="student-token.html" style="font-size:12px;font-weight:600;color:var(--muted);text-decoration:none;text-transform:uppercase;letter-spacing:.5px">&larr; Back</a>
+  </div>
+</header>
+
+<main class="main">
+  <div class="card">
+
+    <div class="step-content active" id="step0">
+      <svg viewBox="0 0 24 24" style="width:48px;height:48px;fill:var(--mak-gold-bright);display:block;margin:0 auto 12px"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+      <h2 style="font-family:'DM Serif Display',serif;font-size:22px;text-align:center;color:var(--mak-green);margin-bottom:4px">Rate Your Service</h2>
+      <p style="text-align:center;font-size:12.5px;color:var(--muted);margin-bottom:28px">Enter the token number from your receipt to share your experience</p>
+      <div class="error-bar" id="errorBar"></div>
+      <div class="field">
+        <label for="tokenInput">Your Token Number</label>
+        <input type="text" id="tokenInput" placeholder="e.g. AR15 or REC05" autocomplete="off" style="text-transform:uppercase;letter-spacing:1.5px;font-weight:600;font-family:'JetBrains Mono',monospace">
+      </div>
+      <button class="btn" id="lookupBtn" onclick="lookupToken()">Look Up My Token</button>
+    </div>
+
+    <div class="step-content" id="step1">
+      <div class="token-info" id="tokenInfo"></div>
+      <div id="ratingSection"></div>
+      <button class="btn" id="submitBtn" onclick="submitRating()" disabled>Submit Feedback</button>
+    </div>
+
+    <div class="step-content" id="step2">
+      <div class="confirm-icon"><svg viewBox="0 0 24 24"><polyline points="2,12 8,18 22,4" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="confirm-title">Thank You!</div>
+      <p class="confirm-desc" id="confirmText">Your feedback has been recorded. It helps us improve our service delivery for everyone at Makerere University.</p>
+      <p style="text-align:center;font-size:12px;color:var(--muted);margin-top:8px">This page will close automatically.</p>
+    </div>
+
+    <div class="step-content" id="stepLoading">
+      <div class="spinner"></div>
+      <div class="loading-text">Please wait...</div>
+    </div>
+
+  </div>
+</main>
+
+<script>
+const isElectron = navigator.userAgent.toLowerCase().includes('electron');
+
+const backLink = document.getElementById('backLink');
+if (backLink) {
+  if (isElectron) {
+    backLink.href = 'student-token.html';
+  } else {
+    backLink.style.display = 'none';
+  }
+}
+const API_BASE = window.location.origin;
+let currentToken = null;
+let selectedRating = 0;
+
+// Auto-load token from URL param
+const urlParams = new URLSearchParams(window.location.search);
+const tokenParam = urlParams.get('token');
+if (tokenParam) {
+  document.getElementById('tokenInput').value = tokenParam;
+  lookupToken();
+}
+
+document.getElementById('tokenInput').addEventListener('keydown', function(e){
+  if(e.key === 'Enter') lookupToken();
+});
+
+
+
+async function lookupToken(){
+  const token = document.getElementById('tokenInput').value.trim().toUpperCase();
+  if(!token){ showError('Please enter your token number'); return; }
+
+  showStep('stepLoading');
+  clearError();
+
+  try{
+    const res = await fetch(API_BASE+'/api/student/token-info?token_number='+encodeURIComponent(token));
+    const data = await res.json();
+    if(!data.success){
+      showStep('step0');
+      showError(data.message || 'Token not found');
+      return;
+    }
+
+    const t = data.token;
+    currentToken = token;
+
+    if(t.feedback_submitted){
+      showStep('step1');
+      document.getElementById('tokenInfo').innerHTML =
+        '<div class="token-info-row"><span class="lbl">Token</span><span class="val">'+t.token_number+'</span></div>'+
+        '<div class="token-info-row"><span class="lbl">Student</span><span class="val">'+escapeHtml(t.student_name||'N/A')+'</span></div>'+
+        '<div class="token-info-row"><span class="lbl">Office</span><span class="val">'+escapeHtml(t.office_name)+'</span></div>'+
+        '<div class="token-info-row"><span class="lbl">Service</span><span class="val">'+escapeHtml(t.service_name||'N/A')+'</span></div>';
+      document.getElementById('ratingSection').innerHTML =
+        '<div class="already-rated">'+
+          '<div class="check-icon"><svg viewBox="0 0 24 24"><polyline points="2,12 8,18 22,4" stroke="#2e7d32" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>'+
+          '<p style="font-size:15px;font-weight:700;color:var(--mak-green)">Already Rated</p>'+
+          '<p style="font-size:12.5px;color:var(--muted);margin-top:4px">You have already submitted feedback for this token. Thank you!</p>'+
+          '<p style="font-size:11px;color:var(--muted);margin-top:10px">Redirecting back...</p>'+
+        '</div>';
+      document.getElementById('submitBtn').style.display='none';
+      if (isElectron) {
+        setTimeout(function(){ window.location.href = 'student-token.html'; }, 3000);
+      }
+      return;
+    }
+
+    showStep('step1');
+    document.getElementById('tokenInfo').innerHTML =
+      '<div class="token-info-row"><span class="lbl">Token</span><span class="val" style="font-family:JetBrains Mono,monospace;letter-spacing:1px">'+t.token_number+'</span></div>'+
+      '<div class="token-info-row"><span class="lbl">Student</span><span class="val">'+escapeHtml(t.student_name||'N/A')+'</span></div>'+
+      '<div class="token-info-row"><span class="lbl">Office</span><span class="val">'+escapeHtml(t.office_name)+' ('+t.office_code+')</span></div>'+
+      '<div class="token-info-row"><span class="lbl">Service</span><span class="val">'+escapeHtml(t.service_name||'N/A')+'</span></div>'+
+      '<div class="token-info-row"><span class="lbl">Status</span><span class="val" style="text-transform:capitalize">'+t.status+'</span></div>';
+
+    var isCompleted = t.status === 'completed';
+
+    document.getElementById('ratingSection').innerHTML =
+      '<div class="rating-title'+(isCompleted?'':' complaint')+'">'+(isCompleted?'How was your experience?':'Report an Issue')+'</div>'+
+      '<div class="rating-sub">'+(isCompleted?'Tap a star to rate':'Were you not served? Rate and tell us what happened.')+'</div>'+
+      '<div class="rate-labels"><span>Poor</span><span>Excellent</span></div>'+
+      '<div class="stars" id="starContainer">'+
+        '<button class="star-btn" data-val="5" onclick="setRating(5)">&#9733;</button>'+
+        '<button class="star-btn" data-val="4" onclick="setRating(4)">&#9733;</button>'+
+        '<button class="star-btn" data-val="3" onclick="setRating(3)">&#9733;</button>'+
+        '<button class="star-btn" data-val="2" onclick="setRating(2)">&#9733;</button>'+
+        '<button class="star-btn" data-val="1" onclick="setRating(1)">&#9733;</button>'+
+      '</div>'+
+      '<div class="star-label" id="starLabel">Select a rating</div>'+
+      '<div class="field">'+
+        '<label for="feedbackText">'+(isCompleted?'Additional comments (optional)':'Describe your issue *')+'</label>'+
+        '<textarea id="feedbackText" placeholder="Tell us what went well or what went wrong — e.g. quick service, friendly staff, or long wait, skipped..."></textarea>'+
+      '</div>';
+    document.getElementById('submitBtn').textContent = isCompleted ? 'Submit Feedback' : 'Submit Complaint';
+    selectedRating = 0;
+    document.getElementById('submitBtn').disabled = true;
+
+  } catch(err){
+    showStep('step0');
+    showError('Network error. Please check your connection.');
+  }
+}
+
+function setRating(val){
+  selectedRating = val;
+  const btns = document.querySelectorAll('.star-btn');
+  btns.forEach(function(b){
+    b.classList.toggle('active', parseInt(b.dataset.val) <= val);
+  });
+  const labels = ['','Poor','Fair','Good','Very Good','Excellent'];
+  document.getElementById('starLabel').textContent = labels[val] || '';
+  document.getElementById('submitBtn').disabled = false;
+}
+
+async function submitRating(){
+  if(!selectedRating || !currentToken) return;
+
+  const feedbackText = document.getElementById('feedbackText') ? document.getElementById('feedbackText').value.trim() : '';
+
+  var isComplaint = currentToken && document.getElementById('submitBtn').textContent === 'Submit Complaint';
+  if(isComplaint && !feedbackText){
+    showError('Please describe your issue before submitting.');
+    return;
+  }
+
+  document.getElementById('submitBtn').disabled = true;
+  showStep('stepLoading');
+
+  try{
+    const res = await fetch(API_BASE+'/api/student/feedback', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        token_number: currentToken,
+        rating: selectedRating > 0 ? selectedRating : 0,
+        feedback_text: feedbackText || null
+      })
+    });
+    const data = await res.json();
+    if(data.success){
+      var isComplaint = document.getElementById('submitBtn').textContent === 'Submit Complaint';
+      document.getElementById('confirmText').textContent = isComplaint
+        ? 'We have received your complaint. Our team will review it and follow up. Thank you for helping us improve.'
+        : 'Your feedback has been recorded. It helps us improve our service delivery for everyone at Makerere University.';
+      showStep('step2');
+      if (isElectron) {
+        setTimeout(function(){ window.location.href = 'student-token.html'; }, 3000);
+      }
+    } else {
+      showStep('step1');
+      showError(data.message || 'Failed to submit feedback');
+      document.getElementById('submitBtn').disabled = false;
+    }
+  } catch(err){
+    showStep('step1');
+    showError('Network error. Please try again.');
+    document.getElementById('submitBtn').disabled = false;
+  }
+}
+
+function showStep(id){
+  document.querySelectorAll('.step-content').forEach(function(el){ el.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+}
+
+function showError(msg){
+  const bar = document.getElementById('errorBar');
+  bar.textContent = msg;
+  bar.style.display = 'block';
+  clearTimeout(showError._t);
+  showError._t = setTimeout(function(){ bar.style.display = 'none'; }, 5000);
+}
+
+function clearError(){
+  document.getElementById('errorBar').style.display = 'none';
+}
+
+function escapeHtml(text){
+  if(!text) return '';
+  var d = document.createElement('div');
+  d.textContent = text;
+  return d.innerHTML;
+}
+</script>
+</body>
+</html>

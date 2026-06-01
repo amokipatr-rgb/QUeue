@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Makerere University - Public Display</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', 'Segoe UI', sans-serif;
+            background: #070d09;
+            min-height: 100vh;
+            overflow: hidden;
+        }
+
+        body::before {
+            content: '';
+            position: fixed; inset: 0; z-index: 0;
+            background-image: linear-gradient(rgba(255,255,255,0.015) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.015) 1px, transparent 1px);
+            background-size: 60px 60px;
+            pointer-events: none;
+        }
+
+        /* ── HEADER ── */
+        .header {
+            position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+            height: 72px;
+            background: rgba(7,13,9,0.95);
+            border-bottom: 1px solid rgba(201,162,39,0.3);
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 0 36px;
+            backdrop-filter: blur(12px);
+        }
+        .header-left { display: flex; align-items: center; gap: 16px; }
+        .uni-emblem {
+            width: 44px; height: 44px; border-radius: 50%;
+            background: radial-gradient(circle at 40% 35%, #e8c547, #a07c18);
+            border: 2px solid rgba(201,162,39,0.5);
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+        }
+        .uni-emblem svg { width: 22px; height: 22px; fill: #0f2318; }
+        .uni-name { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: #fff; letter-spacing: 1.5px; }
+        .uni-name span { color: #e8c547; }
+        .uni-sub { font-size: 11px; color: rgba(255,255,255,0.4); letter-spacing: 2px; text-transform: uppercase; margin-top: 1px; }
+        .datetime { font-family: 'DM Mono', monospace; font-size: 13px; color: rgba(255,255,255,0.5); text-align: right; line-height: 1.5; }
+        .datetime-time { font-size: 18px; color: #e8c547; font-weight: 500; }
+
+        /* ── MAIN SCREEN ── */
+        .screen {
+            position: fixed; inset: 0;
+            padding: 88px 32px 100px;
+            display: flex; flex-direction: column; gap: 20px;
+            overflow: hidden;
+        }
+
+        .office-name {
+            font-size: clamp(14px, 2.2vw, 18px);
+            color: rgba(255,255,255,0.85);
+            font-weight: 500;
+            margin-top: 12px;
+            letter-spacing: 0.5px;
+        }
+        .serving-card .office-name {
+            color: rgba(255,255,255,0.95);
+            font-weight: 600;
+        }
+
+        /* ── ACTIVE TOKENS GRID ── */
+        .active-grid {
+            flex: 1;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+            gap: 20px;
+            align-content: center;
+        }
+
+        /* ── CALLED CARD ── */
+        .called-card {
+            background: linear-gradient(145deg, #1a1200, #2a1e00);
+            border-radius: 20px;
+            padding: 30px 28px;
+            text-align: center;
+            border: 2px solid #ff9800;
+            box-shadow: 0 0 24px rgba(255,152,0,0.25), inset 0 1px 0 rgba(255,255,255,0.05);
+            animation: pulseAmber 2s ease-in-out infinite;
+        }
+        @keyframes pulseAmber {
+            0%,100% { box-shadow: 0 0 20px rgba(255,152,0,0.25); }
+            50% { box-shadow: 0 0 40px rgba(255,193,7,0.5); }
+        }
+
+        /* ── SERVING CARD ── */
+        .serving-card {
+            background: #000d03;
+            border-radius: 20px;
+            padding: 30px 28px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+            border: 2px solid #00e676;
+            animation: servingPulse 1.4s ease-in-out infinite;
+        }
+        .serving-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 60%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(0,230,118,0.12), transparent);
+            animation: beamSweep 2s ease-in-out infinite;
+            pointer-events: none;
+        }
+        .serving-card::after {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: 22px;
+            background: linear-gradient(45deg, #00e676, #00c853, #69ff9c, #00e676);
+            background-size: 400% 400%;
+            animation: gradientShift 2s ease infinite;
+            z-index: -1;
+        }
+
+        @keyframes servingPulse {
+            0%,100% {
+                box-shadow: 0 0 30px rgba(0,230,118,0.4), 0 0 60px rgba(0,230,118,0.15), inset 0 0 30px rgba(0,230,118,0.05);
+                border-color: #00e676;
+            }
+            50% {
+                box-shadow: 0 0 60px rgba(0,255,136,0.7), 0 0 100px rgba(0,230,118,0.3), inset 0 0 40px rgba(0,230,118,0.1);
+                border-color: #69ff9c;
+            }
+        }
+
+        @keyframes beamSweep {
+            0% { left: -100%; }
+            100% { left: 200%; }
+        }
+
+        @keyframes gradientShift {
+            0%,100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            padding: 5px 14px;
+            border-radius: 20px;
+            margin-bottom: 18px;
+        }
+        .badge-dot { width: 7px; height: 7px; border-radius: 50%; }
+        .badge-called { background: rgba(255,152,0,0.18); color: #ffb74d; border: 1px solid rgba(255,152,0,0.4); }
+        .badge-called .badge-dot { background: #ff9800; }
+        .badge-serving { background: rgba(0,230,118,0.15); color: #69ff9c; border: 1px solid rgba(0,230,118,0.5); }
+        .badge-serving .badge-dot { background: #00e676; animation: blinkDot 0.7s infinite; }
+        @keyframes blinkDot { 0%,100%{opacity:1;} 50%{opacity:0;} }
+
+        .token-number {
+            font-family: 'DM Mono', monospace;
+            font-size: clamp(52px, 8vw, 80px);
+            font-weight: 500;
+            letter-spacing: 10px;
+            margin: 10px 0 14px;
+            line-height: 1;
+        }
+        .called-card .token-number { color: #ffb74d; }
+        .serving-card .token-number {
+            color: #69ff9c;
+            text-shadow: 0 0 30px rgba(0,255,136,0.8), 0 0 60px rgba(0,230,118,0.4);
+            animation: tokenGlow 1.4s ease-in-out infinite;
+        }
+        @keyframes tokenGlow {
+            0%,100% { text-shadow: 0 0 20px rgba(0,255,136,0.6), 0 0 40px rgba(0,230,118,0.3); }
+            50% { text-shadow: 0 0 40px rgba(0,255,136,1), 0 0 80px rgba(0,230,118,0.6), 0 0 120px rgba(0,200,100,0.3); }
+        }
+
+        .student-name {
+            font-size: clamp(18px, 3vw, 24px);
+            font-weight: 600;
+            color: #e8c547;
+            margin-top: 8px;
+            letter-spacing: 1px;
+        }
+        .serving-card .student-name {
+            color: #69ff9c;
+            text-shadow: 0 0 10px rgba(0,255,136,0.3);
+        }
+
+        /* ── NO ACTIVE STATE ── */
+        .no-active {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 0;
+            text-align: center;
+        }
+        .no-active-ring {
+            width: 120px;
+            height: 120px;
+            border-radius: 50%;
+            border: 2px solid rgba(201,162,39,0.2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 32px;
+            position: relative;
+        }
+        .no-active-ring::before { content: ''; position: absolute; inset: -8px; border-radius: 50%; border: 1px solid rgba(201,162,39,0.08); }
+        .no-active-ring::after { content: ''; position: absolute; inset: -18px; border-radius: 50%; border: 1px solid rgba(201,162,39,0.04); }
+        .no-active-ring svg { width: 52px; height: 52px; fill: rgba(201,162,39,0.35); }
+        .no-active-title { font-family: 'Playfair Display', serif; font-size: clamp(32px, 5vw, 52px); font-weight: 700; color: rgba(255,255,255,0.85); letter-spacing: 1px; margin-bottom: 14px; line-height: 1.1; }
+        .no-active-sub { font-size: clamp(15px, 2.2vw, 20px); color: rgba(255,255,255,0.38); font-weight: 300; letter-spacing: 0.3px; }
+        .no-active-kiosk {
+            margin-top: 36px;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            background: rgba(201,162,39,0.08);
+            border: 1px solid rgba(201,162,39,0.2);
+            border-radius: 40px;
+            padding: 11px 26px;
+        }
+        .kiosk-dot { width: 8px; height: 8px; border-radius: 50%; background: #e8c547; opacity: 0.7; animation: pulseDot 2s infinite; }
+        @keyframes pulseDot { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:0.4;transform:scale(1.4);} }
+        .no-active-kiosk span { font-size: 14px; color: rgba(201,162,39,0.7); letter-spacing: 0.5px; font-weight: 500; }
+        .idle-message-card {
+            display: none;
+            width: min(920px, 92vw);
+            background: rgba(201,162,39,0.08);
+            border: 1px solid rgba(201,162,39,0.35);
+            border-radius: 22px;
+            padding: 28px 30px;
+            box-shadow: 0 0 30px rgba(201,162,39,0.12);
+        }
+        .idle-message-label {
+            font-size: 12px;
+            font-weight: 900;
+            letter-spacing: 1.6px;
+            color: #ffffff;
+            text-transform: uppercase;
+            margin-bottom: 14px;
+        }
+        .idle-message-office {
+            display: inline-block;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #e8c547;
+            background: rgba(201,162,39,0.18);
+            border: 1px solid rgba(201,162,39,0.35);
+            border-radius: 6px;
+            padding: 5px 12px;
+            margin-bottom: 14px;
+        }
+        .idle-message-text {
+            font-size: clamp(18px, 2.8vw, 30px);
+            line-height: 1.4;
+            font-weight: 500;
+            color: rgba(255,255,255,0.92);
+        }
+
+        /* ── ON-DUTY OFFICES ── */
+        .on-duty-section {
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .on-duty-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .on-duty-header-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #00e676;
+            flex-shrink: 0;
+            animation: blinkDot 1.4s infinite;
+            box-shadow: 0 0 12px rgba(0,230,118,0.6);
+        }
+        .on-duty-title {
+            font-size: 28px;
+            font-weight: 900;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #ffffff;
+            text-shadow: 0 0 20px rgba(0,230,118,0.3);
+        }
+        .on-duty-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 14px;
+        }
+        .on-duty-card {
+            background: rgba(255,255,255,0.07);
+            border: 1px solid rgba(255,255,255,0.12);
+            border-radius: 14px;
+            padding: 22px 20px;
+            text-align: center;
+            transition: border-color 0.3s, background 0.3s;
+        }
+        .on-duty-card:hover {
+            border-color: rgba(0,230,118,0.35);
+            background: rgba(255,255,255,0.10);
+        }
+        .on-duty-code {
+            display: inline-block;
+            font-family: 'DM Mono', monospace;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 1.5px;
+            color: #e8c547;
+            background: rgba(201,162,39,0.12);
+            border: 1px solid rgba(201,162,39,0.2);
+            padding: 3px 14px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+        }
+        .on-duty-name {
+            font-size: 18px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.9);
+            margin-bottom: 3px;
+        }
+        .on-duty-location {
+            font-size: 13px;
+            color: rgba(255,255,255,0.35);
+            margin-bottom: 10px;
+        }
+        .on-duty-waiting {
+            font-family: 'DM Mono', monospace;
+            font-size: 14px;
+            color: rgba(255,255,255,0.45);
+        }
+        .on-duty-waiting strong {
+            color: #69ff9c;
+            font-weight: 500;
+        }
+        /* ── FALLBACK (all offices closed) ── */
+        .on-duty-closed {
+            margin-top: 20px;
+            font-size: 14px;
+            color: rgba(255,255,255,0.3);
+            letter-spacing: 0.5px;
+        }
+
+        /* ── STATS BAR ── */
+        .stats-bar { display: flex; gap: 12px; flex-shrink: 0; }
+        .stat-chip { flex: 1; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 12px 16px; display: flex; align-items: center; gap: 12px; }
+        .stat-chip-icon { width: 32px; height: 32px; border-radius: 8px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .stat-chip-icon svg { width: 16px; height: 16px; }
+        .icon-waiting { background: rgba(255,152,0,0.12); } .icon-waiting svg { fill: #ffb74d; }
+        .icon-called  { background: rgba(255,193,7,0.12); }  .icon-called svg  { fill: #ffd700; }
+        .icon-serving { background: rgba(0,230,118,0.12); }  .icon-serving svg { fill: #69ff9c; }
+        .stat-val { font-family: 'DM Mono', monospace; font-size: 22px; font-weight: 500; color: rgba(255,255,255,0.85); line-height: 1; }
+        .stat-lbl { font-size: 11px; color: rgba(255,255,255,0.35); margin-top: 2px; letter-spacing: 0.5px; }
+
+        /* ── TV NEWS TICKER ── */
+        .news-ticker-wrap {
+            position: fixed;
+            bottom: 40px;
+            left: 0;
+            right: 0;
+            z-index: 60;
+            display: none;
+            flex-direction: column;
+            gap: 0;
+        }
+        .news-ticker-wrap.visible { display: flex; }
+
+        .ticker-top-bar {
+            height: 3px;
+            background: linear-gradient(90deg, #e8c547, #ffec6e, #c9a227, #e8c547);
+            background-size: 200% 100%;
+            animation: barShimmer 3s linear infinite;
+        }
+        @keyframes barShimmer {
+            0% { background-position: 0% 0%; }
+            100% { background-position: 200% 0%; }
+        }
+
+        .ticker-body {
+            display: flex;
+            align-items: stretch;
+            background: rgba(5,10,6,0.97);
+            border-top: 1px solid rgba(201,162,39,0.4);
+            overflow: hidden;
+            height: 52px;
+        }
+
+        .ticker-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 0 18px 0 20px;
+            background: #c9a227;
+            flex-shrink: 0;
+            position: relative;
+            clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 50%, calc(100% - 12px) 100%, 0 100%);
+            padding-right: 28px;
+            min-width: 120px;
+        }
+        .ticker-label-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #0f2318;
+            animation: pulseDot 1s infinite;
+            flex-shrink: 0;
+        }
+        .ticker-label-text {
+            font-size: 11px;
+            font-weight: 800;
+            color: #0f2318;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            white-space: nowrap;
+        }
+
+        .ticker-scroll-track {
+            flex: 1;
+            overflow: hidden;
+            display: flex;
+            align-items: center;
+            position: relative;
+        }
+
+        .ticker-scroll-inner {
+            display: flex;
+            align-items: center;
+            gap: 0;
+            white-space: nowrap;
+            animation: tickerScroll 28s linear infinite;
+            will-change: transform;
+        }
+        .ticker-scroll-track:hover .ticker-scroll-inner {
+            animation-play-state: paused;
+        }
+
+        @keyframes tickerScroll {
+            0%   { transform: translateX(0); }
+            100% { transform: translateX(-50%); }
+        }
+
+        .ticker-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 0;
+            padding: 0 10px 0 0;
+        }
+
+        .ticker-from {
+            color: #ffffff;
+            font-weight: 500;
+            margin-right: 4px;
+        }
+
+        .ticker-office-badge {
+            display: inline-flex;
+            align-items: center;
+            background: rgba(201,162,39,0.15);
+            border: 1px solid rgba(201,162,39,0.35);
+            color: #e8c547;
+            font-size: 10px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            padding: 3px 10px;
+            border-radius: 4px;
+            margin-right: 10px;
+            flex-shrink: 0;
+        }
+
+        .ticker-message-text {
+            font-size: 15px;
+            color: rgba(255,255,255,0.92);
+            font-weight: 400;
+            letter-spacing: 0.1px;
+        }
+
+        .ticker-sep {
+            display: inline-block;
+            color: #e8c547;
+            font-size: 16px;
+            margin: 0 28px;
+            opacity: 0.7;
+            flex-shrink: 0;
+        }
+
+        .ticker-scroll-track::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            width: 80px;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(5,10,6,0.97));
+            pointer-events: none;
+            z-index: 2;
+        }
+        .ticker-scroll-track::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 30px;
+            height: 100%;
+            background: linear-gradient(90deg, rgba(5,10,6,0.97), transparent);
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        .ticker-time {
+            display: flex;
+            align-items: center;
+            padding: 0 16px;
+            border-left: 1px solid rgba(255,255,255,0.08);
+            flex-shrink: 0;
+            font-family: 'DM Mono', monospace;
+            font-size: 11px;
+            color: rgba(201,162,39,0.6);
+            white-space: nowrap;
+        }
+
+        /* ── FOOTER ── */
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 50;
+            height: 40px;
+            background: rgba(7,13,9,0.95);
+            border-top: 1px solid rgba(255,255,255,0.06);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+            backdrop-filter: blur(12px);
+        }
+        .footer-text { font-size: 11px; color: rgba(255,255,255,0.3); letter-spacing: 0.4px; }
+        .footer-dot { width: 3px; height: 3px; border-radius: 50%; background: rgba(255,255,255,0.15); }
+
+        /* ── VOICE INDICATOR ── */
+        .voice-indicator {
+            position: fixed;
+            bottom: 50px;
+            left: 20px;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(7,13,9,0.9);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 20px;
+            padding: 6px 14px;
+            transition: all 0.3s;
+        }
+        .voice-dot { width: 7px; height: 7px; border-radius: 50%; background: #00e676; animation: blinkDot 1.2s infinite; }
+        .voice-text { font-size: 11px; color: rgba(255,255,255,0.4); font-family: 'DM Mono', monospace; }
+
+        /* ── RECALL BANNER ── */
+        .recall-banner {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: linear-gradient(135deg, #b54800, #ff6d00);
+            color: white;
+            padding: 24px 52px;
+            border-radius: 60px;
+            font-family: 'DM Mono', monospace;
+            font-size: clamp(24px, 4vw, 36px);
+            font-weight: 500;
+            letter-spacing: 5px;
+            z-index: 300;
+            box-shadow: 0 0 80px rgba(255,109,0,0.6);
+            animation: recallAnim 3s ease-in-out forwards;
+            white-space: nowrap;
+        }
+        @keyframes recallAnim {
+            0%   { opacity:0; transform:translate(-50%,-50%) scale(0.8); }
+            12%  { opacity:1; transform:translate(-50%,-50%) scale(1.05); }
+            20%  { transform:translate(-50%,-50%) scale(1); }
+            80%  { opacity:1; }
+            100% { opacity:0; transform:translate(-50%,-50%) scale(1.1); }
+        }
+
+        @media (max-width: 768px) {
+            .active-grid { grid-template-columns: 1fr; }
+            .token-number { font-size: 44px; letter-spacing: 5px; }
+            .student-name { font-size: 16px; }
+            .header { padding: 0 16px; }
+            .screen { padding: 80px 16px 110px; }
+            .ticker-label { min-width: 90px; }
+            .ticker-message-text { font-size: 13px; }
+        }
+
+        .offline-banner {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 9999;
+            background: rgba(230,81,0,0.92);
+            backdrop-filter: blur(8px);
+            color: #fff;
+            font-size: 15px;
+            font-weight: 600;
+            padding: 14px 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transform: translateY(100%);
+            transition: transform .4s cubic-bezier(.4,0,.2,1);
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            letter-spacing: 0.3px;
+        }
+        .offline-banner.show { transform: translateY(0); }
+        .offline-banner svg { width: 20px; height: 20px; flex-shrink: 0; }
+        .offline-dot {
+            display: inline-block;
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: rgba(255,255,255,0.7);
+            margin: 0 1px;
+            animation: offlineDot 1.2s infinite;
+        }
+        .offline-dot:nth-child(2) { animation-delay: .2s; }
+        .offline-dot:nth-child(3) { animation-delay: .4s; }
+        @keyframes offlineDot { 0%,80%,100%{opacity:.3;} 40%{opacity:1;} }
+    </style>
+</head>
+<body>
+
+    <!-- HEADER -->
+    <div class="header">
+        <div class="header-left">
+            <div class="uni-emblem">
+                <svg viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>
+            </div>
+            <div>
+                <div class="uni-name">Makerere <span>University</span></div>
+                <div class="uni-sub">Student Service Board</div>
+            </div>
+        </div>
+        <div class="datetime">
+            <div class="datetime-time" id="dtTime">00:00:00</div>
+            <div id="dtDate">Loading...</div>
+        </div>
+    </div>
+
+    <!-- MAIN SCREEN -->
+    <div class="screen">
+        <div class="active-grid" id="activeGrid" style="display:none;"></div>
+        <div class="no-active" id="noActive">
+            <div id="noActiveDefault">
+                <div class="no-active-ring">
+                    <svg viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>
+                </div>
+                <div class="no-active-title">No Active Services</div>
+                <div class="no-active-sub">Please take a token from the kiosk</div>
+                <div class="no-active-kiosk">
+                    <div class="kiosk-dot"></div>
+                    <span>Kiosk available at the entrance</span>
+                </div>
+            </div>
+            <div class="on-duty-section" id="onDutySection" style="display:none;">
+                <div class="on-duty-header">
+                    <div class="on-duty-header-dot"></div>
+                    <h1 class="on-duty-title">Offices Available Today</h1>
+                </div>
+                <div class="on-duty-grid" id="onDutyGrid"></div>
+                <div class="on-duty-closed" id="onDutyClosed" style="display:none;">All offices are currently closed.</div>
+            </div>
+            <div class="idle-message-card" id="idleMessageCard">
+                <div class="idle-message-label">Important Notice</div>
+                <div class="idle-message-office" id="idleMessageOffice">Office Notice</div>
+                <div class="idle-message-text" id="idleMessageText"></div>
+            </div>
+        </div>
+
+        <div class="stats-bar">
+            <div class="stat-chip">
+                <div class="stat-chip-icon icon-waiting">
+                    <svg viewBox="0 0 24 24"><path d="M11.99 2C6.47 2 2 6.48 2 12s4.47 10 9.99 10C17.52 22 22 17.52 22 12S17.52 2 11.99 2zM12 20c-4.42 0-8-3.58-8-8s3.58-8 8-8 8 3.58 8 8-3.58 8-8 8zm.5-13H11v6l5.25 3.15.75-1.23-4.5-2.67V7z"/></svg>
+                </div>
+                <div><div class="stat-val" id="totalWaiting">0</div><div class="stat-lbl">Waiting</div></div>
+            </div>
+            <div class="stat-chip">
+                <div class="stat-chip-icon icon-called">
+                    <svg viewBox="0 0 24 24"><path d="M20.01 15.38c-1.23 0-2.42-.2-3.53-.56-.35-.12-.74-.03-1.01.24l-1.57 1.97c-2.83-1.35-5.48-3.9-6.89-6.83l1.95-1.66c.27-.28.35-.67.24-1.02-.37-1.12-.56-2.3-.56-3.53 0-.54-.45-.99-.99-.99H4.19C3.65 3 3 3.24 3 3.99 3 13.28 10.73 21 20.01 21c.71 0 .99-.63.99-1.18v-3.45c0-.54-.45-.99-.99-.99z"/></svg>
+                </div>
+                <div><div class="stat-val" id="totalCalled">0</div><div class="stat-lbl">Called</div></div>
+            </div>
+            <div class="stat-chip">
+                <div class="stat-chip-icon icon-serving">
+                    <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+                </div>
+                <div><div class="stat-val" id="totalServing">0</div><div class="stat-lbl">Serving Now</div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TV NEWS TICKER -->
+    <div class="news-ticker-wrap" id="newsTicker">
+        <div class="ticker-top-bar"></div>
+        <div class="ticker-body">
+            <div class="ticker-label">
+                <div class="ticker-label-dot"></div>
+                <span class="ticker-label-text">NOTICE</span>
+            </div>
+            <div class="ticker-scroll-track">
+                <div class="ticker-scroll-inner" id="tickerInner"></div>
+            </div>
+            <div class="ticker-time" id="tickerTime">--:--</div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div class="footer-text">Listen for your token announcement</div>
+        <div class="footer-dot"></div>
+        <div class="footer-text">Watch the screen for your turn</div>
+        <div class="footer-dot"></div>
+        <div class="footer-text">&copy; 2026 Makerere University &mdash; Queue Management System</div>
+    </div>
+
+    <div class="voice-indicator" id="voiceIndicator">
+        <div class="voice-dot"></div>
+        <span class="voice-text" id="voiceText">Voice System Ready</span>
+    </div>
+
+    <script>
+        const API_BASE_URL = window.location.origin;
+        const queryParams = new URLSearchParams(window.location.search);
+        const selectedOfficeId = queryParams.get('office_id');
+        const selectedOfficeCode = queryParams.get('office_code');
+
+        let lastCalledTokens = {};
+        let lastServingTokens = {};
+        let audioQueue = [];
+        let isPlaying = false;
+        let announcedRecalls = new Set();
+        let isIdle = true;
+        let currentMessages = [];
+        let idleMessageIndex = 0;
+        let idleMessageRotationTimer = null;
+
+        // TV Display stability variables
+        let failedFetches = 0;
+        let lastDisplayUpdate = Date.now();
+        let screenFrozen = false;
+        let lastFetchTime = Date.now();
+        let queueFetchInFlight = false;
+        let recallFetchInFlight = false;
+        let messageFetchInFlight = false;
+        let consecutiveJsErrors = 0;
+        let lastSuccessfulQueueFetch = Date.now();
+        let hardReloadCooldownUntil = 0;
+        let isOffline = false;
+
+        function safeReload(reason) {
+            const now = Date.now();
+            if (now < hardReloadCooldownUntil) return;
+            hardReloadCooldownUntil = now + 30000;
+            console.log(`[WATCHDOG] Reloading public display: ${reason}`);
+            location.reload();
+        }
+
+        function showOfflineBanner() {
+            if (isOffline) return;
+            isOffline = true;
+            document.getElementById('offlineBanner').classList.add('show');
+        }
+
+        function hideOfflineBanner() {
+            if (!isOffline) return;
+            isOffline = false;
+            failedFetches = 0;
+            document.getElementById('offlineBanner').classList.remove('show');
+        }
+
+        // ── DATETIME ──
+        function updateDateTime() {
+            const now = new Date();
+            document.getElementById('dtTime').textContent = now.toLocaleTimeString('en-UG', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            document.getElementById('dtDate').textContent = now.toLocaleDateString('en-UG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+            document.getElementById('tickerTime').textContent = now.toLocaleTimeString('en-UG', { hour: '2-digit', minute: '2-digit' });
+        }
+        updateDateTime();
+        setInterval(updateDateTime, 1000);
+
+        // ── VOICE WITH STUDENT NAMES ──
+        async function generateVoice(token, studentName, officeName, actionType) {
+            const vi = document.getElementById('voiceIndicator');
+            const vt = document.getElementById('voiceText');
+            const spelledToken = token.split('').join(' ');
+            
+            let text = '';
+            const hasName = studentName && studentName.trim() !== '';
+            
+            if (actionType === 'called') {
+                if (hasName) {
+                    text = `Now calling ${studentName} with token ${spelledToken}. Please proceed to ${officeName}.`;
+                } else {
+                    text = `Now calling token ${spelledToken}. Please proceed to ${officeName}.`;
+                }
+            } 
+            else if (actionType === 'recall') {
+                if (hasName) {
+                    text = `Attention please, ${studentName}, token ${spelledToken} please proceed to ${officeName}.`;
+                } else {
+                    text = `Attention please, token ${spelledToken} is now ready at ${officeName}.`;
+                }
+            }
+            else if (actionType === 'serving') {
+                if (hasName) {
+                    text = `Now serving ${studentName} with token ${spelledToken} at ${officeName}.`;
+                } else {
+                    text = `Now serving token ${spelledToken} at ${officeName}.`;
+                }
+            }
+            
+            vt.textContent = `Announcing ${token}...`;
+            vi.style.borderColor = 'rgba(255,193,7,0.4)';
+            
+            try {
+                const response = await fetch('/api/tts', {
+                    method: 'POST',
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ text })
+                });
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const el = document.createElement('video');
+                    el.playsInline = true;
+                    el.style.cssText = 'position:fixed;width:0;height:0;opacity:0;pointer-events:none';
+                    el.src = URL.createObjectURL(blob);
+                    el.load();
+                    document.body.appendChild(el);
+                    audioQueue.push(el); 
+                    playNextAudio();
+                    vt.textContent = `Done: ${token}`;
+                    vi.style.borderColor = 'rgba(0,230,118,0.3)';
+                    setTimeout(() => { 
+                        vt.textContent = 'Voice System Ready'; 
+                        vi.style.borderColor = 'rgba(255,255,255,0.08)'; 
+                    }, 2000);
+                }
+            } catch(e) { 
+                console.error('Voice error:', e); 
+                vt.textContent = 'Voice Error'; 
+                setTimeout(() => { vt.textContent = 'Voice System Ready'; }, 2000); 
+            }
+        }
+
+        function playNextAudio() {
+            if (isPlaying || !audioQueue.length) return;
+            isPlaying = true;
+            const el = audioQueue[0];
+            el.onended = () => {
+                audioQueue.shift();
+                URL.revokeObjectURL(el.src);
+                el.parentNode?.removeChild(el);
+                isPlaying = false; playNextAudio();
+            };
+            el.play().catch((err) => {
+                if (err.name === 'NotAllowedError') {
+                    console.warn('Audio blocked — see ' + window.location.origin + '/kiosk-setup to fix');
+                }
+                isPlaying = false;
+            });
+        }
+
+        function showRecallBanner(token, officeName, studentName) {
+            document.querySelector('.recall-banner')?.remove();
+            const b = document.createElement('div');
+            b.className = 'recall-banner';
+            if (studentName && studentName.trim() !== '') {
+                b.textContent = `${studentName}  —  ${token}`;
+            } else {
+                b.textContent = `${token}  —  ${officeName}`;
+            }
+            document.body.appendChild(b);
+            setTimeout(() => b?.remove(), 3000);
+        }
+
+        // ── TICKER ──
+        function buildTickerContent(messages) {
+            const inner = document.getElementById('tickerInner');
+            if (!messages || messages.length === 0) {
+                const standby = `
+                    <div class="ticker-item">
+                        <span class="ticker-office-badge">INFO</span>
+                        <span class="ticker-message-text">No active queue. Please take a token from the kiosk at the entrance and wait for your number to be called.</span>
+                    </div>
+                    <span class="ticker-sep">&#9656;</span>
+                    <div class="ticker-item">
+                        <span class="ticker-office-badge">INFO</span>
+                        <span class="ticker-message-text">Watch this screen and listen for announcements when your token is ready.</span>
+                    </div>
+                    <span class="ticker-sep">&#9656;</span>`;
+                inner.innerHTML = standby + standby;
+                return;
+            }
+            let html = '';
+            for (const msg of messages) {
+                html += `
+                    <div class="ticker-item">
+                        <span class="ticker-from">From:</span>
+                        <span class="ticker-office-badge">${escapeHtml(msg.office_name)}</span>
+                        <span class="ticker-message-text">${escapeHtml(msg.message)}</span>
+                    </div>
+                    <span class="ticker-sep">&#9656;</span>`;
+            }
+            inner.innerHTML = html + html;
+            const totalLen = messages.reduce((a, m) => a + m.message.length, 0);
+            const speed = Math.max(20, Math.min(60, totalLen * 0.4));
+            inner.style.animationDuration = speed + 's';
+        }
+
+        async function fetchAndDisplayMessages() {
+            if (!isIdle) return;
+            if (messageFetchInFlight) return;
+            messageFetchInFlight = true;
+            try {
+                const messageUrl = new URL(`${API_BASE_URL}/api/office/messages`);
+                if (selectedOfficeId) messageUrl.searchParams.set('office_id', selectedOfficeId);
+                if (selectedOfficeCode) messageUrl.searchParams.set('office_code', selectedOfficeCode);
+                messageUrl.searchParams.set('limit', '100');
+
+                const res = await fetch(messageUrl.toString());
+                const data = await res.json();
+                if (data.success) hideOfflineBanner();
+                const msgs = (data.success && data.messages?.length) ? data.messages : [];
+                const sig = JSON.stringify(msgs.map(m => m.id + m.message));
+                if (sig !== fetchAndDisplayMessages._lastSig) {
+                    fetchAndDisplayMessages._lastSig = sig;
+                    currentMessages = msgs;
+                    idleMessageIndex = 0;
+                    buildTickerContent(msgs);
+                    renderIdleState(currentMessages);
+                }
+                lastSuccessfulMessageFetch = Date.now();
+            } catch(e) { console.error('Messages error:', e); }
+            finally { messageFetchInFlight = false; }
+        }
+        fetchAndDisplayMessages._lastSig = null;
+
+        // ── RECALLS ──
+        async function fetchRecentRecalls() {
+            if (recallFetchInFlight) return;
+            recallFetchInFlight = true;
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/queue/recent-recalls`);
+                const data = await res.json();
+                if (data.success) {
+                    hideOfflineBanner();
+                    if (data.recalls?.length) {
+                        for (const recall of data.recalls) {
+                            if (!announcedRecalls.has(recall.id)) {
+                                announcedRecalls.add(recall.id);
+                                showRecallBanner(recall.token_number, recall.office_name, recall.student_name);
+                                await generateVoice(recall.token_number, recall.student_name, recall.office_name, 'recall');
+                            }
+                        }
+                        if (announcedRecalls.size > 50) {
+                            Array.from(announcedRecalls).slice(0, announcedRecalls.size - 50).forEach(id => announcedRecalls.delete(id));
+                        }
+                    }
+                }
+            } catch(e) { console.error('Recall error:', e); }
+            finally { recallFetchInFlight = false; }
+        }
+
+        function escapeHtml(t) {
+            const d = document.createElement('div'); 
+            d.textContent = t; 
+            return d.innerHTML;
+        }
+
+        function truncateName(name, maxLength = 20) {
+            if (!name) return '';
+            if (name.length <= maxLength) return name;
+            return name.substring(0, maxLength) + '...';
+        }
+
+        function renderIdleState(messages) {
+            const noActiveDefault = document.getElementById('noActiveDefault');
+            const idleMessageCard = document.getElementById('idleMessageCard');
+            const idleMessageOffice = document.getElementById('idleMessageOffice');
+            const idleMessageText = document.getElementById('idleMessageText');
+
+            if (messages && messages.length > 0) {
+                const msg = messages[idleMessageIndex % messages.length];
+                noActiveDefault.style.display = 'none';
+                idleMessageCard.style.display = 'block';
+                idleMessageOffice.textContent = msg.office_name || 'Office Notice';
+                idleMessageText.textContent = msg.message || '';
+                return;
+            }
+
+            idleMessageCard.style.display = 'none';
+            noActiveDefault.style.display = 'block';
+        }
+
+        function startIdleMessageRotation() {
+            if (idleMessageRotationTimer) return;
+            idleMessageRotationTimer = setInterval(() => {
+                if (!isIdle || !currentMessages || currentMessages.length <= 1) return;
+                idleMessageIndex = (idleMessageIndex + 1) % currentMessages.length;
+                renderIdleState(currentMessages);
+            }, 7000);
+        }
+
+        // ── UPDATE DISPLAY (Single definition) ──
+        function updateDisplay(queues) {
+            // Mark that we received an update (for frozen screen detection)
+            lastDisplayUpdate = Date.now();
+            
+            const activeGrid = document.getElementById('activeGrid');
+            const noActive = document.getElementById('noActive');
+            const newsTicker = document.getElementById('newsTicker');
+
+            const activeTokens = [];
+            let totalCalled = 0, totalServing = 0, totalWaiting = 0;
+
+            for (const office of queues) {
+                totalWaiting += office.waiting_count || 0;
+                if (office.current_called) {
+                    activeTokens.push({ 
+                        type: 'called', 
+                        token: office.current_called, 
+                        officeName: office.office_name,
+                        studentName: office.called_student || ''
+                    });
+                    totalCalled++;
+                    
+                    if (lastCalledTokens[office.office_code] !== office.current_called) {
+                        lastCalledTokens[office.office_code] = office.current_called;
+                        generateVoice(office.current_called, office.called_student, office.office_name, 'called');
+                    }
+                }
+                if (office.current_serving) {
+                    activeTokens.push({ 
+                        type: 'serving', 
+                        token: office.current_serving, 
+                        officeName: office.office_name,
+                        studentName: office.serving_student || ''
+                    });
+                    totalServing++;
+                    
+                    if (lastServingTokens[office.office_code] !== office.current_serving) {
+                        lastServingTokens[office.office_code] = office.current_serving;
+                        generateVoice(office.current_serving, office.serving_student, office.office_name, 'serving');
+                    }
+                }
+            }
+
+            document.getElementById('totalWaiting').textContent = totalWaiting;
+            document.getElementById('totalCalled').textContent = totalCalled;
+            document.getElementById('totalServing').textContent = totalServing;
+
+            if (activeTokens.length > 0) {
+                isIdle = false;
+                newsTicker.classList.remove('visible');
+                noActive.style.display = 'none';
+                activeGrid.style.display = 'grid';
+
+                activeGrid.innerHTML = activeTokens.map(t => `
+                    <div class="${t.type}-card">
+                        <div class="status-badge badge-${t.type}">
+                            <span class="badge-dot"></span>
+                            ${t.type === 'called' ? 'CALLED — PLEASE PROCEED' : 'BEING SERVED NOW'}
+                        </div>
+                        <div class="token-number">${t.token}</div>
+                        ${t.studentName ? `<div class="student-name">${escapeHtml(truncateName(t.studentName))}</div>` : ''}
+                        <div class="office-name">${escapeHtml(t.officeName)}</div>
+                    </div>
+                `).join('');
+            } else {
+                isIdle = true;
+                activeGrid.style.display = 'none';
+                noActive.style.display = 'flex';
+                newsTicker.classList.add('visible');
+                renderIdleState(currentMessages);
+                fetchAndDisplayMessages();
+
+                const onDutySection = document.getElementById('onDutySection');
+                const onDutyGrid = document.getElementById('onDutyGrid');
+                const onDutyClosed = document.getElementById('onDutyClosed');
+                const noActiveDefault = document.getElementById('noActiveDefault');
+
+                const availableOffices = queues.filter(o =>
+                    (o.availability_status || '').toLowerCase() === 'available'
+                );
+
+                if (availableOffices.length > 0) {
+                    noActiveDefault.style.display = 'none';
+                    onDutySection.style.display = 'block';
+                    onDutyClosed.style.display = 'none';
+                    onDutyGrid.innerHTML = availableOffices.map(o => `
+                        <div class="on-duty-card">
+                            <div class="on-duty-code">${escapeHtml(o.office_code)}</div>
+                            <div class="on-duty-name">${escapeHtml(o.office_name)}</div>
+                            <div class="on-duty-location">${escapeHtml(o.location || 'Main Campus')}</div>
+
+                            <div class="on-duty-waiting"><strong>${o.waiting_count || 0}</strong> waiting</div>
+                        </div>
+                    `).join('');
+                } else {
+                    noActiveDefault.style.display = 'block';
+                    onDutySection.style.display = 'none';
+                    onDutyClosed.style.display = 'none';
+                }
+            }
+        }
+
+        // ── FETCH QUEUE DATA WITH TIMEOUT AND RECOVERY ──
+        async function fetchQueueData() {
+            if (queueFetchInFlight) return;
+            queueFetchInFlight = true;
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
+                
+                const res = await fetch(`${API_BASE_URL}/api/public/queues`, {
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                
+                if (res.ok) {
+                    failedFetches = 0;
+                    hideOfflineBanner();
+                    const data = await res.json();
+                    if (data.success) {
+                        updateDisplay(data.queues);
+                        lastSuccessfulQueueFetch = Date.now();
+                    }
+                } else {
+                    failedFetches++;
+                    if (failedFetches >= 3) showOfflineBanner();
+                    console.log(`Fetch failed with status ${res.status}`);
+                }
+            } catch(e) {
+                failedFetches++;
+                if (failedFetches >= 3) showOfflineBanner();
+                console.log(`Fetch error:`, e.message);
+            }
+            finally {
+                queueFetchInFlight = false;
+            }
+        }
+
+        // ── MONITOR FOR FROZEN SCREEN ──
+        function monitorScreenHealth() {
+            const timeSinceUpdate = Date.now() - lastDisplayUpdate;
+            const timeSinceQueueFetch = Date.now() - lastSuccessfulQueueFetch;
+            
+            // If no updates for 60 seconds, screen is frozen
+            if (timeSinceUpdate > 60000 && !screenFrozen) {
+                screenFrozen = true;
+                console.log('🔄 Screen appears frozen (no updates for 60s), reloading...');
+                safeReload('display update heartbeat stalled');
+            } else if (timeSinceUpdate < 30000) {
+                screenFrozen = false;
+            }
+
+            // Extra watchdog for long backend silence even if UI timers are alive
+            if (timeSinceQueueFetch > 120000) {
+                safeReload('queue API silent for over 2 minutes');
+            }
+        }
+
+        // ── INIT ──
+        function init() {
+            window.addEventListener('error', () => {
+                consecutiveJsErrors += 1;
+                if (consecutiveJsErrors >= 5) safeReload('too many JavaScript runtime errors');
+            });
+            window.addEventListener('unhandledrejection', () => {
+                consecutiveJsErrors += 1;
+                if (consecutiveJsErrors >= 5) safeReload('too many unhandled promise rejections');
+            });
+            window.addEventListener('online', () => {
+                failedFetches = 0;
+                hideOfflineBanner();
+                fetchQueueData();
+                fetchAndDisplayMessages();
+            });
+            window.addEventListener('offline', () => {
+                showOfflineBanner();
+            });
+            window.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'visible') {
+                    fetchQueueData();
+                    if (isIdle) fetchAndDisplayMessages();
+                }
+            });
+
+            fetchQueueData();
+            fetchRecentRecalls();
+            startIdleMessageRotation();
+            
+            // Poll queue data every 5 seconds (gentle on TV browser)
+            setInterval(fetchQueueData, 5000);
+            // Poll recalls every 3 seconds
+            setInterval(fetchRecentRecalls, 3000);
+            // Poll messages only when idle
+            setInterval(fetchAndDisplayMessages, 10000);
+            
+            // Monitor screen health every 15 seconds
+            setInterval(monitorScreenHealth, 15000);
+            
+            console.log('📺 Public Display initialized with stability features');
+        }
+
+        init();
+    </script>
+    <div class="offline-banner" id="offlineBanner">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+            <line x1="1" y1="1" x2="23" y2="23"/>
+            <path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/>
+            <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/>
+            <path d="M10.71 5.05A16 16 0 0 1 22.56 9"/>
+            <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/>
+            <path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+            <line x1="12" y1="20" x2="12.01" y2="20"/>
+        </svg>
+        <span>No internet connection, reconnecting<span class="offline-dot"></span><span class="offline-dot"></span><span class="offline-dot"></span></span>
+    </div>
+</body>
+</html>

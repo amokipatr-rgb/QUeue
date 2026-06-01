@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Download Desktop App — Queue Management System</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #070d09; color: #e0e0e0; min-height: 100vh; display: flex; flex-direction: column;
+    }
+    .wrap { max-width: 700px; margin: 0 auto; padding: 40px 20px; flex: 1; }
+    .logo {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 40px;
+    }
+    .logo svg { width: 36px; height: 36px; fill: #ffd700; flex-shrink: 0; }
+    .logo-text { font-size: 14px; font-weight: 600; color: #fff; letter-spacing: 0.5px; }
+    .logo-text small { display: block; font-weight: 400; font-size: 11px; color: rgba(255,255,255,0.4); letter-spacing: 0; margin-top: 1px; }
+
+    .hero { text-align: center; margin-bottom: 48px; }
+    .hero h1 { font-size: 32px; color: #fff; margin-bottom: 8px; }
+    .hero p { color: rgba(255,255,255,0.5); font-size: 15px; line-height: 1.6; }
+
+    .section-title { font-size: 14px; color: rgba(255,255,255,0.4); text-transform: uppercase; letter-spacing: 2px; margin-bottom: 16px; }
+
+    .download-card {
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 16px; padding: 40px 32px; text-align: center; margin-bottom: 40px;
+    }
+    .download-card.public { border-color: rgba(255,215,0,0.15); }
+    .download-card.student { border-color: rgba(100,180,255,0.15); }
+    .download-card.index { border-color: rgba(180,130,255,0.15); }
+    .card-label {
+      display: inline-block; font-size: 11px; font-weight: 700; text-transform: uppercase;
+      letter-spacing: 1.5px; padding: 4px 12px; border-radius: 20px; margin-bottom: 20px;
+    }
+    .card-label.public { background: rgba(255,215,0,0.1); color: #ffd700; }
+    .card-label.student { background: rgba(100,180,255,0.1); color: #64b4ff; }
+    .card-label.index { background: rgba(180,130,255,0.1); color: #b482ff; }
+    .download-icon { margin-bottom: 16px; }
+    .download-icon svg { width: 48px; height: 48px; flex-shrink: 0; }
+    .download-card.public .download-icon svg { fill: #ffd700; }
+    .download-card.student .download-icon svg { fill: #64b4ff; }
+    .download-card.index .download-icon svg { fill: #b482ff; }
+    .download-card h3 { font-size: 20px; color: #fff; margin-bottom: 6px; }
+    .download-card .desc { color: rgba(255,255,255,0.45); font-size: 14px; margin-bottom: 24px; line-height: 1.5; }
+    .btn-download {
+      display: inline-flex; align-items: center; gap: 10px;
+      border: none; padding: 14px 36px; border-radius: 10px;
+      font-size: 16px; font-weight: 700; cursor: pointer;
+      text-decoration: none; transition: background 0.2s, transform 0.15s;
+    }
+    .download-card.public .btn-download { background: #ffd700; color: #070d09; }
+    .download-card.public .btn-download:hover { background: #ffe44d; transform: translateY(-1px); }
+    .download-card.student .btn-download { background: #64b4ff; color: #070d09; }
+    .download-card.student .btn-download:hover { background: #7fc4ff; transform: translateY(-1px); }
+    .download-card.index .btn-download { background: #b482ff; color: #070d09; }
+    .download-card.index .btn-download:hover { background: #c69aff; transform: translateY(-1px); }
+    .btn-download:active { transform: translateY(0); }
+    .btn-download svg { width: 20px; height: 20px; fill: currentColor; flex-shrink: 0; }
+    .file-info { margin-top: 10px; color: rgba(255,255,255,0.3); font-size: 12px; }
+    .file-info strong { color: rgba(255,255,255,0.5); }
+
+    .footer-links { text-align: center; padding: 24px 0 8px; border-top: 1px solid rgba(255,255,255,0.04); }
+    .footer-links a {
+      color: rgba(255,255,255,0.3); font-size: 13px; text-decoration: none; margin: 0 12px;
+    }
+    .footer-links a:hover { color: #ffd700; }
+
+    @media (max-width: 480px) {
+      .wrap { padding: 24px 16px; }
+      .hero h1 { font-size: 24px; }
+      .download-card { padding: 28px 16px; }
+      .btn-download { width: 100%; justify-content: center; }
+    }
+  </style>
+</head>
+<body>
+<div class="wrap">
+  <div class="logo">
+    <svg viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>
+    <div class="logo-text">MAKERERE UNIVERSITY <small>Queue Management System</small></div>
+  </div>
+
+  <div class="hero">
+    <h1>Desktop Kiosk Apps</h1>
+    <p>Install on any Windows PC. Three apps for different displays —<br>choose the one you need.</p>
+  </div>
+
+  <!-- ── Public Display Kiosk ── -->
+  <div class="section-title">Waiting Area Display</div>
+  <div class="download-card public">
+    <div class="card-label public">&#9733; TV / Public Screen</div>
+    <div class="download-icon">
+      <svg viewBox="0 0 24 24"><path d="M21 3H3c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h5v2h8v-2h5c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 14H3V5h18v12z"/></svg>
+    </div>
+    <h3>Queue Kiosk Display</h3>
+    <p class="desc">Live queue display with voice announcements. Shows called tokens,<br>active offices, and scrolling messages — for waiting area TVs.</p>
+    <a class="btn-download" href="/api/download/queue-kiosk-setup.exe" download>
+      <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+      Download (77 MB)
+    </a>
+    <div class="file-info"><strong>QueueKiosk-Setup-1.0.0.exe</strong> — Windows 10 / 11</div>
+  </div>
+
+  <!-- ── Student Token Kiosk ── -->
+  <div class="section-title">Self-Service Token Booth</div>
+  <div class="download-card student">
+    <div class="card-label student">&#9998; Touchscreen Kiosk</div>
+    <div class="download-icon">
+      <svg viewBox="0 0 24 24"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>
+    </div>
+    <h3>Queue Student Kiosk</h3>
+    <p class="desc">Self-service token generation. Students select office, choose service,<br>enter their details, and print a queue ticket — no staff needed.</p>
+    <a class="btn-download" href="/api/download/queue-kiosk-student-setup.exe" download>
+      <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+      Download (77 MB)
+    </a>
+    <div class="file-info"><strong>QueueKiosk-Student-Setup-1.0.0.exe</strong> — Windows 10 / 11</div>
+  </div>
+
+  <!-- ── Information Kiosk ── -->
+  <div class="section-title">Lobby Information Kiosk</div>
+  <div class="download-card index">
+    <div class="card-label index">&#8505; Information Point</div>
+    <div class="download-icon">
+      <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
+    </div>
+    <h3>Queue Information Kiosk</h3>
+    <p class="desc">Self-service information point. Browse offices, check wait times,<br>generate tokens, and access all portals — full homepage experience.</p>
+    <a class="btn-download" href="/api/download/queue-kiosk-index-setup.exe" download>
+      <svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>
+      Download (77 MB)
+    </a>
+    <div class="file-info"><strong>QueueKiosk-Index-Setup-1.0.0.exe</strong> — Windows 10 / 11</div>
+  </div>
+
+  <div class="footer-links">
+    <a href="/kiosk-setup">Advanced Setup Guide</a>
+    <a href="/">Home</a>
+    <a href="/public-display.html">View Live Display</a>
+  </div>
+</div>
+</body>
+</html>
