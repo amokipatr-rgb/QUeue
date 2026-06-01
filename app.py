@@ -32,18 +32,18 @@ if _mysql_url:
         }
         print(f"[OK] DB config from MYSQL_URL ({m.group(3)}:{m.group(4)})")
     else:
-        print("[WARN] Could not parse MYSQL_URL, falling back to individual vars")
+        print("[WARN] Could not parse MYSQL_URL, falling back to defaults")
         DB_CONFIG = None
 else:
     DB_CONFIG = None
 
 if not DB_CONFIG:
     DB_CONFIG = {
-        'host': os.environ.get('MYSQL_HOST', 'localhost'),
-        'port': int(os.environ.get('MYSQL_PORT', 3306)),
+        'host': os.environ.get('MYSQL_HOST', 'switchyard.proxy.rlwy.net'),
+        'port': int(os.environ.get('MYSQL_PORT', 41720)),
         'user': os.environ.get('MYSQL_USER', 'root'),
-        'password': os.environ.get('MYSQL_PASSWORD', ''),
-        'database': os.environ.get('MYSQL_DATABASE', 'db')
+        'password': os.environ.get('MYSQL_PASSWORD', 'dsDlqwSSIJJnCsngXNJJuniMXyZcOiNO'),
+        'database': os.environ.get('MYSQL_DATABASE', 'railway')
     }
 
 # Test connection on startup
