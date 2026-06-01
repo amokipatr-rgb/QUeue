@@ -5,6 +5,7 @@ from mysql.connector import Error
 from datetime import datetime, timedelta
 import logging
 import os
+import re
 import traceback
 import asyncio
 import time
@@ -18,13 +19,32 @@ CORS(app)
 # ============================================
 # DATABASE CONFIGURATION
 # ============================================
-DB_CONFIG = {
-    'host': os.environ.get('MYSQL_HOST', 'localhost'),
-    'port': int(os.environ.get('MYSQL_PORT', 3306)),
-    'user': os.environ.get('MYSQL_USER', 'root'),
-    'password': os.environ.get('MYSQL_PASSWORD', ''),
-    'database': os.environ.get('MYSQL_DATABASE', 'db')
-}
+_mysql_url = os.environ.get('MYSQL_URL') or os.environ.get('DATABASE_URL')
+if _mysql_url:
+    m = re.match(r'mysql://([^:]+):([^@]+)@([^:]+):(\d+)/(.+)', _mysql_url)
+    if m:
+        DB_CONFIG = {
+            'host': m.group(3),
+            'port': int(m.group(4)),
+            'user': m.group(1),
+            'password': m.group(2),
+            'database': m.group(5)
+        }
+        print(f"[OK] DB config from MYSQL_URL ({m.group(3)}:{m.group(4)})")
+    else:
+        print("[WARN] Could not parse MYSQL_URL, falling back to individual vars")
+        DB_CONFIG = None
+else:
+    DB_CONFIG = None
+
+if not DB_CONFIG:
+    DB_CONFIG = {
+        'host': os.environ.get('MYSQL_HOST', 'localhost'),
+        'port': int(os.environ.get('MYSQL_PORT', 3306)),
+        'user': os.environ.get('MYSQL_USER', 'root'),
+        'password': os.environ.get('MYSQL_PASSWORD', ''),
+        'database': os.environ.get('MYSQL_DATABASE', 'db')
+    }
 
 # Test connection on startup
 try:
