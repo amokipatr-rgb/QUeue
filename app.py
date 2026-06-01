@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory, redirect
 from flask_cors import CORS
 import mysql.connector
 from mysql.connector import Error
@@ -119,30 +119,15 @@ def download_page():
 
 @app.route('/api/download/queue-kiosk-setup.exe')
 def download_kiosk_installer():
-    return send_from_directory(
-        'queue-kiosk/dist',
-        'QueueKiosk-Setup-1.0.0.exe',
-        as_attachment=True,
-        mimetype='application/x-msdownload'
-    )
+    return redirect('https://github.com/amokipatr-rgb/QUeue/releases/download/v1.0.0/QueueKiosk-Setup-1.0.0.exe')
 
 @app.route('/api/download/queue-kiosk-student-setup.exe')
 def download_student_kiosk_installer():
-    return send_from_directory(
-        'queue-kiosk-student/dist',
-        'QueueKiosk-Student-Setup-1.0.0.exe',
-        as_attachment=True,
-        mimetype='application/x-msdownload'
-    )
+    return redirect('https://github.com/amokipatr-rgb/QUeue/releases/download/v1.0.0/QueueKiosk-Student-Setup-1.0.0.exe')
 
 @app.route('/api/download/queue-kiosk-index-setup.exe')
 def download_index_kiosk_installer():
-    return send_from_directory(
-        'queue-kiosk-index/dist',
-        'QueueKiosk-Index-Setup-1.0.0.exe',
-        as_attachment=True,
-        mimetype='application/x-msdownload'
-    )
+    return redirect('https://github.com/amokipatr-rgb/QUeue/releases/download/v1.0.0/QueueKiosk-Index-Setup-1.0.0.exe')
 
 @app.route('/<path:filename>')
 def serve_static(filename):
