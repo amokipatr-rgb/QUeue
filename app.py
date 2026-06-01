@@ -39,12 +39,13 @@ else:
 
 if not DB_CONFIG:
     DB_CONFIG = {
-        'host': os.environ.get('MYSQL_HOST', 'switchyard.proxy.rlwy.net'),
-        'port': int(os.environ.get('MYSQL_PORT', 41720)),
-        'user': os.environ.get('MYSQL_USER', 'root'),
-        'password': os.environ.get('MYSQL_PASSWORD', 'dsDlqwSSIJJnCsngXNJJuniMXyZcOiNO'),
-        'database': os.environ.get('MYSQL_DATABASE', 'railway')
+        'host': 'switchyard.proxy.rlwy.net',
+        'port': 41720,
+        'user': 'root',
+        'password': 'dsDlqwSSIJJnCsngXNJJuniMXyZcOiNO',
+        'database': 'railway'
     }
+    print(f"[OK] DB config from hardcoded Railway defaults")
 
 # Test connection on startup
 try:
