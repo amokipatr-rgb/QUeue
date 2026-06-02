@@ -119,15 +119,15 @@ def download_page():
 
 @app.route('/api/download/queue-kiosk-setup.exe')
 def download_kiosk_installer():
-    return redirect('https://github.com/amokipatr-rgb/QUeue/releases/download/v2.0.0/QueueKiosk-Display-Portable.exe')
+    return redirect('https://github.com/amokipatr-rgb/QUeue/releases/download/v2.0.0/QueueKiosk-Setup-2.0.0.exe')
 
 @app.route('/api/download/queue-kiosk-student-setup.exe')
 def download_student_kiosk_installer():
-    return redirect('https://github.com/amokipatr-rgb/QUeue/releases/download/v2.0.0/QueueKiosk-Student-Portable.exe')
+    return redirect('https://github.com/amokipatr-rgb/QUeue/releases/download/v2.0.0/QueueKiosk-Student-Setup-2.0.0.exe')
 
 @app.route('/api/download/queue-kiosk-index-setup.exe')
 def download_index_kiosk_installer():
-    return redirect('https://github.com/amokipatr-rgb/QUeue/releases/download/v2.0.0/QueueKiosk-Index-Portable.exe')
+    return redirect('https://github.com/amokipatr-rgb/QUeue/releases/download/v2.0.0/QueueKiosk-Index-Setup-2.0.0.exe')
 
 @app.route('/<path:filename>')
 def serve_static(filename):
