@@ -814,7 +814,7 @@
         async function generateVoice(token, studentName, officeName, actionType) {
             const annKey = `${token}|${officeName}|${actionType}`;
             const annNow = Date.now();
-            if (recentAnnouncements[annKey] && annNow - recentAnnouncements[annKey] < 3000) {
+            if (recentAnnouncements[annKey] && annNow - recentAnnouncements[annKey] < 1000) {
                 return;
             }
             recentAnnouncements[annKey] = annNow;
