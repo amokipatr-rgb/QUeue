@@ -1,0 +1,43 @@
+{
+  "name": "queue-kiosk-index",
+  "version": "1.0.0",
+  "description": "Makerere University Queue Management System — Desktop App",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win --x64",
+    "pack": "electron-builder --win --x64 --dir"
+  },
+  "build": {
+    "appId": "com.makerere.queue-kiosk-index",
+    "productName": "Queue Information Kiosk",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "build/**/*"
+    ],
+    "win": {
+      "target": "portable",
+      "icon": "build/icon.png",
+      "sign": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "runAfterFinish": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Queue Information Kiosk",
+      "closeApp": true,
+      "closeAppMessage": "Queue Information Kiosk is running and will be closed automatically to complete the update."
+    },
+    "extraResources": []
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.0.0"
+  }
+}

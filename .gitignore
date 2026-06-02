@@ -21,7 +21,7 @@ health_check.ps1
 # Node
 node_modules
 package-lock.json
-package.json
+/package.json
 
 # Electron build output (dist)
 queue-kiosk/dist/
