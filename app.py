@@ -1371,7 +1371,7 @@ def officer_call_next():
 
         cursor.execute("""
             INSERT INTO queue_logs (token_number, officer_id, action, action_details, created_at)
-            VALUES (%s, %s, 'recall', CONCAT('Called from officer dashboard - Student: ', IFNULL(%s, '')), NOW())
+            VALUES (%s, %s, 'called', CONCAT('Called from officer dashboard - Student: ', IFNULL(%s, '')), NOW())
         """, (token['token_number'], officer_id, token['student_name']))
 
         conn.commit()
@@ -1423,7 +1423,7 @@ def officer_call_specific():
 
         cursor.execute("""
             INSERT INTO queue_logs (token_number, officer_id, action, action_details, created_at)
-            VALUES (%s, %s, 'recall', CONCAT('Called from officer dashboard - Student: ', IFNULL(%s, '')), NOW())
+            VALUES (%s, %s, 'called', CONCAT('Called from officer dashboard - Student: ', IFNULL(%s, '')), NOW())
         """, (token_number, officer_id, token['student_name'] if token else ''))
 
         conn.commit()
