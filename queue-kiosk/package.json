@@ -30,14 +30,12 @@
       "runAfterFinish": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Queue Kiosk Display",
-      "closeApp": true,
-      "closeAppMessage": "Queue Kiosk Display is running and will be closed automatically to complete the update."
+      "shortcutName": "Queue Kiosk Display"
     },
     "extraResources": []
   },
   "devDependencies": {
     "electron": "^33.4.11",
-    "electron-builder": "^25.0.0"
+    "electron-builder": "^25.1.8"
   }
 }

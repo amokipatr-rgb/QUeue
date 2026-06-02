@@ -30,14 +30,12 @@
       "runAfterFinish": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Queue Student Kiosk",
-      "closeApp": true,
-      "closeAppMessage": "Queue Student Kiosk is running and will be closed automatically to complete the update."
+      "shortcutName": "Queue Student Kiosk"
     },
     "extraResources": []
   },
   "devDependencies": {
     "electron": "^33.4.11",
-    "electron-builder": "^25.0.0"
+    "electron-builder": "^25.1.8"
   }
 }
