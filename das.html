@@ -343,8 +343,6 @@
   let currentOfficer = null;
   let currentServing = null;
   let pendingAction  = null;
-  let audioQueue     = [];
-  let isPlaying      = false;
   let allMessages    = [];
 
   function checkLogin() {
@@ -445,36 +443,6 @@
   function openMessageModal()  { document.getElementById('messageOverlay').classList.add('open'); loadMessages(); }
   function closeMessageModal() { document.getElementById('messageOverlay').classList.remove('open'); }
 
-  /* ── VOICE ─────────────────────────────────── */
-  async function generateVoice(token, actionType) {
-    const spelled = token.split('').join(' ');
-    const text = actionType === 'called'
-      ? `Now calling token ${spelled}, please go to ${currentOfficer.office_name}.`
-      : `Now serving token ${spelled} at ${currentOfficer.office_name}.`;
-    try {
-      const res = await fetch('/api/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text })
-      });
-      if (res.ok) {
-        const blob = await res.blob();
-        const audio = new Audio(URL.createObjectURL(blob));
-        audioQueue.push(audio); playNextAudio();
-      }
-    } catch (e) { console.error('Voice error:', e); }
-  }
-
-  function playNextAudio() {
-    if (isPlaying || !audioQueue.length) return;
-    isPlaying = true; const a = audioQueue.shift();
-    a.onended = () => { isPlaying = false; playNextAudio(); };
-    a.muted = true;
-    a.play().then(() => { a.muted = false; }).catch((err) => {
-        console.warn('Audio play blocked:', err); isPlaying = false; playNextAudio();
-    });
-  }
-
   /* ── QUEUE ─────────────────────────────────── */
   async function loadQueue() {
     const result = await apiCall(`/api/officer/queue/${currentOfficer.id}`);
@@ -549,14 +517,14 @@
   async function callNext() {
     addLog('Calling next student…');
     const result = await apiCall('/api/officer/call-next', 'POST', { officer_id: currentOfficer.id, officer_number: currentOfficer.officer_number });
-    if (result.success) { addLog(`Called ${result.token_number}`, 'success'); showToast(`Called ${result.token_number}`, 'success'); await generateVoice(result.token_number, 'called'); await loadQueue(); }
+    if (result.success) { addLog(`Called ${result.token_number}`, 'success'); showToast(`Called ${result.token_number}`, 'success'); await loadQueue(); }
     else { addLog(result.message || 'No students waiting', 'error'); showToast(result.message || 'No students waiting', 'error'); }
   }
 
   async function callStudent(tokenNumber) {
     addLog(`Calling ${tokenNumber}…`);
     const result = await apiCall('/api/officer/call-specific', 'POST', { officer_id: currentOfficer.id, officer_number: currentOfficer.officer_number, token_number: tokenNumber });
-    if (result.success) { addLog(`Called ${tokenNumber}`, 'success'); showToast(`Called ${tokenNumber}`, 'success'); await generateVoice(tokenNumber, 'called'); await loadQueue(); }
+    if (result.success) { addLog(`Called ${tokenNumber}`, 'success'); showToast(`Called ${tokenNumber}`, 'success'); await loadQueue(); }
     else { showToast(result.message || 'Failed to call student', 'error'); }
   }
 
@@ -564,7 +532,7 @@
     if (!currentServing) return;
     showConfirm('Start Serving', `Start serving ${currentServing}?`, async () => {
       const result = await apiCall('/api/officer/serve', 'POST', { officer_id: currentOfficer.id, token_number: currentServing });
-      if (result.success) { addLog(`Now serving ${currentServing}`, 'success'); showToast(`Now serving ${currentServing}`, 'success'); await generateVoice(currentServing, 'serving'); await loadQueue(); }
+      if (result.success) { addLog(`Now serving ${currentServing}`, 'success'); showToast(`Now serving ${currentServing}`, 'success'); await loadQueue(); }
       else { showToast(result.message || 'Failed to start serving', 'error'); }
     });
   }
@@ -591,7 +559,7 @@
     if (!currentServing) return;
     addLog(`Recalling ${currentServing}…`);
     const result = await apiCall('/api/officer/recall', 'POST', { officer_id: currentOfficer.id, token_number: currentServing });
-    if (result.success) { addLog(`Recall sent for ${currentServing}`, 'success'); showToast(`Recall sent for ${currentServing}`, 'info'); await generateVoice(currentServing, 'called'); }
+    if (result.success) { addLog(`Recall sent for ${currentServing}`, 'success'); showToast(`Recall sent for ${currentServing}`, 'info'); }
     else { showToast(result.message || 'Recall failed', 'error'); }
   }
 

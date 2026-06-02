@@ -760,6 +760,7 @@
         let audioQueue = [];
         let isPlaying = false;
         let announcedRecalls = new Set();
+        let recentAnnouncements = {};
         let isIdle = true;
         let currentMessages = [];
         let idleMessageIndex = 0;
@@ -811,6 +812,13 @@
 
         // ── VOICE WITH STUDENT NAMES ──
         async function generateVoice(token, studentName, officeName, actionType) {
+            const annKey = `${token}|${officeName}|${actionType}`;
+            const annNow = Date.now();
+            if (recentAnnouncements[annKey] && annNow - recentAnnouncements[annKey] < 30000) {
+                return;
+            }
+            recentAnnouncements[annKey] = annNow;
+
             const vi = document.getElementById('voiceIndicator');
             const vt = document.getElementById('voiceText');
             const spelledToken = token.split('').join(' ');
