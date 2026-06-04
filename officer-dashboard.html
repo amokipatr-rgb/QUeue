@@ -232,6 +232,11 @@
     .notif-status .dot.default { background: #ffd700; animation: none; }
     .notif-status .text { color: rgba(255,255,255,0.7); }
 
+    @media (max-width: 1100px) {
+      .header-right { flex-wrap: wrap; row-gap: 6px; overflow: visible; }
+      .logout-btn { flex-shrink: 0; }
+      .officer-pill { flex: 1; min-width: 0; }
+    }
     @media (max-width: 1024px) {
       .content { padding: 18px 16px 32px; }
       .grid-two { grid-template-columns: 1fr; }
@@ -631,8 +636,6 @@
   let currentOfficer = null;
   let currentServing = null;
   let pendingAction = null;
-  let audioQueue = [];
-  let isPlaying = false;
   let allMessages = [];
   let isProcessingCall = false;
   let refreshInterval = null;
