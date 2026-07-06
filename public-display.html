@@ -42,7 +42,7 @@
             flex-shrink: 0;
         }
         .uni-emblem svg { width: 22px; height: 22px; fill: #0f2318; }
-        .uni-name { font-family: 'Playfair Display', serif; font-size: 20px; font-weight: 700; color: #fff; letter-spacing: 1.5px; }
+        .uni-name { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 900; color: #ffffff; letter-spacing: 1px; text-transform: uppercase; text-shadow: 0 0 20px rgba(0,230,118,0.3); }
         .uni-name span { color: #e8c547; }
         .uni-sub { font-size: 11px; color: rgba(255,255,255,0.4); letter-spacing: 2px; text-transform: uppercase; margin-top: 1px; }
         .datetime { font-family: 'DM Mono', monospace; font-size: 13px; color: rgba(255,255,255,0.5); text-align: right; line-height: 1.5; }
@@ -270,6 +270,81 @@
             line-height: 1.4;
             font-weight: 500;
             color: rgba(255,255,255,0.92);
+        }
+
+        /* ── UP NEXT ── */
+        .upnext-section {
+            flex-shrink: 0;
+            padding: 0 32px;
+            animation: fadeIn 0.4s ease;
+        }
+        .upnext-header {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+        .upnext-dot {
+            width: 6px; height: 6px;
+            border-radius: 50%;
+            background: #e8c547;
+            opacity: 0.5;
+        }
+        .upnext-title {
+            font-size: 13px;
+            font-weight: 900;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            color: #ffffff;
+            text-shadow: 0 0 12px rgba(255,255,255,0.2);
+        }
+        .upnext-scroll {
+            overflow: hidden;
+        }
+        .upnext-track {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+        }
+        .upnext-card {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 10px 16px;
+            min-width: 0;
+            flex: 0 1 auto;
+            max-width: 260px;
+        }
+        .upnext-token {
+            font-family: 'DM Mono', monospace;
+            font-size: 20px;
+            font-weight: 600;
+            color: #e8c547;
+            flex-shrink: 0;
+            letter-spacing: 1px;
+        }
+        .upnext-info {
+            min-width: 0;
+        }
+        .upnext-name {
+            font-size: 12px;
+            font-weight: 600;
+            color: rgba(255,255,255,0.85);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .upnext-service {
+            font-size: 10px;
+            color: rgba(255,255,255,0.35);
+            margin-top: 2px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         /* ── ON-DUTY OFFICES ── */
@@ -699,6 +774,18 @@
             </div>
         </div>
 
+        <!-- ── UP NEXT SECTION ── -->
+        <div class="upnext-section" id="upNextSection" style="display:none;">
+            <div class="upnext-header">
+                <span class="upnext-dot"></span>
+                <span class="upnext-title">Up Next</span>
+                <span class="upnext-dot"></span>
+            </div>
+            <div class="upnext-scroll" id="upNextScroll">
+                <div class="upnext-track" id="upNextTrack"></div>
+            </div>
+        </div>
+
         <div class="stats-bar">
             <div class="stat-chip">
                 <div class="stat-chip-icon icon-waiting">
@@ -1079,7 +1166,6 @@
                     
                     if (lastServingTokens[office.office_code] !== office.current_serving) {
                         lastServingTokens[office.office_code] = office.current_serving;
-                        generateVoice(office.current_serving, office.serving_student, office.office_name, 'serving');
                     }
                 }
             }
@@ -1179,7 +1265,68 @@
             }
         }
 
-        // ── MONITOR FOR FROZEN SCREEN ──
+
+        // FETCH UP NEXT
+        let upNextFetchInFlight = false;
+        async function fetchUpNext() {
+            if (upNextFetchInFlight) return;
+            upNextFetchInFlight = true;
+            try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), 10000);
+                const res = await fetch(API_BASE_URL + '/api/public/queues/next', {
+                    signal: controller.signal
+                });
+                clearTimeout(timeoutId);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.success) updateUpNextDisplay(data.queues);
+                }
+            } catch(e) {
+            } finally {
+                upNextFetchInFlight = false;
+            }
+        }
+
+        function updateUpNextDisplay(queues) {
+            var section = document.getElementById('upNextSection');
+            var track = document.getElementById('upNextTrack');
+            var allNext = [];
+            for (var i = 0; i < queues.length; i++) {
+                var office = queues[i];
+                if (office.next_up && office.next_up.length > 0) {
+                    for (var j = 0; j < office.next_up.length; j++) {
+                        var t = office.next_up[j];
+                        allNext.push({
+                            token: t.token_number,
+                            name: t.student_name || '',
+                            service: t.service_name || t.service_code || '',
+                            office: office.office_name
+                        });
+                    }
+                }
+            }
+            if (allNext.length === 0) {
+                section.style.display = 'none';
+                return;
+            }
+            section.style.display = 'block';
+            var html = '';
+            var count = Math.min(allNext.length, 8);
+            for (var k = 0; k < count; k++) {
+                var t = allNext[k];
+                html += '<div class="upnext-card">' +
+                    '<div class="upnext-token">' + escapeHtml(t.token) + '</div>' +
+                    '<div class="upnext-info">' +
+                        '<div class="upnext-name">' + escapeHtml(t.name || 'Student') + '</div>' +
+                        '<div class="upnext-service">' + escapeHtml(t.service) + '</div>' +
+                    '</div>' +
+                '</div>';
+            }
+            track.innerHTML = html;
+        }
+
+
         function monitorScreenHealth() {
             const timeSinceUpdate = Date.now() - lastDisplayUpdate;
             const timeSinceQueueFetch = Date.now() - lastSuccessfulQueueFetch;
@@ -1214,6 +1361,7 @@
                 hideOfflineBanner();
                 fetchQueueData();
                 fetchAndDisplayMessages();
+                fetchUpNext();
             });
             window.addEventListener('offline', () => {
                 showOfflineBanner();
@@ -1221,16 +1369,20 @@
             window.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible') {
                     fetchQueueData();
+                    fetchUpNext();
                     if (isIdle) fetchAndDisplayMessages();
                 }
             });
 
             fetchQueueData();
+            fetchUpNext();
             fetchRecentRecalls();
             startIdleMessageRotation();
             
             // Poll queue data every 5 seconds (gentle on TV browser)
             setInterval(fetchQueueData, 5000);
+            // Poll up next every 5 seconds
+            setInterval(fetchUpNext, 5000);
             // Poll recalls every 3 seconds
             setInterval(fetchRecentRecalls, 3000);
             // Poll messages only when idle

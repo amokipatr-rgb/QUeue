@@ -48,7 +48,7 @@
         .sidebar {
             width: 256px;
             min-height: 100vh;
-            background: linear-gradient(175deg, var(--green-dark) 0%, #16342a 60%, #0f2a1e 100%);
+            background: var(--white);
             display: flex;
             flex-direction: column;
             position: fixed;
@@ -57,55 +57,55 @@
             z-index: 100;
             overflow-y: auto;
             flex-shrink: 0;
-            border-right: 1px solid rgba(255,255,255,0.06);
+            border-right: 1px solid var(--border);
         }
 
         .sidebar-logo {
             padding: 24px 20px 18px;
-            border-bottom: 1px solid rgba(255,255,255,0.08);
+            border-bottom: 1px solid var(--border);
             display: flex;
             align-items: center;
             gap: 12px;
         }
         .logo-icon {
             width: 38px; height: 38px;
-            background: linear-gradient(135deg, var(--gold), #e6b800);
+            background: linear-gradient(135deg, var(--green-dark), var(--green-mid));
             border-radius: 10px;
             display: flex; align-items: center; justify-content: center;
             flex-shrink: 0;
         }
         .logo-icon svg { width: 20px; height: 20px; }
         .logo-text { line-height: 1.15; }
-        .logo-title { font-size: 15px; font-weight: 800; color: white; letter-spacing: -0.01em; }
-        .logo-sub { font-size: 10px; font-weight: 600; color: var(--gold); text-transform: uppercase; letter-spacing: 0.08em; }
+        .logo-title { font-size: 15px; font-weight: 800; color: var(--green-dark); letter-spacing: -0.01em; }
+        .logo-sub { font-size: 10px; font-weight: 600; color: var(--green-mid); text-transform: uppercase; letter-spacing: 0.08em; }
 
         .admin-pill {
             margin: 16px 14px 8px;
-            background: rgba(255,255,255,0.07);
-            border: 1px solid rgba(255,255,255,0.09);
+            background: var(--green-light);
+            border: 1px solid rgba(26,60,44,0.12);
             border-radius: var(--radius);
             padding: 12px 14px;
             display: flex; align-items: center; gap: 10px;
         }
         .admin-avatar {
             width: 36px; height: 36px; border-radius: 50%;
-            background: linear-gradient(135deg, var(--gold), #e6b800);
-            color: var(--green-dark);
+            background: linear-gradient(135deg, var(--green-dark), var(--green-mid));
+            color: white;
             display: flex; align-items: center; justify-content: center;
             font-weight: 800; font-size: 12px; flex-shrink: 0;
             letter-spacing: 0.03em;
         }
         .admin-meta { flex: 1; min-width: 0; }
-        .admin-name-text { font-size: 13px; font-weight: 700; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .admin-name-text { font-size: 13px; font-weight: 700; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .admin-badge {
-            font-size: 9px; background: rgba(255,215,0,0.15); color: var(--gold);
-            border: 1px solid rgba(255,215,0,0.25);
+            font-size: 9px; background: rgba(26,60,44,0.1); color: var(--green-dark);
+            border: 1px solid rgba(26,60,44,0.18);
             padding: 2px 8px; border-radius: 20px; font-weight: 700;
             display: inline-block; margin-top: 3px; text-transform: uppercase; letter-spacing: 0.05em;
         }
 
         .nav-section-label {
-            font-size: 9.5px; font-weight: 700; color: rgba(255,255,255,0.3);
+            font-size: 9.5px; font-weight: 700; color: var(--text-muted);
             text-transform: uppercase; letter-spacing: 0.12em;
             padding: 18px 20px 6px;
         }
@@ -113,7 +113,7 @@
         .nav-item {
             display: flex; align-items: center; gap: 10px;
             padding: 10px 20px;
-            color: rgba(255,255,255,0.6);
+            color: var(--text-secondary);
             font-size: 13px; font-weight: 500;
             cursor: pointer;
             border-left: 2px solid transparent;
@@ -121,21 +121,23 @@
             user-select: none;
             position: relative;
         }
-        .nav-item:hover { background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.9); }
+        .nav-item:hover { background: var(--green-light); color: var(--green-dark); }
         .nav-item.active {
-            background: rgba(255,255,255,0.1);
-            color: white;
-            border-left: 2px solid var(--gold);
+            background: var(--green-light);
+            color: var(--green-dark);
+            border-left: 2px solid var(--green-dark);
             font-weight: 700;
         }
         .nav-icon {
             width: 32px; height: 32px;
             display: flex; align-items: center; justify-content: center;
             border-radius: var(--radius-sm);
-            background: rgba(255,255,255,0.06);
+            background: var(--green-light);
             flex-shrink: 0;
+            transition: all 0.15s ease;
         }
-        .nav-item.active .nav-icon { background: rgba(255,215,0,0.12); }
+        .nav-item.active .nav-icon { background: var(--green-dark); color: white; }
+        .nav-item.active .nav-icon svg { stroke: white; }
         .nav-icon svg { width: 15px; height: 15px; }
         .nav-badge {
             margin-left: auto; background: var(--red); color: white;
@@ -647,6 +649,7 @@
         }
         .btn-save { background: linear-gradient(135deg, var(--green-dark), var(--green-mid)); color: white; box-shadow: 0 2px 8px rgba(26,60,44,0.25); }
         .btn-save:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(26,60,44,0.35); }
+        .btn-save:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
         .btn-cancel-modal { background: var(--bg); color: var(--text-secondary); border: 1px solid var(--border) !important; }
         .btn-cancel-modal:hover { background: #e8e8e8; }
 
@@ -677,7 +680,7 @@
     <div class="sidebar">
         <div class="sidebar-logo">
             <div class="logo-icon">
-                <svg viewBox="0 0 24 24" fill="none" stroke="#1a3c2c" stroke-width="2.5">
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
                     <path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/>
                 </svg>
             </div>
@@ -1340,6 +1343,19 @@
 
     <script>
         const API_BASE_URL = typeof window !== 'undefined' ? window.location.origin : '';
+        const LOADING_TEXT = 'Saving...';
+
+        function setLoading(btn, loading) {
+            if (!btn) return;
+            if (loading) {
+                btn._origText = btn.textContent;
+                btn.textContent = LOADING_TEXT;
+                btn.disabled = true;
+            } else {
+                btn.textContent = btn._origText || btn.textContent;
+                btn.disabled = false;
+            }
+        }
         let currentAdmin = null;
         let officersCache = [];
         let officesData = [];
@@ -1747,17 +1763,21 @@
 
         document.getElementById('addServiceForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const officeId = document.getElementById('addServiceOfficeId').value;
-            const serviceData = {
-                service_code: document.getElementById('addServiceCode').value.toUpperCase(),
-                service_name: document.getElementById('addServiceName').value,
-                office_id: parseInt(officeId),
-                description: document.getElementById('addServiceDesc').value,
-                estimated_time_minutes: parseInt(document.getElementById('addServiceTime').value) || 5
-            };
-            const result = await apiCall('/api/admin/service', 'POST', serviceData);
-            if (result.success) { showToast(result.message || 'Service added successfully'); closeModal('addServiceModal'); loadAllData(); }
-            else showToast(result.message || 'Failed to add service', 'error');
+            const btn = e.target.querySelector('button[type="submit"]');
+            setLoading(btn, true);
+            try {
+                const officeId = document.getElementById('addServiceOfficeId').value;
+                const serviceData = {
+                    service_code: document.getElementById('addServiceCode').value.toUpperCase(),
+                    service_name: document.getElementById('addServiceName').value,
+                    office_id: parseInt(officeId),
+                    description: document.getElementById('addServiceDesc').value,
+                    estimated_time_minutes: parseInt(document.getElementById('addServiceTime').value) || 5
+                };
+                const result = await apiCall('/api/admin/service', 'POST', serviceData);
+                if (result.success) { showToast(result.message || 'Service added successfully'); closeModal('addServiceModal'); loadAllData(); }
+                else showToast(result.message || 'Failed to add service', 'error');
+            } finally { setLoading(btn, false); }
         });
 
         // ── EDIT SERVICE ──
@@ -1783,63 +1803,83 @@
         // ── SAVE OFFICE ──
         document.getElementById('officeForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const officeId = document.getElementById('officeId').value;
-            const officeData = {
-                office_code: document.getElementById('officeCode').value.toUpperCase(),
-                office_name: document.getElementById('officeName').value,
-                location: document.getElementById('officeLocation').value,
-                description: document.getElementById('officeDesc').value,
-                availability_status: document.getElementById('officeAvailability').value,
-                unavailability_notice: document.getElementById('officeUnavailNotice').value
-            };
+            const btn = e.target.querySelector('button[type="submit"]');
+            setLoading(btn, true);
             try {
+                const officeId = document.getElementById('officeId').value;
+                const officeData = {
+                    office_code: document.getElementById('officeCode').value.toUpperCase(),
+                    office_name: document.getElementById('officeName').value,
+                    location: document.getElementById('officeLocation').value,
+                    description: document.getElementById('officeDesc').value,
+                    availability_status: document.getElementById('officeAvailability').value,
+                    unavailability_notice: document.getElementById('officeUnavailNotice').value
+                };
                 let result;
                 if (officeId) result = await apiCall(`/api/admin/office/${officeId}`, 'PUT', officeData);
                 else result = await apiCall('/api/admin/office', 'POST', officeData);
                 if (result.success) {
                     const newOfficeId = result.id || officeId;
-                    for (const service of pendingServices) {
-                        if (!service.id) await apiCall('/api/admin/service', 'POST', { service_code: service.service_code, service_name: service.service_name, office_id: parseInt(newOfficeId), description: service.description || '', estimated_time_minutes: service.estimated_time_minutes });
-                    }
-                    for (const officer of pendingOfficers) {
-                        if (!officer.id) await apiCall('/api/admin/officer', 'POST', { officer_number: officer.officer_number, officer_name: officer.officer_name, office_id: parseInt(newOfficeId), pin_code: officer.pin_code, email: '', phone: '' });
-                    }
+                    await Promise.all([
+                        ...pendingServices.filter(s => !s.id).map(s =>
+                            apiCall('/api/admin/service', 'POST', {
+                                service_code: s.service_code, service_name: s.service_name,
+                                office_id: parseInt(newOfficeId), description: s.description || '',
+                                estimated_time_minutes: s.estimated_time_minutes
+                            })
+                        ),
+                        ...pendingOfficers.filter(o => !o.id).map(o =>
+                            apiCall('/api/admin/officer', 'POST', {
+                                officer_number: o.officer_number, officer_name: o.officer_name,
+                                office_id: parseInt(newOfficeId), pin_code: o.pin_code, email: '', phone: ''
+                            })
+                        )
+                    ]);
                     showToast(officeId ? 'Office updated successfully' : 'Office created successfully');
                     closeModal('officeModal'); loadAllData();
                 } else showToast(result.message || 'Operation failed', 'error');
             } catch (error) { console.error('Error saving office:', error); showToast('Error saving office', 'error'); }
+            finally { setLoading(btn, false); }
         });
 
         // ── SERVICE FORM (Edit) ──
         document.getElementById('serviceForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const serviceId = document.getElementById('serviceId').value;
-            const officeId = document.getElementById('serviceOfficeId').value;
-            const serviceData = { service_code: document.getElementById('serviceCode').value.toUpperCase(), service_name: document.getElementById('serviceName').value, office_id: parseInt(officeId), description: document.getElementById('serviceDesc').value, estimated_time_minutes: parseInt(document.getElementById('serviceTime').value) || 5 };
-            const result = await apiCall(`/api/admin/service/${serviceId}`, 'PUT', serviceData);
-            if (result.success) { showToast(result.message || 'Service updated successfully'); closeModal('serviceModal'); loadAllData(); }
-            else showToast(result.message || 'Failed to update service', 'error');
+            const btn = e.target.querySelector('button[type="submit"]');
+            setLoading(btn, true);
+            try {
+                const serviceId = document.getElementById('serviceId').value;
+                const officeId = document.getElementById('serviceOfficeId').value;
+                const serviceData = { service_code: document.getElementById('serviceCode').value.toUpperCase(), service_name: document.getElementById('serviceName').value, office_id: parseInt(officeId), description: document.getElementById('serviceDesc').value, estimated_time_minutes: parseInt(document.getElementById('serviceTime').value) || 5 };
+                const result = await apiCall(`/api/admin/service/${serviceId}`, 'PUT', serviceData);
+                if (result.success) { showToast(result.message || 'Service updated successfully'); closeModal('serviceModal'); loadAllData(); }
+                else showToast(result.message || 'Failed to update service', 'error');
+            } finally { setLoading(btn, false); }
         });
 
         // ── OFFICER FORM ──
         document.getElementById('officerForm').addEventListener('submit', async (e) => {
             e.preventDefault();
-            const officerId = document.getElementById('officerId').value;
-            const pinRaw = document.getElementById('officerPin').value.trim();
-            const officerData = {
-                officer_number: parseInt(document.getElementById('officerNumber').value, 10),
-                officer_name: document.getElementById('officerName').value,
-                email: document.getElementById('officerEmail').value,
-                phone: document.getElementById('officerPhone').value,
-                office_id: parseInt(document.getElementById('officerOfficeId').value, 10)
-            };
-            if (pinRaw) officerData.pin_code = pinRaw;
-            else if (!officerId) officerData.pin_code = '1234';
-            let result;
-            if (officerId) result = await apiCall(`/api/admin/officer/${officerId}`, 'PUT', officerData);
-            else result = await apiCall('/api/admin/officer', 'POST', officerData);
-            if (result.success) { showToast(result.message || 'Officer saved successfully'); closeModal('officerModal'); loadAllData(); }
-            else showToast(result.message || 'Failed to save officer', 'error');
+            const btn = e.target.querySelector('button[type="submit"]');
+            setLoading(btn, true);
+            try {
+                const officerId = document.getElementById('officerId').value;
+                const pinRaw = document.getElementById('officerPin').value.trim();
+                const officerData = {
+                    officer_number: parseInt(document.getElementById('officerNumber').value, 10),
+                    officer_name: document.getElementById('officerName').value,
+                    email: document.getElementById('officerEmail').value,
+                    phone: document.getElementById('officerPhone').value,
+                    office_id: parseInt(document.getElementById('officerOfficeId').value, 10)
+                };
+                if (pinRaw) officerData.pin_code = pinRaw;
+                else if (!officerId) officerData.pin_code = '1234';
+                let result;
+                if (officerId) result = await apiCall(`/api/admin/officer/${officerId}`, 'PUT', officerData);
+                else result = await apiCall('/api/admin/officer', 'POST', officerData);
+                if (result.success) { showToast(result.message || 'Officer saved successfully'); closeModal('officerModal'); loadAllData(); }
+                else showToast(result.message || 'Failed to save officer', 'error');
+            } finally { setLoading(btn, false); }
         });
 
         // ── OFFICER MANAGEMENT ──
@@ -1892,10 +1932,12 @@
 
         // ── LOAD DATA ──
         async function loadAllData() {
-            await loadStats();
-            await loadOffices();
-            await loadQueueData();
-            await loadPerformanceData();
+            await Promise.all([
+                loadStats(),
+                loadOffices(),
+                loadQueueData(),
+                loadPerformanceData()
+            ]);
         }
 
         async function loadQueueData() {

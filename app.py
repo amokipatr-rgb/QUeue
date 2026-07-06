@@ -21,7 +21,7 @@ CORS(app)
 # ============================================
 _mysql_url = os.environ.get('MYSQL_URL') or os.environ.get('DATABASE_URL')
 if _mysql_url:
-    m = re.match(r'mysql://([^:]+):([^@]+)@([^:]+):(\d+)/(.+)', _mysql_url)
+    m = re.match(r'mysql://([^:]+):([^@]*)@([^:]+):(\d+)/(.+)', _mysql_url)
     if m:
         DB_CONFIG = {
             'host': m.group(3),
@@ -39,13 +39,35 @@ else:
 
 if not DB_CONFIG:
     DB_CONFIG = {
-        'host': 'switchyard.proxy.rlwy.net',
-        'port': 41720,
+        'host': '127.0.0.1',
+        'port': 3306,
         'user': 'root',
-        'password': 'dsDlqwSSIJJnCsngXNJJuniMXyZcOiNO',
-        'database': 'railway'
+        'password': '',
+        'database': 'db'
     }
-    print(f"[OK] DB config from hardcoded Railway defaults")
+    print(f"[OK] DB config from hardcoded localhost defaults")
+
+def _ensure_indexes(cursor, connection):
+    required = [
+        ('idx_logs_officer', 'queue_logs', 'officer_id'),
+        ('idx_tokens_assigned_officer', 'university_tokens', 'assigned_officer_id'),
+        ('idx_tokens_feedback_submitted', 'university_tokens', 'feedback_submitted_at'),
+        ('idx_tokens_called', 'university_tokens', 'called_at'),
+        ('idx_tokens_serving_started', 'university_tokens', 'serving_started_at'),
+        ('idx_tokens_completed', 'university_tokens', 'completed_at'),
+        ('idx_tokens_skipped', 'university_tokens', 'skipped_at'),
+        ('idx_offices_availability', 'offices', 'availability_status'),
+    ]
+    for name, table, col in required:
+        try:
+            cursor.execute(f"CREATE INDEX {name} ON {table}({col})")
+            connection.commit()
+            print(f"[OK] Created index {name} on {table}({col})")
+        except mysql.connector.Error as e:
+            if "Duplicate key name" in str(e):
+                pass  # already exists
+            else:
+                print(f"[WARN] Could not create index {name}: {e}")
 
 # Test connection on startup
 try:
@@ -71,6 +93,67 @@ try:
             """)
             connection.commit()
             print("[OK] queue_logs table created")
+        cursor.execute("SHOW TABLES LIKE 'queue_counters'")
+        if not cursor.fetchone():
+            print("[WARN] queue_counters table missing! Creating...")
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS queue_counters (
+                    office_id INT PRIMARY KEY,
+                    last_number INT DEFAULT 0,
+                    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+                )
+            """)
+            connection.commit()
+            print("[OK] queue_counters table created")
+        # Check if university_tokens table exists
+        cursor.execute("SHOW TABLES LIKE 'university_tokens'")
+        if not cursor.fetchone():
+            print("[WARN] university_tokens table missing! Creating...")
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS university_tokens (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    token_number VARCHAR(20) NOT NULL UNIQUE,
+                    office_id INT NOT NULL,
+                    service_id INT NOT NULL,
+                    service_code VARCHAR(20) NOT NULL,
+                    student_name VARCHAR(100),
+                    student_id VARCHAR(50),
+                    student_phone VARCHAR(20),
+                    parent_name VARCHAR(100),
+                    parent_phone VARCHAR(20),
+                    is_priority TINYINT(1) DEFAULT 0,
+                    status ENUM('waiting','called','serving','completed','skipped','cancelled','expired') DEFAULT 'waiting',
+                    requested_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    called_at TIMESTAMP NULL DEFAULT NULL,
+                    serving_started_at TIMESTAMP NULL DEFAULT NULL,
+                    completed_at TIMESTAMP NULL DEFAULT NULL,
+                    skipped_at TIMESTAMP NULL DEFAULT NULL,
+                    assigned_officer_id INT DEFAULT NULL,
+                    assigned_officer_number INT DEFAULT NULL,
+                    queue_position INT DEFAULT NULL,
+                    estimated_wait_minutes INT DEFAULT NULL,
+                    source ENUM('kiosk','online','admin') DEFAULT 'kiosk',
+                    call_attempts INT DEFAULT 0,
+                    wait_duration_minutes INT DEFAULT NULL,
+                    service_duration_minutes INT DEFAULT NULL,
+                    rating INT DEFAULT NULL,
+                    feedback_comment TEXT,
+                    feedback_submitted_at TIMESTAMP NULL DEFAULT NULL
+                )
+            """)
+            connection.commit()
+            print("[OK] university_tokens table created")
+        # Seed counters with existing max token numbers
+        cursor.execute("""
+            INSERT IGNORE INTO queue_counters (office_id, last_number)
+            SELECT t.office_id, MAX(CAST(SUBSTRING(t.token_number, LENGTH(o.office_code) + 1) AS UNSIGNED))
+            FROM university_tokens t
+            JOIN offices o ON t.office_id = o.id
+            GROUP BY t.office_id
+        """)
+        if cursor.rowcount > 0:
+            connection.commit()
+            print(f"[OK] Seeded {cursor.rowcount} queue counters from existing tokens")
         # Check if officers table has status_reason column
         cursor.execute("SHOW COLUMNS FROM officers LIKE 'status_reason'")
         if not cursor.fetchone():
@@ -78,6 +161,8 @@ try:
             cursor.execute("ALTER TABLE officers ADD COLUMN status_reason TEXT DEFAULT NULL AFTER status")
             connection.commit()
             print("[OK] status_reason column added to officers")
+        # Ensure performance indexes exist
+        _ensure_indexes(cursor, connection)
         cursor.close()
     connection.close()
 except Error as e:
@@ -521,7 +606,7 @@ def admin_reset_office_queue(office_id):
         cursor.execute("""
             DELETE FROM university_tokens
             WHERE office_id = %s 
-            AND DATE(requested_at) = CURDATE()
+            AND requested_at >= CURDATE()
             AND status IN ('expired', 'skipped')
         """, (office_id,))
         
@@ -739,9 +824,18 @@ def admin_reorder_offices():
     cursor = conn.cursor()
     
     try:
+        placeholders = ",".join(["%s"] * len(orders))
+        case_whens = " ".join("WHEN %s THEN %s" for _ in orders)
+        params = []
         for item in orders:
-            cursor.execute("UPDATE offices SET display_order = %s WHERE id = %s", (item['order'], item['id']))
-        
+            params.append(item['id'])
+            params.append(item['order'])
+        params.extend(item['id'] for item in orders)
+        cursor.execute(f"""
+            UPDATE offices SET display_order = CASE id {case_whens} END
+            WHERE id IN ({placeholders})
+        """, params)
+
         conn.commit()
         return jsonify({'success': True, 'message': 'Office order updated successfully'})
         
@@ -925,21 +1019,18 @@ def generate_student_token():
                     'message': f"Please rate your previous service (Token: {unrated['token_number']}) before getting a new token."
                 }), 400
 
+        cursor.execute("INSERT IGNORE INTO queue_counters (office_id, last_number) VALUES (%s, 0)", (office_id,))
         cursor.execute("""
-            SELECT MAX(
-                CAST(SUBSTRING(token_number, LENGTH(%s) + 1) AS UNSIGNED)
-            ) AS max_num
-            FROM university_tokens
+            UPDATE queue_counters
+            SET last_number = LAST_INSERT_ID(last_number + 1)
             WHERE office_id = %s
-        """, (office['office_code'], office_id))
-
+        """, (office_id,))
+        cursor.execute("SELECT LAST_INSERT_ID() AS next_num")
         result = cursor.fetchone()
-        max_number = result['max_num'] or 0
-
-        next_num = max_number + 1
+        next_num = result['next_num']
         token_number = f"{office['office_code']}{str(next_num).zfill(2)}"
 
-        print(f"Token generated: {token_number} (max={max_number})")
+        print(f"Token generated: {token_number} (counter={next_num})")
 
         cursor.execute("""
             SELECT COUNT(*) as ahead_count
@@ -1309,6 +1400,51 @@ def get_public_queues():
 
     except Exception as e:
         logger.error(f"Error in get_public_queues: {e}")
+        return jsonify({'success': False, 'message': str(e)})
+
+
+@app.route('/api/public/queues/next', methods=['GET'])
+def get_public_queues_next():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT id, office_code, office_name
+            FROM offices
+            WHERE COALESCE(is_active, 1) = 1
+            ORDER BY display_order
+        """)
+        offices = cursor.fetchall()
+
+        result = []
+        for office in offices:
+            cursor.execute("""
+                SELECT t.token_number, t.student_name, t.service_code,
+                       t.requested_at, t.is_priority,
+                       TIMESTAMPDIFF(MINUTE, t.requested_at, NOW()) as waiting_minutes,
+                       s.service_name
+                FROM university_tokens t
+                LEFT JOIN services s ON t.service_id = s.id
+                WHERE t.office_id = %s AND t.status = 'waiting'
+                ORDER BY t.is_priority DESC, t.requested_at ASC
+                LIMIT 3
+            """, (office['id'],))
+            next_tokens = cursor.fetchall()
+
+            result.append({
+                'office_id': office['id'],
+                'office_code': office['office_code'],
+                'office_name': office['office_name'],
+                'next_up': next_tokens
+            })
+
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'queues': result})
+
+    except Exception as e:
+        logger.error(f"Error in get_public_queues_next: {e}")
         return jsonify({'success': False, 'message': str(e)})
 
 
@@ -1853,10 +1989,11 @@ def admin_get_stats():
                 COUNT(CASE WHEN t.status = 'waiting' THEN 1 END) as waiting,
                 COUNT(CASE WHEN t.status = 'called' THEN 1 END) as called,
                 COUNT(CASE WHEN t.status = 'serving' THEN 1 END) as serving,
-                COUNT(CASE WHEN t.status = 'completed' THEN 1 END) as completed,
-                COUNT(CASE WHEN t.status = 'skipped' THEN 1 END) as skipped
+                COUNT(CASE WHEN t.status = 'completed' AND t.requested_at >= CURDATE() THEN 1 END) as completed,
+                COUNT(CASE WHEN t.status = 'skipped' AND t.requested_at >= CURDATE() THEN 1 END) as skipped
             FROM offices off
             LEFT JOIN university_tokens t ON off.id = t.office_id
+                AND (t.requested_at >= CURDATE() OR t.status IN ('waiting','called','serving'))
             GROUP BY off.id
             ORDER BY off.display_order
         """)
@@ -1978,13 +2115,14 @@ def admin_officer_service_stats():
                 SELECT assigned_officer_id, COUNT(*) AS served_count
                 FROM university_tokens
                 WHERE status = 'completed'
-                  AND DATE(completed_at) = %s
+                  AND completed_at >= %s
+                  AND completed_at < %s + INTERVAL 1 DAY
                   AND assigned_officer_id IS NOT NULL
                 GROUP BY assigned_officer_id
             ) cnt ON cnt.assigned_officer_id = o.id
             WHERE COALESCE(o.is_admin, 0) = 0
             ORDER BY off.display_order, off.office_name, o.officer_number
-        """, (target_date,))
+        """, (target_date, target_date))
         rows = cursor.fetchall()
         for row in rows:
             sc = row.get('served_count')

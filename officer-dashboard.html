@@ -151,6 +151,10 @@
     .action-btn  { padding: 11px 10px; border: none; border-radius: var(--radius); font-size: 12px; font-weight: 600; font-family: var(--font); cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 7px; }
     .action-btn:hover  { transform: translateY(-1px); box-shadow: var(--shadow-md); }
     .action-btn:active { transform: translateY(0); }
+    .action-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
+    .btn-primary:disabled, .modal-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+    .desk-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .queue-item-btn:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-serve    { background: var(--amber-soft);  color: #92400E; border: 1px solid var(--gold-border); }
     .btn-complete { background: var(--blue-soft);   color: #1E40AF; border: 1px solid rgba(59,130,246,0.2); }
     .btn-recall   { background: var(--purple-soft); color: #5B21B6; border: 1px solid rgba(139,92,246,0.2); }
@@ -807,6 +811,18 @@
     }
   }
 
+  function setLoading(btn, loading) {
+    if (!btn) return;
+    if (loading) {
+      btn._origText = btn.textContent;
+      btn.textContent = 'Processing...';
+      btn.disabled = true;
+    } else {
+      btn.textContent = btn._origText || btn.textContent;
+      btn.disabled = false;
+    }
+  }
+
   function showToast(message, type = 'info') {
     const container = document.getElementById('toastContainer');
     const svgs = {
@@ -827,7 +843,7 @@
       const res = await fetch(`${API_BASE_URL}/api/officer/messages/${currentOfficer.id}`);
       const data = await res.json();
       if (data.success && data.messages) { allMessages = data.messages; updateMessageBadge(); renderMessages(); }
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error(e); showToast('Failed to load messages', 'error'); }
   }
 
   function updateMessageBadge() {
@@ -853,15 +869,23 @@
     const input = document.getElementById('newMessage');
     const message = input.value.trim();
     if (!message) { showToast('Please enter a message', 'warning'); return; }
-    const result = await apiCall('/api/office/message', 'POST', { office_id: currentOfficer.office_id, message, message_type: 'info', officer_id: currentOfficer.id });
-    if (result.success) { showToast('Message posted to public display', 'success'); input.value = ''; await loadMessages(); }
-    else { showToast('Failed to post message', 'error'); }
+    const btn = document.querySelector('#messageOverlay .modal-btn');
+    setLoading(btn, true);
+    try {
+      const result = await apiCall('/api/office/message', 'POST', { office_id: currentOfficer.office_id, message, message_type: 'info', officer_id: currentOfficer.id });
+      if (result.success) { showToast('Message posted to public display', 'success'); input.value = ''; await loadMessages(); }
+      else { showToast('Failed to post message', 'error'); }
+    } finally { setLoading(btn, false); }
   }
 
   async function deleteMessage(id) {
-    const result = await apiCall(`/api/office/message/${id}`, 'DELETE', { officer_id: currentOfficer.id });
-    if (result.success) { showToast('Message deleted', 'success'); await loadMessages(); }
-    else { showToast(result.message || 'Failed to delete', 'error'); }
+    const btn = document.querySelector(`.del-btn[onclick*="deleteMessage(${id})"]`);
+    setLoading(btn, true);
+    try {
+      const result = await apiCall(`/api/office/message/${id}`, 'DELETE', { officer_id: currentOfficer.id });
+      if (result.success) { showToast('Message deleted', 'success'); await loadMessages(); }
+      else { showToast(result.message || 'Failed to delete', 'error'); }
+    } finally { setLoading(btn, false); }
   }
 
   function openMessageModal() { document.getElementById('messageOverlay').classList.add('open'); loadMessages(); }
@@ -913,7 +937,7 @@
         var idOrPhone = (s.service_code && s.service_code.toUpperCase() === 'PS')
           ? (s.parent_phone || 'No phone')
           : (s.student_id || 'No ID');
-        return `<div class="queue-item"><div class="q-token">${s.token_number}</div><div class="q-info"><div class="q-service">${ic.tag} ${s.service_name || s.service_code}</div><div class="q-student">${ic.user} ${s.student_name || 'Student'} · ${idOrPhone}</div><div class="q-wait">${ic.clock} ${s.waiting_minutes || 0} min waiting</div></div><button class="call-btn" onclick="callStudent('${s.token_number}')">${ic.phone} Call</button></div>`;
+        return `<div class="queue-item"><div class="q-token">${s.token_number}</div><div class="q-info"><div class="q-service">${ic.tag} ${s.service_name || s.service_code}</div><div class="q-student">${ic.user} ${s.student_name || 'Student'} · ${idOrPhone}</div><div class="q-wait">${ic.clock} ${s.waiting_minutes || 0} min waiting</div></div><button class="call-btn" onclick="callStudent('${s.token_number}', this)">${ic.phone} Call</button></div>`;
       }).join('');
     }
     const servEl = document.getElementById('servingContainer');
@@ -941,6 +965,8 @@
 
   async function callNext() {
     if (isProcessingCall) { showToast('Already processing a call, please wait...', 'warning'); return; }
+    const btn = document.querySelector('.btn-next');
+    setLoading(btn, true);
     isProcessingCall = true;
     addLog('Calling next student…');
     try {
@@ -954,11 +980,12 @@
         addLog(result.message || 'No students waiting', 'error');
         showToast(result.message || 'No students waiting', 'error');
       }
-    } finally { isProcessingCall = false; }
+    } finally { isProcessingCall = false; setLoading(btn, false); }
   }
 
-  async function callStudent(tokenNumber) {
+  async function callStudent(tokenNumber, btn) {
     if (isProcessingCall) { showToast('Already processing a call, please wait...', 'warning'); return; }
+    setLoading(btn, true);
     isProcessingCall = true;
     addLog(`Calling ${tokenNumber}…`);
     try {
@@ -971,73 +998,93 @@
       } else {
         showToast(result.message || 'Failed to call student', 'error');
       }
-    } finally { isProcessingCall = false; }
+    } finally { isProcessingCall = false; setLoading(btn, false); }
   }
 
   async function serveStudent() {
     if (!currentServing) return;
-    const result = await apiCall('/api/officer/serve', 'POST', { officer_id: currentOfficer.id, token_number: currentServing });
-    if (result.success) {
-      addLog(`Now serving ${currentServing}`, 'success');
-      showToast(`Now serving ${currentServing}`, 'success');
-      await loadQueue();
-    } else {
-      showToast(result.message || 'Failed to start serving', 'error');
-    }
+    const btn = document.querySelector('.btn-serve');
+    setLoading(btn, true);
+    try {
+      const result = await apiCall('/api/officer/serve', 'POST', { officer_id: currentOfficer.id, token_number: currentServing });
+      if (result.success) {
+        addLog(`Now serving ${currentServing}`, 'success');
+        showToast(`Now serving ${currentServing}`, 'success');
+        await loadQueue();
+      } else {
+        showToast(result.message || 'Failed to start serving', 'error');
+      }
+    } finally { setLoading(btn, false); }
   }
 
   async function completeService() {
     if (!currentServing) return;
-    const result = await apiCall('/api/officer/complete', 'POST', { officer_id: currentOfficer.id, token_number: currentServing });
-    if (result.success) {
-      addLog(`Completed ${currentServing}`, 'success');
-      showToast(`Service completed for ${currentServing}`, 'success');
-      const completedEl = document.getElementById('completedToday');
-      completedEl.textContent = (parseInt(completedEl.textContent) || 0) + 1;
-      currentServing = null;
-      await loadQueue();
-    } else {
-      showToast(result.message || 'Failed to complete service', 'error');
-    }
+    const btn = document.querySelector('.btn-complete');
+    setLoading(btn, true);
+    try {
+      const result = await apiCall('/api/officer/complete', 'POST', { officer_id: currentOfficer.id, token_number: currentServing });
+      if (result.success) {
+        addLog(`Completed ${currentServing}`, 'success');
+        showToast(`Service completed for ${currentServing}`, 'success');
+        const completedEl = document.getElementById('completedToday');
+        completedEl.textContent = (parseInt(completedEl.textContent) || 0) + 1;
+        currentServing = null;
+        await loadQueue();
+      } else {
+        showToast(result.message || 'Failed to complete service', 'error');
+      }
+    } finally { setLoading(btn, false); }
   }
 
   async function skipStudent() {
     if (!currentServing) return;
-    const result = await apiCall('/api/officer/skip', 'POST', { officer_id: currentOfficer.id, token_number: currentServing });
-    if (result.success) {
-      addLog(`Skipped ${currentServing}`, 'warning');
-      showToast(`${currentServing} skipped`, 'warning');
-      currentServing = null;
-      await loadQueue();
-    } else {
-      showToast(result.message || 'Failed to skip', 'error');
-    }
+    const btn = document.querySelector('.btn-skip');
+    setLoading(btn, true);
+    try {
+      const result = await apiCall('/api/officer/skip', 'POST', { officer_id: currentOfficer.id, token_number: currentServing });
+      if (result.success) {
+        addLog(`Skipped ${currentServing}`, 'warning');
+        showToast(`${currentServing} skipped`, 'warning');
+        currentServing = null;
+        await loadQueue();
+      } else {
+        showToast(result.message || 'Failed to skip', 'error');
+      }
+    } finally { setLoading(btn, false); }
   }
 
   async function recallStudent() {
     if (!currentServing) return;
+    const btn = document.querySelector('.btn-recall');
+    setLoading(btn, true);
     addLog(`Recalling ${currentServing}…`);
-    const result = await apiCall('/api/officer/recall', 'POST', { officer_id: currentOfficer.id, token_number: currentServing });
-    if (result.success) {
-      addLog(`Recall sent for ${currentServing}`, 'success');
-      showToast(`Recall sent for ${currentServing}`, 'info');
-    } else {
-      showToast(result.message || 'Recall failed', 'error');
-    }
+    try {
+      const result = await apiCall('/api/officer/recall', 'POST', { officer_id: currentOfficer.id, token_number: currentServing });
+      if (result.success) {
+        addLog(`Recall sent for ${currentServing}`, 'success');
+        showToast(`Recall sent for ${currentServing}`, 'info');
+      } else {
+        showToast(result.message || 'Recall failed', 'error');
+      }
+    } finally { setLoading(btn, false); }
   }
 
   function resetQueue() { document.getElementById('resetOverlay').classList.add('open'); }
 
   async function confirmReset() {
-    const result = await apiCall(`/api/admin/office/${currentOfficer.office_id}/reset`, 'POST', { officer_id: currentOfficer.id, is_admin: false });
-    if (result.success) {
-      addLog('Queue reset successfully', 'success');
-      showToast('Queue reset successfully', 'success');
-      await loadQueue();
-    } else {
-      addLog(`Reset failed: ${result.message}`, 'error');
-      showToast(result.message || 'Reset failed', 'error');
-    }
+    const btn = document.querySelector('#resetOverlay .modal-btn');
+    setLoading(btn, true);
+    try {
+      const result = await apiCall(`/api/admin/office/${currentOfficer.office_id}/reset`, 'POST', { officer_id: currentOfficer.id, is_admin: false });
+      if (result.success) {
+        addLog('Queue reset successfully', 'success');
+        showToast('Queue reset successfully', 'success');
+        await loadQueue();
+      } else {
+        addLog(`Reset failed: ${result.message}`, 'error');
+        showToast(result.message || 'Reset failed', 'error');
+      }
+    } finally { setLoading(btn, false); }
     closeResetModal();
   }
 
@@ -1045,10 +1092,12 @@
     const list = document.getElementById('logList');
     const time = new Date().toLocaleTimeString();
     const cls = type === 'success' ? 'log-success' : (type === 'error' ? 'log-error' : (type === 'warning' ? 'log-warning' : ''));
+    const frag = document.createDocumentFragment();
     const row = document.createElement('div');
     row.className = 'log-row';
     row.innerHTML = `<span class="log-time">[${time}]</span><span class="${cls}">${message}</span>`;
-    list.insertBefore(row, list.firstChild);
+    frag.appendChild(row);
+    list.insertBefore(frag, list.firstChild);
     while (list.children.length > 60) list.removeChild(list.lastChild);
   }
 
@@ -1069,7 +1118,7 @@
 
   async function loadOfficeStatus() {
     const result = await apiCall(`/api/offices`);
-    if (!result.success || !result.offices) return;
+    if (!result.success || !result.offices) { showToast('Failed to load office status', 'error'); return; }
     const office = result.offices.find(o => o.id === currentOfficer.office_id);
     if (!office) return;
     updateOfficeAvailabilityUI(office.availability_status, office.unavailability_notice);
@@ -1129,34 +1178,39 @@
 
   async function confirmAvailabilityChange() {
     if (!pendingAvailChange) return;
-    const { office, newStatus } = pendingAvailChange;
-    const input = document.getElementById('availReasonInput');
-    const reason = newStatus === 'available' ? '' : input.value.trim();
-    if (newStatus === 'unavailable' && !reason) {
-      showToast('Please enter a reason for closing the office', 'warning');
-      input.focus();
-      return;
-    }
-    closeAvailReasonModal();
-    const notice = newStatus === 'unavailable' ? reason : '';
-    const updateResult = await apiCall(`/api/admin/office/${currentOfficer.office_id}`, 'PUT', {
-      office_code: office.office_code,
-      office_name: office.office_name,
-      location: office.location,
-      description: office.description,
-      is_active: 1,
-      availability_status: newStatus,
-      unavailability_notice: notice,
-      officer_id: currentOfficer.id,
-      reason: reason
-    });
-    if (updateResult.success) {
-      showToast(`Office marked as ${newStatus}`, newStatus === 'available' ? 'success' : 'warning');
-      addLog(`Office availability changed to ${newStatus}${reason ? ': ' + reason : ''}`, newStatus === 'available' ? 'success' : 'warning');
-      await loadOfficeStatus();
-    } else {
-      showToast('Failed to update office status', 'error');
-    }
+    const btn = document.getElementById('availReasonConfirmBtn');
+    setLoading(btn, true);
+    try {
+      const { office, newStatus } = pendingAvailChange;
+      const input = document.getElementById('availReasonInput');
+      const reason = newStatus === 'available' ? '' : input.value.trim();
+      if (newStatus === 'unavailable' && !reason) {
+        showToast('Please enter a reason for closing the office', 'warning');
+        input.focus();
+        setLoading(btn, false);
+        return;
+      }
+      closeAvailReasonModal();
+      const notice = newStatus === 'unavailable' ? reason : '';
+      const updateResult = await apiCall(`/api/admin/office/${currentOfficer.office_id}`, 'PUT', {
+        office_code: office.office_code,
+        office_name: office.office_name,
+        location: office.location,
+        description: office.description,
+        is_active: 1,
+        availability_status: newStatus,
+        unavailability_notice: notice,
+        officer_id: currentOfficer.id,
+        reason: reason
+      });
+      if (updateResult.success) {
+        showToast(`Office marked as ${newStatus}`, newStatus === 'available' ? 'success' : 'warning');
+        addLog(`Office availability changed to ${newStatus}${reason ? ': ' + reason : ''}`, newStatus === 'available' ? 'success' : 'warning');
+        await loadOfficeStatus();
+      } else {
+        showToast('Failed to update office status', 'error');
+      }
+    } finally { setLoading(btn, false); }
     pendingAvailChange = null;
   }
 
@@ -1218,28 +1272,32 @@
   }
 
   async function doDeskStatusChange(newStatus, reason) {
-    const body = { status: newStatus, status_reason: reason };
-    const result = await apiCall(`/api/admin/officer/${currentOfficer.id}`, 'PUT', body);
-    if (result.success) {
-      deskStatusOverride = newStatus;
-      currentOfficer.status = newStatus;
-      if (newStatus === 'offline') currentOfficer.status_reason = reason;
-      else currentOfficer.status_reason = '';
-      updateDeskStatusUI(newStatus, reason);
-      const msg = newStatus === 'available' ? 'Your desk is now available' : 'Your desk is now unavailable';
-      showToast(msg, newStatus === 'available' ? 'success' : 'warning');
-      addLog(msg, newStatus === 'available' ? 'success' : 'warning');
-      if (newStatus === 'available') {
-        document.getElementById('statusDot').className = 'status-dot dot-green';
-        document.getElementById('officerStatus').textContent = 'Available';
+    const btn = document.getElementById('deskToggleBtn');
+    setLoading(btn, true);
+    try {
+      const body = { status: newStatus, status_reason: reason };
+      const result = await apiCall(`/api/admin/officer/${currentOfficer.id}`, 'PUT', body);
+      if (result.success) {
+        deskStatusOverride = newStatus;
+        currentOfficer.status = newStatus;
+        if (newStatus === 'offline') currentOfficer.status_reason = reason;
+        else currentOfficer.status_reason = '';
+        updateDeskStatusUI(newStatus, reason);
+        const msg = newStatus === 'available' ? 'Your desk is now available' : 'Your desk is now unavailable';
+        showToast(msg, newStatus === 'available' ? 'success' : 'warning');
+        addLog(msg, newStatus === 'available' ? 'success' : 'warning');
+        if (newStatus === 'available') {
+          document.getElementById('statusDot').className = 'status-dot dot-green';
+          document.getElementById('officerStatus').textContent = 'Available';
+        } else {
+          document.getElementById('statusDot').className = 'status-dot';
+          document.getElementById('statusDot').style.background = '#9CA3AF';
+          document.getElementById('officerStatus').textContent = 'Unavailable';
+        }
       } else {
-        document.getElementById('statusDot').className = 'status-dot';
-        document.getElementById('statusDot').style.background = '#9CA3AF';
-        document.getElementById('officerStatus').textContent = 'Unavailable';
+        showToast('Failed to update desk status', 'error');
       }
-    } else {
-      showToast('Failed to update desk status', 'error');
-    }
+    } finally { setLoading(btn, false); }
   }
 
   function loadDeskStatus() {
@@ -1357,6 +1415,8 @@
     if (newPin.length < 4) { errEl.textContent = 'PIN must be at least 4 characters.'; errEl.style.display = 'block'; return; }
 
     errEl.style.display = 'none';
+    const btn = document.querySelector('#changePinOverlay .modal-btn');
+    setLoading(btn, true);
     try {
       var res = await fetch(API_BASE_URL + '/api/officer/change-password', {
         method: 'POST',
@@ -1378,7 +1438,7 @@
     } catch(e) {
       errEl.textContent = 'Network error. Try again.';
       errEl.style.display = 'block';
-    }
+    } finally { setLoading(btn, false); }
   }
 
   async function init() {
@@ -1386,10 +1446,12 @@
     loadSoundPreference();
     autoRequestNotificationPermission();
     document.getElementById('soundToggleBtn').addEventListener('click', toggleSound);
-    await generateWelcomeVoice(currentOfficer.officer_name, currentOfficer.office_name);
     loadDeskStatus();
-    await loadOfficeStatus();
-    await loadQueue();
+    await Promise.all([
+      generateWelcomeVoice(currentOfficer.officer_name, currentOfficer.office_name),
+      loadOfficeStatus(),
+      loadQueue()
+    ]);
     refreshInterval = setInterval(loadQueue, 5000);
     setInterval(loadOfficeStatus, 30000);
     document.getElementById('messageIconBtn').addEventListener('click', openMessageModal);

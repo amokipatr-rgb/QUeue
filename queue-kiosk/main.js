@@ -3,7 +3,8 @@ const path = require('path');
 
 // ── Configuration ──
 const DISPLAY_URL = process.env.KIOSK_URL
-  || 'https://queue-production-2a11.up.railway.app/public-display.html';
+  || 'https://queue-production-2a11.up.railway.app/public-display.html'
+  // || 'http://localhost:5000/public-display.html';
 const RETRY_INTERVAL = 3000;
 const CRASH_RECOVERY_DELAY = 2000;
 const CURSOR_HIDE_DELAY = 3000;
