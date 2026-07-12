@@ -44,8 +44,11 @@
         .uni-emblem svg { width: 22px; height: 22px; fill: #0f2318; }
         .uni-name { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 900; color: #ffffff; letter-spacing: 1px; text-transform: uppercase; text-shadow: 0 0 20px rgba(0,230,118,0.3); }
         .uni-name span { color: #e8c547; }
-        .uni-sub { font-size: 11px; color: rgba(255,255,255,0.4); letter-spacing: 2px; text-transform: uppercase; margin-top: 1px; }
-        .datetime { font-family: 'DM Mono', monospace; font-size: 13px; color: rgba(255,255,255,0.5); text-align: right; line-height: 1.5; }
+        .uni-sub { font-size: 11px; color: rgba(255,255,255,0.85); letter-spacing: 2px; text-transform: uppercase; margin-top: 1px; }
+        .header-center { text-align: center; position: absolute; left: 50%; transform: translateX(-50%); }
+        .hc-title { font-family: 'Playfair Display', serif; font-size: clamp(14px, 2vw, 20px); font-weight: 700; color: rgba(255,255,255,0.85); letter-spacing: 1px; }
+        .hc-sub { font-size: 10px; color: rgba(255,255,255,0.85); letter-spacing: 2px; text-transform: uppercase; margin-top: 2px; }
+        .datetime { font-family: 'DM Mono', monospace; font-size: 13px; color: rgba(255,255,255,0.85); text-align: right; line-height: 1.5; }
         .datetime-time { font-size: 18px; color: #e8c547; font-weight: 500; }
 
         /* ── MAIN SCREEN ── */
@@ -235,63 +238,25 @@
         .kiosk-dot { width: 8px; height: 8px; border-radius: 50%; background: #e8c547; opacity: 0.7; animation: pulseDot 2s infinite; }
         @keyframes pulseDot { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:0.4;transform:scale(1.4);} }
         .no-active-kiosk span { font-size: 14px; color: rgba(201,162,39,0.7); letter-spacing: 0.5px; font-weight: 500; }
-        .idle-message-card {
-            display: none;
-            width: min(920px, 92vw);
-            background: rgba(201,162,39,0.08);
-            border: 1px solid rgba(201,162,39,0.35);
-            border-radius: 22px;
-            padding: 28px 30px;
-            box-shadow: 0 0 30px rgba(201,162,39,0.12);
-        }
-        .idle-message-label {
-            font-size: 12px;
-            font-weight: 900;
-            letter-spacing: 1.6px;
-            color: #ffffff;
-            text-transform: uppercase;
-            margin-bottom: 14px;
-        }
-        .idle-message-office {
-            display: inline-block;
-            font-size: 12px;
-            font-weight: 700;
-            letter-spacing: 1px;
-            text-transform: uppercase;
-            color: #e8c547;
-            background: rgba(201,162,39,0.18);
-            border: 1px solid rgba(201,162,39,0.35);
-            border-radius: 6px;
-            padding: 5px 12px;
-            margin-bottom: 14px;
-        }
-        .idle-message-text {
-            font-size: clamp(18px, 2.8vw, 30px);
-            line-height: 1.4;
-            font-weight: 500;
-            color: rgba(255,255,255,0.92);
-        }
-
-        /* ── UP NEXT ── */
-        .upnext-section {
+        /* ── NOTICES & UP NEXT ── */
+        .notices-upnext {
             flex-shrink: 0;
-            padding: 0 32px;
             animation: fadeIn 0.4s ease;
         }
-        .upnext-header {
+        .notices-upnext-header {
             display: flex;
             align-items: center;
             justify-content: center;
             gap: 10px;
             margin-bottom: 12px;
         }
-        .upnext-dot {
+        .notices-upnext-dot {
             width: 6px; height: 6px;
             border-radius: 50%;
             background: #e8c547;
             opacity: 0.5;
         }
-        .upnext-title {
+        .notices-upnext-title {
             font-size: 13px;
             font-weight: 900;
             letter-spacing: 2.5px;
@@ -299,13 +264,39 @@
             color: #ffffff;
             text-shadow: 0 0 12px rgba(255,255,255,0.2);
         }
-        .upnext-scroll {
-            overflow: hidden;
-        }
-        .upnext-track {
+        .notices-upnext-grid {
             display: flex;
+            flex-wrap: wrap;
             gap: 10px;
             justify-content: center;
+            padding: 0 32px;
+        }
+        .notice-card {
+            background: rgba(201,162,39,0.08);
+            border: 1px solid rgba(201,162,39,0.3);
+            border-radius: 12px;
+            padding: 12px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            flex: 0 1 auto;
+            min-width: 200px;
+            max-width: 360px;
+        }
+        .notice-label {
+            font-size: 15px;
+            font-weight: 700;
+            color: #e8c547;
+            margin-bottom: 2px;
+        }
+        .notice-office-name {
+            color: #69ff9c;
+        }
+        .notice-text {
+            font-size: 17px;
+            font-weight: 500;
+            color: rgba(255,255,255,0.92);
+            line-height: 1.3;
         }
         .upnext-card {
             display: flex;
@@ -364,10 +355,10 @@
             width: 12px;
             height: 12px;
             border-radius: 50%;
-            background: #00e676;
+            background: #e8c547;
             flex-shrink: 0;
             animation: blinkDot 1.4s infinite;
-            box-shadow: 0 0 12px rgba(0,230,118,0.6);
+            box-shadow: 0 0 12px rgba(232,197,71,0.6);
         }
         .on-duty-title {
             font-size: 28px;
@@ -375,7 +366,7 @@
             letter-spacing: 1px;
             text-transform: uppercase;
             color: #ffffff;
-            text-shadow: 0 0 20px rgba(0,230,118,0.3);
+            text-shadow: 0 0 20px rgba(232,197,71,0.3);
         }
         .on-duty-grid {
             display: grid;
@@ -427,6 +418,15 @@
             color: #69ff9c;
             font-weight: 500;
         }
+        .on-duty-card.unavailable { border-color: rgba(232,197,71,0.25); background: rgba(232,197,71,0.06); }
+        .on-duty-card.unavailable .on-duty-code { color: #e8c547; text-decoration: line-through; opacity: 0.6; }
+        .on-duty-card.unavailable .on-duty-name { color: rgba(255,255,255,0.5); }
+        .on-duty-card.unavailable .on-duty-waiting { display: none; }
+        .on-duty-card.unavailable .unavail-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: #e8c547; margin-top: 8px; }
+        .on-duty-card .unavail-badge { display: none; }
+        .on-duty-card .avail-badge { display: none; }
+        .on-duty-card.available .avail-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: #69ff9c; margin-top: 8px; }
+
         /* ── FALLBACK (all offices closed) ── */
         .on-duty-closed {
             margin-top: 20px;
@@ -476,7 +476,7 @@
             background: rgba(5,10,6,0.97);
             border-top: 1px solid rgba(201,162,39,0.4);
             overflow: hidden;
-            height: 52px;
+            height: 56px;
         }
 
         .ticker-label {
@@ -500,7 +500,7 @@
             flex-shrink: 0;
         }
         .ticker-label-text {
-            font-size: 11px;
+            font-size: 13px;
             font-weight: 800;
             color: #0f2318;
             letter-spacing: 2px;
@@ -542,16 +542,16 @@
 
         .ticker-from {
             color: #ffffff;
-            font-weight: 500;
+            font-weight: 600;
             margin-right: 4px;
         }
 
         .ticker-office-badge {
             display: inline-flex;
             align-items: center;
-            background: rgba(201,162,39,0.15);
-            border: 1px solid rgba(201,162,39,0.35);
-            color: #e8c547;
+            background: rgba(105,255,156,0.12);
+            border: 1px solid rgba(105,255,156,0.35);
+            color: #69ff9c;
             font-size: 10px;
             font-weight: 800;
             letter-spacing: 1px;
@@ -563,9 +563,9 @@
         }
 
         .ticker-message-text {
-            font-size: 15px;
-            color: rgba(255,255,255,0.92);
-            font-weight: 400;
+            font-size: 16px;
+            color: #ffffff;
+            font-weight: 500;
             letter-spacing: 0.1px;
         }
 
@@ -629,7 +629,7 @@
             gap: 24px;
             backdrop-filter: blur(12px);
         }
-        .footer-text { font-size: 11px; color: rgba(255,255,255,0.3); letter-spacing: 0.4px; }
+        .footer-text { font-size: 11px; color: rgba(255,255,255,0.85); letter-spacing: 0.4px; }
         .footer-dot { width: 3px; height: 3px; border-radius: 50%; background: rgba(255,255,255,0.15); }
 
         /* ── VOICE INDICATOR ── */
@@ -648,7 +648,7 @@
             transition: all 0.3s;
         }
         .voice-dot { width: 7px; height: 7px; border-radius: 50%; background: #00e676; animation: blinkDot 1.2s infinite; }
-        .voice-text { font-size: 11px; color: rgba(255,255,255,0.4); font-family: 'DM Mono', monospace; }
+        .voice-text { font-size: 11px; color: rgba(255,255,255,0.85); font-family: 'DM Mono', monospace; }
 
         /* ── RECALL BANNER ── */
         .recall-banner {
@@ -734,9 +734,13 @@
                 <svg viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>
             </div>
             <div>
-                <div class="uni-name">Makerere <span>University</span></div>
-                <div class="uni-sub">Student Service Board</div>
+                <div class="uni-name"><span>★</span> SMAQSS</div>
+                <div class="uni-sub">Queue Management System</div>
             </div>
+        </div>
+        <div class="header-center">
+            <div class="hc-title">Makerere University</div>
+            <div class="hc-sub">Student Service Board</div>
         </div>
         <div class="datetime">
             <div class="datetime-time" id="dtTime">00:00:00</div>
@@ -749,11 +753,9 @@
         <div class="active-grid" id="activeGrid" style="display:none;"></div>
         <div class="no-active" id="noActive">
             <div id="noActiveDefault">
-                <div class="no-active-ring">
-                    <svg viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>
-                </div>
                 <div class="no-active-title">No Active Services</div>
                 <div class="no-active-sub">Please take a token from the kiosk</div>
+                <div style="margin-top:16px;font-size:clamp(13px,1.8vw,16px);color:#e8c547;font-weight:500;letter-spacing:0.3px;">Permission to sit for Exam is Granted by VC</div>
                 <div class="no-active-kiosk">
                     <div class="kiosk-dot"></div>
                     <span>Kiosk available at the entrance</span>
@@ -762,28 +764,21 @@
             <div class="on-duty-section" id="onDutySection" style="display:none;">
                 <div class="on-duty-header">
                     <div class="on-duty-header-dot"></div>
-                    <h1 class="on-duty-title">Offices Available Today</h1>
+                    <h1 class="on-duty-title">Service Offices</h1>
                 </div>
                 <div class="on-duty-grid" id="onDutyGrid"></div>
                 <div class="on-duty-closed" id="onDutyClosed" style="display:none;">All offices are currently closed.</div>
             </div>
-            <div class="idle-message-card" id="idleMessageCard">
-                <div class="idle-message-label">Important Notice</div>
-                <div class="idle-message-office" id="idleMessageOffice">Office Notice</div>
-                <div class="idle-message-text" id="idleMessageText"></div>
-            </div>
         </div>
 
-        <!-- ── UP NEXT SECTION ── -->
-        <div class="upnext-section" id="upNextSection" style="display:none;">
-            <div class="upnext-header">
-                <span class="upnext-dot"></span>
-                <span class="upnext-title">Up Next</span>
-                <span class="upnext-dot"></span>
+        <!-- ── NOTICES & UP NEXT ── -->
+        <div class="notices-upnext" id="noticesUpNext" style="display:none;">
+            <div class="notices-upnext-header">
+                <span class="notices-upnext-dot"></span>
+                <span class="notices-upnext-title" id="noticesUpNextTitle"></span>
+                <span class="notices-upnext-dot"></span>
             </div>
-            <div class="upnext-scroll" id="upNextScroll">
-                <div class="upnext-track" id="upNextTrack"></div>
-            </div>
+            <div class="notices-upnext-grid" id="noticesUpNextGrid"></div>
         </div>
 
         <div class="stats-bar">
@@ -828,12 +823,12 @@
         <div class="footer-dot"></div>
         <div class="footer-text">Watch the screen for your turn</div>
         <div class="footer-dot"></div>
-        <div class="footer-text">&copy; 2026 Makerere University &mdash; Queue Management System</div>
+        <div class="footer-text">SMQSS &mdash; Piloted at Makerere University</div>
     </div>
 
     <div class="voice-indicator" id="voiceIndicator">
         <div class="voice-dot"></div>
-        <span class="voice-text" id="voiceText">Voice System Ready</span>
+        <span class="voice-text" id="voiceText">Voice SMQSS Ready</span>
     </div>
 
     <script>
@@ -852,6 +847,7 @@
         let currentMessages = [];
         let idleMessageIndex = 0;
         let idleMessageRotationTimer = null;
+        let currentUpNextItems = [];
 
         // TV Display stability variables
         let failedFetches = 0;
@@ -957,14 +953,14 @@
                     vt.textContent = `Done: ${token}`;
                     vi.style.borderColor = 'rgba(0,230,118,0.3)';
                     setTimeout(() => { 
-                        vt.textContent = 'Voice System Ready'; 
+                        vt.textContent = 'Voice SMQSS Ready'; 
                         vi.style.borderColor = 'rgba(255,255,255,0.08)'; 
                     }, 2000);
                 }
             } catch(e) { 
                 console.error('Voice error:', e); 
                 vt.textContent = 'Voice Error'; 
-                setTimeout(() => { vt.textContent = 'Voice System Ready'; }, 2000); 
+                setTimeout(() => { vt.textContent = 'Voice SMQSS Ready'; }, 2000); 
             }
         }
 
@@ -1012,6 +1008,11 @@
                     <div class="ticker-item">
                         <span class="ticker-office-badge">INFO</span>
                         <span class="ticker-message-text">Watch this screen and listen for announcements when your token is ready.</span>
+                    </div>
+                    <span class="ticker-sep">&#9656;</span>
+                    <div class="ticker-item">
+                        <span class="ticker-office-badge">NOTICE</span>
+                        <span class="ticker-message-text">Permission to sit for Exam is Granted by VC.</span>
                     </div>
                     <span class="ticker-sep">&#9656;</span>`;
                 inner.innerHTML = standby + standby;
@@ -1100,22 +1101,49 @@
         }
 
         function renderIdleState(messages) {
-            const noActiveDefault = document.getElementById('noActiveDefault');
-            const idleMessageCard = document.getElementById('idleMessageCard');
-            const idleMessageOffice = document.getElementById('idleMessageOffice');
-            const idleMessageText = document.getElementById('idleMessageText');
+            currentMessages = messages || [];
+            idleMessageIndex = 0;
+            renderNoticesGrid();
+        }
 
-            if (messages && messages.length > 0) {
-                const msg = messages[idleMessageIndex % messages.length];
-                noActiveDefault.style.display = 'none';
-                idleMessageCard.style.display = 'block';
-                idleMessageOffice.textContent = msg.office_name || 'Office Notice';
-                idleMessageText.textContent = msg.message || '';
+        function renderNoticesGrid() {
+            var grid = document.getElementById('noticesUpNextGrid');
+            var container = document.getElementById('noticesUpNext');
+            var title = document.getElementById('noticesUpNextTitle');
+
+            var hasNotices = currentMessages && currentMessages.length > 0;
+            var hasUpNext = currentUpNextItems.length > 0;
+
+            if (!hasNotices && !hasUpNext) {
+                container.style.display = 'none';
                 return;
             }
 
-            idleMessageCard.style.display = 'none';
-            noActiveDefault.style.display = 'block';
+            var html = '';
+            if (hasNotices) {
+                var msg = currentMessages[idleMessageIndex % currentMessages.length];
+                html += '<div class="notice-card">' +
+                    '<div class="notice-label">Notice From: <span class="notice-office-name">' + escapeHtml(msg.office_name || 'Office Notice') + '</span></div>' +
+                    '<div class="notice-text">' + escapeHtml(msg.message || '') + '</div>' +
+                '</div>';
+            }
+
+            for (var k = 0; k < currentUpNextItems.length; k++) {
+                var t = currentUpNextItems[k];
+                html += '<div class="upnext-card">' +
+                    '<div class="upnext-token">' + escapeHtml(t.token) + '</div>' +
+                    '<div class="upnext-info">' +
+                        '<div class="upnext-name">' + escapeHtml(t.name || 'Student') + '</div>' +
+                        '<div class="upnext-service">' + escapeHtml(t.service) + '</div>' +
+                    '</div>' +
+                '</div>';
+            }
+
+            title.textContent = hasNotices && hasUpNext ? 'Notices & Up Next'
+                              : hasNotices ? 'Notices'
+                              : 'Up Next';
+            container.style.display = 'block';
+            grid.innerHTML = html;
         }
 
         function startIdleMessageRotation() {
@@ -1123,7 +1151,7 @@
             idleMessageRotationTimer = setInterval(() => {
                 if (!isIdle || !currentMessages || currentMessages.length <= 1) return;
                 idleMessageIndex = (idleMessageIndex + 1) % currentMessages.length;
-                renderIdleState(currentMessages);
+                renderNoticesGrid();
             }, 7000);
         }
 
@@ -1179,8 +1207,9 @@
                 newsTicker.classList.remove('visible');
                 noActive.style.display = 'none';
                 activeGrid.style.display = 'grid';
+                document.getElementById('noticesUpNext').style.display = 'none';
 
-                activeGrid.innerHTML = activeTokens.map(t => `
+                var html = activeTokens.map(t => `
                     <div class="${t.type}-card">
                         <div class="status-badge badge-${t.type}">
                             <span class="badge-dot"></span>
@@ -1191,6 +1220,8 @@
                         <div class="office-name">${escapeHtml(t.officeName)}</div>
                     </div>
                 `).join('');
+                var key = activeTokens.map(function(t){return t.type+':'+t.token}).join('|');
+                if (activeGrid.dataset.key !== key) { activeGrid.dataset.key = key; activeGrid.innerHTML = html; }
             } else {
                 isIdle = true;
                 activeGrid.style.display = 'none';
@@ -1204,23 +1235,35 @@
                 const onDutyClosed = document.getElementById('onDutyClosed');
                 const noActiveDefault = document.getElementById('noActiveDefault');
 
-                const availableOffices = queues.filter(o =>
+                const anyOpen = queues.some(o =>
                     (o.availability_status || '').toLowerCase() === 'available'
                 );
 
-                if (availableOffices.length > 0) {
+                if (queues.length > 0) {
                     noActiveDefault.style.display = 'none';
                     onDutySection.style.display = 'block';
-                    onDutyClosed.style.display = 'none';
-                    onDutyGrid.innerHTML = availableOffices.map(o => `
-                        <div class="on-duty-card">
-                            <div class="on-duty-code">${escapeHtml(o.office_code)}</div>
-                            <div class="on-duty-name">${escapeHtml(o.office_name)}</div>
-                            <div class="on-duty-location">${escapeHtml(o.location || 'Main Campus')}</div>
-
-                            <div class="on-duty-waiting"><strong>${o.waiting_count || 0}</strong> waiting</div>
-                        </div>
-                    `).join('');
+                    onDutyClosed.style.display = anyOpen ? 'none' : 'block';
+                    onDutyGrid.innerHTML = queues.map(o => {
+                        const isAvail = (o.availability_status || '').toLowerCase() === 'available';
+                        const availClass = isAvail ? '' : 'unavailable';
+                        if (isAvail) {
+                            return `<div class="on-duty-card available">
+                                <div class="on-duty-code">${escapeHtml(o.office_code)}</div>
+                                <div class="on-duty-name">${escapeHtml(o.office_name)}</div>
+                                <div class="on-duty-location">${escapeHtml(o.location || 'Main Campus')}</div>
+                                <div class="on-duty-waiting"><strong>${o.waiting_count || 0}</strong> waiting</div>
+                                <div class="avail-badge">&#10003; Available</div>
+                            </div>`;
+                        } else {
+                            return `<div class="on-duty-card unavailable">
+                                <div class="on-duty-code">${escapeHtml(o.office_code)}</div>
+                                <div class="on-duty-name">${escapeHtml(o.office_name)}</div>
+                                <div class="on-duty-location">${escapeHtml(o.location || 'Main Campus')}</div>
+                                <div class="on-duty-waiting"><strong>${o.waiting_count || 0}</strong> waiting</div>
+                                <div class="unavail-badge">&#10005; CLOSED</div>
+                            </div>`;
+                        }
+                    }).join('');
                 } else {
                     noActiveDefault.style.display = 'block';
                     onDutySection.style.display = 'none';
@@ -1289,8 +1332,6 @@
         }
 
         function updateUpNextDisplay(queues) {
-            var section = document.getElementById('upNextSection');
-            var track = document.getElementById('upNextTrack');
             var allNext = [];
             for (var i = 0; i < queues.length; i++) {
                 var office = queues[i];
@@ -1306,24 +1347,8 @@
                     }
                 }
             }
-            if (allNext.length === 0) {
-                section.style.display = 'none';
-                return;
-            }
-            section.style.display = 'block';
-            var html = '';
-            var count = Math.min(allNext.length, 8);
-            for (var k = 0; k < count; k++) {
-                var t = allNext[k];
-                html += '<div class="upnext-card">' +
-                    '<div class="upnext-token">' + escapeHtml(t.token) + '</div>' +
-                    '<div class="upnext-info">' +
-                        '<div class="upnext-name">' + escapeHtml(t.name || 'Student') + '</div>' +
-                        '<div class="upnext-service">' + escapeHtml(t.service) + '</div>' +
-                    '</div>' +
-                '</div>';
-            }
-            track.innerHTML = html;
+            currentUpNextItems = allNext;
+            renderNoticesGrid();
         }
 
 
@@ -1380,9 +1405,9 @@
             startIdleMessageRotation();
             
             // Poll queue data every 5 seconds (gentle on TV browser)
-            setInterval(fetchQueueData, 5000);
+            setInterval(fetchQueueData, 2000);
             // Poll up next every 5 seconds
-            setInterval(fetchUpNext, 5000);
+            setInterval(fetchUpNext, 2000);
             // Poll recalls every 3 seconds
             setInterval(fetchRecentRecalls, 3000);
             // Poll messages only when idle

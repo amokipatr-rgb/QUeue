@@ -3,15 +3,37 @@ from flask_cors import CORS
 import mysql.connector
 from mysql.connector import Error
 from datetime import datetime, timedelta
+from calendar import monthrange
 import logging
+import secrets
 import os
 import re
 import traceback
 import asyncio
 import time
+import urllib.request
+import json
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+def geoip(ip):
+    """Resolve an IP address to a location string using ip-api.com (free, no key)."""
+    if ip.startswith(('127.', '192.168.', '10.', '172.')):
+        return 'Local Network'
+    try:
+        url = f'http://ip-api.com/json/{ip}?fields=status,city,regionName,country,lat,lon,zip,isp,org&lang=en'
+        with urllib.request.urlopen(url, timeout=3) as r:
+            d = json.loads(r.read())
+            if d.get('status') == 'success':
+                parts = [d.get('city',''), d.get('regionName',''), d.get('country','')]
+                loc = ', '.join(p for p in parts if p)
+                if d.get('lat') and d.get('lon'):
+                    loc += f' ({d["lat"]}, {d["lon"]})'
+                return loc
+    except:
+        pass
+    return ip
 
 app = Flask(__name__)
 CORS(app)
@@ -186,10 +208,63 @@ except ImportError:
 # ============================================
 # SERVE HTML PAGES
 # ============================================
+# SERVE HTML PAGES
+# ============================================
+LOGIN_TOKEN = secrets.token_hex(16)
+WORKFLOW_TOKEN = secrets.token_hex(16)
+ADMIN_TOKEN = secrets.token_hex(16)
+OFFICER_TOKEN = secrets.token_hex(16)
+FEEDBACK_TOKEN = secrets.token_hex(16)
+
 @app.route('/')
 def index():
     return send_from_directory('.', 'index.html')
 
+@app.route('/index.html')
+def index_html_redirect():
+    return redirect('/')
+
+@app.route('/login')
+def login_decoy():
+    return send_from_directory('.', '404.html'), 404
+
+@app.route('/login/<token>')
+def login_page(token):
+    if token != LOGIN_TOKEN:
+        return send_from_directory('.', '404.html'), 404
+    return send_from_directory('.', 'login.html')
+
+@app.route('/api/admin/login-token')
+def admin_login_token():
+    return jsonify({'success': True, 'token': LOGIN_TOKEN, 'url': '/login/' + LOGIN_TOKEN})
+
+@app.route('/workflow')
+def workflow_decoy():
+    return send_from_directory('.', '404.html'), 404
+
+@app.route('/workflow/<token>')
+def workflow_page(token):
+    if token != WORKFLOW_TOKEN:
+        return send_from_directory('.', '404.html'), 404
+    return send_from_directory('.', 'workflow.html')
+
+@app.route('/api/admin/workflow-token')
+def admin_workflow_token():
+    return jsonify({'success': True, 'token': WORKFLOW_TOKEN, 'url': '/workflow/' + WORKFLOW_TOKEN})
+
+@app.route('/api/admin/admin-token')
+def admin_admin_token():
+    return jsonify({'success': True, 'token': ADMIN_TOKEN, 'url': '/admin/' + ADMIN_TOKEN})
+
+@app.route('/api/admin/officer-token')
+def admin_officer_token():
+    return jsonify({'success': True, 'token': OFFICER_TOKEN, 'url': '/officer/' + OFFICER_TOKEN})
+
+@app.route('/api/admin/feedback-token')
+def admin_feedback_token():
+    return jsonify({'success': True, 'url_prefix': '/feedback.html/' + FEEDBACK_TOKEN})
+
+@app.route('/public')
 @app.route('/public-view')
 def public_view_alias():
     return send_from_directory('.', 'public-display.html')
@@ -202,6 +277,26 @@ def kiosk_setup():
 def download_page():
     return send_from_directory('.', 'download.html')
 
+@app.route('/admin')
+def admin_decoy():
+    return send_from_directory('.', '404.html'), 404
+
+@app.route('/admin/<token>')
+def admin_dashboard(token):
+    if token != ADMIN_TOKEN:
+        return send_from_directory('.', '404.html'), 404
+    return send_from_directory('.', 'admin-dashboard.html')
+
+@app.route('/officer')
+def officer_decoy():
+    return send_from_directory('.', '404.html'), 404
+
+@app.route('/officer/<token>')
+def officer_dashboard(token):
+    if token != OFFICER_TOKEN:
+        return send_from_directory('.', '404.html'), 404
+    return send_from_directory('.', 'officer-dashboard.html')
+
 @app.route('/api/download/queue-kiosk-setup.exe')
 def download_kiosk_installer():
     return redirect('https://github.com/amokipatr-rgb/QUeue/releases/download/v2.0.0/QueueKiosk-Setup-2.0.0.exe')
@@ -213,6 +308,26 @@ def download_student_kiosk_installer():
 @app.route('/api/download/queue-kiosk-index-setup.exe')
 def download_index_kiosk_installer():
     return redirect('https://github.com/amokipatr-rgb/QUeue/releases/download/v2.0.0/QueueKiosk-Index-Setup-2.0.0.exe')
+
+@app.route('/feedback.html')
+def feedback_decoy():
+    return send_from_directory('.', '404.html'), 404
+
+@app.route('/feedback.html/<fb_token>')
+def feedback_page_no_token(fb_token):
+    if fb_token != FEEDBACK_TOKEN:
+        return send_from_directory('.', '404.html'), 404
+    return send_from_directory('.', 'feedback.html')
+
+@app.route('/feedback.html/<fb_token>/<student_token>')
+def feedback_page(fb_token, student_token):
+    if fb_token != FEEDBACK_TOKEN:
+        return send_from_directory('.', '404.html'), 404
+    return send_from_directory('.', 'feedback.html')
+
+@app.route('/student-token')
+def student_token_page():
+    return send_from_directory('.', 'student-token.html')
 
 @app.route('/<path:filename>')
 def serve_static(filename):
@@ -237,6 +352,64 @@ def get_db_connection():
                 time.sleep(1)
     logger.error(f"[ERROR] Database connection error after 3 attempts: {last_error}")
     raise last_error
+
+
+# ── OFFICER SESSION HELPERS ──
+def auto_expire_sessions():
+    """Close any active sessions that have been open for 8+ hours."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE officer_sessions
+            SET status = 'completed',
+                logout_time = DATE_ADD(login_time, INTERVAL 8 HOUR)
+            WHERE status = 'active'
+              AND TIMESTAMPDIFF(HOUR, login_time, NOW()) >= 8
+        """)
+        if cursor.rowcount:
+            # Close any dangling status logs for expired sessions
+            cursor.execute("""
+                UPDATE officer_status_log sl
+                JOIN officer_sessions s ON sl.session_id = s.id
+                SET sl.ended_at = s.logout_time,
+                    sl.duration_minutes = TIMESTAMPDIFF(MINUTE, sl.started_at, s.logout_time)
+                WHERE sl.ended_at IS NULL AND s.status = 'completed'
+            """)
+            conn.commit()
+    except Exception as e:
+        logger.warning(f"[SESSION] Auto-expire error: {e}")
+    finally:
+        try: cursor.close(); conn.close()
+        except: pass
+
+
+def close_active_status_log(cursor, session_id, officer_id, ended_at):
+    """Close the currently open status log row for a session."""
+    cursor.execute("""
+        UPDATE officer_status_log
+        SET ended_at = %s,
+            duration_minutes = TIMESTAMPDIFF(MINUTE, started_at, %s)
+        WHERE session_id = %s AND officer_id = %s AND ended_at IS NULL
+    """, (ended_at, ended_at, session_id, officer_id))
+
+
+def open_status_log(cursor, session_id, officer_id, status, started_at):
+    """Insert a new status log row."""
+    cursor.execute("""
+        INSERT INTO officer_status_log (session_id, officer_id, status, started_at)
+        VALUES (%s, %s, %s, %s)
+    """, (session_id, officer_id, status, started_at))
+
+
+def get_active_session(cursor, officer_id):
+    """Get the active session for an officer, or None."""
+    cursor.execute("""
+        SELECT id FROM officer_sessions
+        WHERE officer_id = %s AND status = 'active'
+        ORDER BY login_time DESC LIMIT 1
+    """, (officer_id,))
+    return cursor.fetchone()
 
 
 # ============================================
@@ -368,6 +541,13 @@ def admin_update_office(office_id):
         
         if availability_status == 'available':
             unavailability_notice = None
+
+        if availability_status == 'unavailable' and old_status != 'unavailable':
+            cursor.execute("SELECT COUNT(*) AS cnt FROM university_tokens WHERE office_id = %s AND status = 'waiting'", (office_id,))
+            row = cursor.fetchone()
+            waiting_count = row['cnt'] if row else 0
+            if waiting_count > 0:
+                return jsonify({'success': False, 'message': f'Cannot close office — {waiting_count} student(s) still waiting. Serve them first.'}), 400
 
         cursor.execute("""
             UPDATE offices 
@@ -740,7 +920,24 @@ def admin_update_officer(officer_id):
             params.append(officer_id)
             query = f"UPDATE officers SET {', '.join(update_fields)} WHERE id = %s"
             cursor.execute(query, params)
-        
+
+        # Track officer status changes in session log
+        if status and status in ('available', 'offline', 'calling', 'serving'):
+            try:
+                cursor.execute("""
+                    SELECT id FROM officer_sessions
+                    WHERE officer_id = %s AND status = 'active'
+                    ORDER BY login_time DESC LIMIT 1
+                """, (officer_id,))
+                sess = cursor.fetchone()
+                if sess:
+                    now = datetime.now()
+                    close_active_status_log(cursor, sess['id'], officer_id, now)
+                    open_status_log(cursor, sess['id'], officer_id, status, now)
+                    conn.commit()
+            except Exception as se:
+                logger.warning(f"[SESSION] Failed to log status change: {se}")
+
         conn.commit()
         
         return jsonify({'success': True, 'message': 'Officer updated successfully'})
@@ -1150,6 +1347,14 @@ def get_token_info():
 
 
 # ============================================
+# QR REDIRECT (opaque URL for receipts)
+# ============================================
+@app.route('/r/<token>')
+def rate_redirect(token):
+    return redirect('/feedback.html/' + FEEDBACK_TOKEN + '/' + token)
+
+
+# ============================================
 # STUDENT FEEDBACK / RATING
 # ============================================
 @app.route('/api/student/feedback', methods=['POST'])
@@ -1242,6 +1447,23 @@ def officer_login():
             return jsonify({'success': False, 'message': 'Invalid number or PIN'}), 401
 
         role = 'admin' if officer.get('is_admin') else 'officer'
+
+        # auto-expire stale sessions first
+        auto_expire_sessions()
+
+        # create a new session
+        try:
+            now = datetime.now()
+            device = request.headers.get('User-Agent', '')[:255]
+            location = geoip(request.remote_addr)
+            cursor.execute("""
+                INSERT INTO officer_sessions (officer_id, office_id, session_date, login_time, login_ip, login_location, device_info, status)
+                VALUES (%s, %s, CURDATE(), %s, %s, %s, %s, %s)
+            """, (officer['id'], officer['office_id'], now, request.remote_addr, location, device, 'active'))
+            conn.commit()
+        except Exception as se:
+            logger.warning(f"[SESSION] Failed to create login session: {se}")
+
         return jsonify({
             'success': True,
             'user': {
@@ -1410,7 +1632,8 @@ def get_public_queues_next():
         cursor = conn.cursor(dictionary=True)
 
         cursor.execute("""
-            SELECT id, office_code, office_name
+            SELECT id, office_code, office_name,
+                   COALESCE(NULLIF(TRIM(availability_status), ''), 'available') AS availability_status
             FROM offices
             WHERE COALESCE(is_active, 1) = 1
             ORDER BY display_order
@@ -1419,6 +1642,8 @@ def get_public_queues_next():
 
         result = []
         for office in offices:
+            if office.get('availability_status', 'available').strip().lower() != 'available':
+                continue
             cursor.execute("""
                 SELECT t.token_number, t.student_name, t.service_code,
                        t.requested_at, t.is_priority,
@@ -1655,6 +1880,17 @@ def officer_complete():
             UPDATE officers SET status='available', current_token=NULL, last_activity=NOW()
             WHERE id=%s
         """, (officer_id,))
+
+        # Increment session tokens_served
+        try:
+            cursor.execute("""
+                UPDATE officer_sessions
+                SET tokens_served = tokens_served + 1
+                WHERE officer_id = %s AND status = 'active'
+            """, (officer_id,))
+        except Exception as se:
+            logger.warning(f"[SESSION] Failed to increment tokens_served: {se}")
+
         conn.commit()
         return jsonify({'success': True})
     except Exception as e:
@@ -2320,6 +2556,618 @@ def admin_feedback_stats():
 
 
 # ============================================
+# OFFICER ATTENDANCE
+# ============================================
+@app.route('/api/admin/officer-attendance', methods=['GET'])
+def admin_officer_attendance():
+    """Weekly attendance for all officers. Accepts ?week=YYYY-MM-DD (Monday of that week)."""
+    try:
+        week_start = request.args.get('week', '')
+        if not week_start:
+            today = datetime.now()
+            week_start = (today - timedelta(days=today.weekday())).strftime('%Y-%m-%d')
+
+        week_end_dt = datetime.strptime(week_start, '%Y-%m-%d') + timedelta(days=4)
+        week_end = week_end_dt.strftime('%Y-%m-%d')
+        fmt_dt = '%Y-%m-%d %H:%i:%s'
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT
+                o.id AS officer_id,
+                o.officer_number,
+                o.officer_name,
+                off.id AS office_id,
+                off.office_code,
+                off.office_name,
+                off.location,
+                s.id AS session_id,
+                s.session_date,
+                DATE_FORMAT(s.login_time, %s) AS login_time,
+                DATE_FORMAT(s.logout_time, %s) AS logout_time,
+                s.login_ip,
+                s.logout_ip,
+                s.login_location,
+                s.device_info,
+                s.tokens_served,
+                TIMESTAMPDIFF(MINUTE, s.login_time, COALESCE(s.logout_time, NOW())) AS duration_minutes
+            FROM officers o
+            JOIN offices off ON o.office_id = off.id
+            LEFT JOIN officer_sessions s ON o.id = s.officer_id
+                AND s.session_date BETWEEN %s AND %s
+            ORDER BY o.officer_name, s.session_date
+        """, (fmt_dt, fmt_dt, week_start, week_end))
+
+        rows = cursor.fetchall()
+        # Group by officer
+        officers_map = {}
+        for row in rows:
+            oid = row['officer_id']
+            if oid not in officers_map:
+                officers_map[oid] = {
+                    'officer_id': oid,
+                    'officer_number': row['officer_number'],
+                    'officer_name': row['officer_name'],
+                    'office_id': row['office_id'],
+                    'office_code': row['office_code'],
+                    'office_name': row['office_name'],
+                    'location': row['location'],
+                    'days': {}
+                }
+            sd = str(row['session_date']) if row['session_date'] else None
+            if sd:
+                if sd not in officers_map[oid]['days']:
+                    officers_map[oid]['days'][sd] = []
+                officers_map[oid]['days'][sd].append({
+                    'session_id': row['session_id'],
+                    'login_time': row['login_time'],
+                    'logout_time': row['logout_time'],
+                    'login_ip': row['login_ip'],
+                    'logout_ip': row['logout_ip'],
+                    'login_location': row['login_location'],
+                    'device_info': row['device_info'],
+                    'tokens_served': row['tokens_served'] or 0,
+                    'duration_minutes': row['duration_minutes'] or 0,
+                })
+
+        # Compute weekly totals
+        result = []
+        for oid, odata in officers_map.items():
+            total_minutes = 0
+            total_served = 0
+            days_present = 0
+            day_details = []
+            for d in range(5):
+                date_key = (datetime.strptime(week_start, '%Y-%m-%d') + timedelta(days=d)).strftime('%Y-%m-%d')
+                sessions = odata['days'].get(date_key, [])
+                day_minutes = sum(s['duration_minutes'] for s in sessions)
+                day_served = sum(s['tokens_served'] for s in sessions)
+                if sessions:
+                    days_present += 1
+                    total_minutes += day_minutes
+                    total_served += day_served
+                    last = sessions[-1]
+                    day_details.append({
+                        'date': date_key,
+                        'present': True,
+                        'sessions': sessions,
+                        'total_minutes': day_minutes,
+                        'tokens_served': day_served,
+                        'device_info': last.get('device_info') or '',
+                        'login_ip': last.get('login_ip') or '',
+                        'login_location': last.get('login_location') or '',
+                    })
+                else:
+                    day_details.append({
+                        'date': date_key,
+                        'present': False,
+                        'sessions': [],
+                        'total_minutes': 0,
+                        'tokens_served': 0,
+                        'device_info': '',
+                        'login_ip': '',
+                        'login_location': '',
+                    })
+            DAILY_TARGET = 540  # 9 hours (8 AM – 5 PM)
+            WEEKLY_TARGET = DAILY_TARGET * 5
+            avail_pct = min(round(total_minutes / WEEKLY_TARGET * 100, 1), 100)
+
+            if days_present == 0:
+                continue
+
+            result.append({
+                'officer_id': oid,
+                'officer_number': odata['officer_number'],
+                'officer_name': odata['officer_name'],
+                'office_code': odata['office_code'],
+                'office_name': odata['office_name'],
+                'location': odata['location'],
+                'days': day_details,
+                'total_minutes': total_minutes,
+                'total_hours': round(total_minutes / 60, 1),
+                'tokens_served': total_served,
+                'days_present': days_present,
+                'availability_pct': avail_pct,
+            })
+
+        # Monthly attendance grade for the current month
+        today = datetime.now()
+        month_start = today.replace(day=1).strftime('%Y-%m-%d')
+        next_month = today.replace(day=1) + timedelta(days=32)
+        month_end = next_month.replace(day=1) - timedelta(days=1)
+        month_end_str = month_end.strftime('%Y-%m-%d')
+
+        _, days_in_month = monthrange(today.year, today.month)
+        working_days = sum(1 for d in range(1, days_in_month + 1) if datetime(today.year, today.month, d).weekday() < 5)
+        MONTHLY_TARGET = 540 * working_days
+
+        cursor.execute("""
+            SELECT officer_id,
+                   SUM(TIMESTAMPDIFF(MINUTE, login_time, COALESCE(logout_time, NOW()))) AS month_minutes
+            FROM officer_sessions
+            WHERE session_date BETWEEN %s AND %s
+            GROUP BY officer_id
+        """, (month_start, month_end_str))
+        monthly_rows = cursor.fetchall()
+        monthly_map = {r['officer_id']: (r['month_minutes'] or 0) for r in monthly_rows}
+
+        for entry in result:
+            month_minutes = monthly_map.get(entry['officer_id'], 0)
+            entry['monthly_grade_pct'] = min(round(month_minutes / MONTHLY_TARGET * 100, 1), 100)
+
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'attendance': result, 'week_start': week_start, 'week_end': week_end})
+
+    except Exception as e:
+        logger.error(f"Error fetching attendance: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/admin/officer-attendance/<int:officer_id>', methods=['GET'])
+def admin_officer_attendance_detail(officer_id):
+    """Detailed session history for one officer. Accepts ?from=YYYY-MM-DD&to=YYYY-MM-DD"""
+    try:
+        from_date = request.args.get('from', (datetime.now() - timedelta(days=30)).strftime('%Y-%m-%d'))
+        to_date = request.args.get('to', datetime.now().strftime('%Y-%m-%d'))
+        fmt_dt = '%Y-%m-%d %H:%i:%s'
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT
+                s.id AS session_id,
+                s.session_date,
+                DATE_FORMAT(s.login_time, %s) AS login_time,
+                DATE_FORMAT(s.logout_time, %s) AS logout_time,
+                s.login_ip, s.logout_ip, s.login_location, s.device_info,
+                s.tokens_served,
+                TIMESTAMPDIFF(MINUTE, s.login_time, COALESCE(s.logout_time, NOW())) AS duration_minutes,
+                off.office_name, off.office_code, off.location
+            FROM officer_sessions s
+            JOIN offices off ON s.office_id = off.id
+            WHERE s.officer_id = %s AND s.session_date BETWEEN %s AND %s
+            ORDER BY s.login_time DESC
+        """, (fmt_dt, fmt_dt, officer_id, from_date, to_date))
+
+        sessions = cursor.fetchall()
+
+        # Get status breakdown for each session
+        for sess in sessions:
+            cursor.execute("""
+                SELECT status,
+                       DATE_FORMAT(started_at, %s) AS started_at,
+                       DATE_FORMAT(ended_at, %s) AS ended_at,
+                       duration_minutes
+                FROM officer_status_log
+                WHERE session_id = %s
+                ORDER BY started_at
+            """, (fmt_dt, fmt_dt, sess['session_id']))
+            sess['status_log'] = cursor.fetchall()
+
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'officer_id': officer_id, 'sessions': sessions})
+
+    except Exception as e:
+        logger.error(f"Error fetching officer attendance detail: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/admin/attendance-summary', methods=['GET'])
+def admin_attendance_summary():
+    """Weekly aggregated attendance summary. Accepts ?week=YYYY-MM-DD"""
+    try:
+        week_start = request.args.get('week', '')
+        if not week_start:
+            today = datetime.now()
+            week_start = (today - timedelta(days=today.weekday())).strftime('%Y-%m-%d')
+
+        week_end = (datetime.strptime(week_start, '%Y-%m-%d') + timedelta(days=4)).strftime('%Y-%m-%d')
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT
+                o.id AS officer_id,
+                o.officer_number,
+                o.officer_name,
+                off.office_code,
+                off.office_name,
+                off.location,
+                COUNT(DISTINCT s.session_date) AS days_attended,
+                COALESCE(SUM(TIMESTAMPDIFF(MINUTE, s.login_time, COALESCE(s.logout_time, NOW()))), 0) AS total_minutes,
+                COALESCE(SUM(s.tokens_served), 0) AS total_tokens,
+                ROUND(COUNT(DISTINCT s.session_date) / 5 * 100, 1) AS attendance_pct,
+                ROUND(COALESCE(SUM(TIMESTAMPDIFF(MINUTE, s.login_time, COALESCE(s.logout_time, NOW()))), 0) / 60, 1) AS total_hours,
+                CASE WHEN COUNT(DISTINCT s.session_date) > 0
+                     THEN ROUND(COALESCE(SUM(s.tokens_served), 0) * 60.0 / NULLIF(SUM(TIMESTAMPDIFF(MINUTE, s.login_time, COALESCE(s.logout_time, NOW()))), 0), 1)
+                     ELSE 0 END AS tokens_per_hour
+            FROM officers o
+            JOIN offices off ON o.office_id = off.id
+            LEFT JOIN officer_sessions s ON o.id = s.officer_id
+                AND s.session_date BETWEEN %s AND %s
+            GROUP BY o.id, o.officer_number, o.officer_name, off.office_code, off.office_name, off.location
+            ORDER BY attendance_pct DESC, total_tokens DESC
+        """, (week_start, week_end))
+
+        summary = cursor.fetchall()
+        for row in summary:
+            row['total_minutes'] = int(row['total_minutes'])
+            row['total_tokens'] = int(row['total_tokens'])
+            row['days_attended'] = int(row['days_attended'])
+            row['attendance_pct'] = float(row['attendance_pct'])
+            row['total_hours'] = float(row['total_hours'])
+            row['tokens_per_hour'] = float(row['tokens_per_hour'])
+
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'summary': summary, 'week_start': week_start, 'week_end': week_end})
+
+    except Exception as e:
+        logger.error(f"Error fetching attendance summary: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# ============================================
+# HEAT MAP
+# ============================================
+@app.route('/api/admin/heatmap', methods=['GET'])
+def admin_heatmap():
+    """Hourly demand/officer/wait heat map. ?week=YYYY-MM-DD&office_id=INT&metric=tokens|wait|officers"""
+    try:
+        week_start = request.args.get('week', '')
+        office_id = request.args.get('office_id', type=int)
+        metric = request.args.get('metric', 'tokens')
+
+        if not week_start:
+            today = datetime.now()
+            week_start = (today - timedelta(days=today.weekday())).strftime('%Y-%m-%d')
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Get offices
+        if office_id:
+            cursor.execute("SELECT id, office_code, office_name FROM offices WHERE id = %s", (office_id,))
+        else:
+            cursor.execute("SELECT id, office_code, office_name FROM offices WHERE is_active = 1")
+        offices = cursor.fetchall()
+
+        days_of_week = []
+        for d in range(5):
+            day = (datetime.strptime(week_start, '%Y-%m-%d') + timedelta(days=d)).strftime('%Y-%m-%d')
+            days_of_week.append(day)
+
+        hours = list(range(8, 17))  # 8am to 5pm (hour 8-16)
+
+        result = []
+        for off in offices:
+            days_data = []
+            for day_str in days_of_week:
+                hour_data = []
+                for hr in hours:
+                    if metric == 'tokens':
+                        cursor.execute("""
+                            SELECT COUNT(*) AS val FROM university_tokens
+                            WHERE office_id = %s AND DATE(requested_at) = %s AND HOUR(requested_at) = %s
+                        """, (off['id'], day_str, hr))
+                        row = cursor.fetchone()
+                        val = int(row['val']) if row else 0
+                    elif metric == 'wait':
+                        cursor.execute("""
+                            SELECT COALESCE(AVG(wait_duration_minutes), 0) AS val FROM university_tokens
+                            WHERE office_id = %s AND DATE(requested_at) = %s AND HOUR(requested_at) = %s
+                              AND wait_duration_minutes IS NOT NULL
+                        """, (off['id'], day_str, hr))
+                        row = cursor.fetchone()
+                        val = round(float(row['val']), 1) if row else 0
+                    elif metric == 'officers':
+                        hr_start = f"{day_str} {hr:02d}:00:00"
+                        hr_end = f"{day_str} {hr:02d}:59:59"
+                        cursor.execute("""
+                            SELECT COUNT(DISTINCT officer_id) AS val FROM officer_sessions
+                            WHERE office_id = %s AND status = 'active'
+                              AND login_time <= %s AND (logout_time IS NULL OR logout_time >= %s)
+                        """, (off['id'], hr_end, hr_start))
+                        row = cursor.fetchone()
+                        val = int(row['val']) if row else 0
+                    else:
+                        val = 0
+
+                    hour_data.append({
+                        'hour': hr,
+                        'value': val,
+                        'label': f"{hr:02d}:00"
+                    })
+                days_data.append({
+                    'date': day_str,
+                    'day': ['Mon','Tue','Wed','Thu','Fri'][days_of_week.index(day_str)],
+                    'hours': hour_data
+                })
+            result.append({
+                'office_id': off['id'],
+                'office_code': off['office_code'],
+                'office_name': off['office_name'],
+                'days': days_data
+            })
+
+        # Compute summary
+        all_vals = []
+        for off_data in result:
+            for dd in off_data['days']:
+                for hh in dd['hours']:
+                    all_vals.append(hh['value'])
+        max_val = max(all_vals) if all_vals else 1
+
+        peak_hour = None
+        peak_total = 0
+        for hr in hours:
+            total = 0
+            for off_data in result:
+                for dd in off_data['days']:
+                    for hh in dd['hours']:
+                        if hh['hour'] == hr:
+                            total += hh['value']
+            if total > peak_total:
+                peak_total = total
+                peak_hour = f"{hr:02d}:00"
+
+        busiest_office = max(result, key=lambda o: sum(hh['value'] for dd in o['days'] for hh in dd['hours'])) if result else None
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'week_start': week_start,
+            'metric': metric,
+            'max_value': max_val,
+            'offices': result,
+            'summary': {
+                'peak_hour': peak_hour,
+                'busiest_office': busiest_office['office_name'] if busiest_office else None,
+                'hours': hours,
+                'days': ['Mon','Tue','Wed','Thu','Fri']
+            }
+        })
+
+    except Exception as e:
+        logger.error(f"Error fetching heatmap: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# ============================================
+# ATTENDANCE TRENDS
+# ============================================
+@app.route('/api/admin/attendance-trends', methods=['GET'])
+def admin_attendance_trends():
+    """Weekly trend data. ?weeks=8"""
+    try:
+        num_weeks = request.args.get('weeks', 8, type=int)
+        today = datetime.now()
+        end_date = today.strftime('%Y-%m-%d')
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        weeks_data = []
+        for w in range(num_weeks):
+            week_end = (today - timedelta(weeks=w)).strftime('%Y-%m-%d')
+            week_start_dt = datetime.strptime(week_end, '%Y-%m-%d') - timedelta(days=4)
+            week_start = week_start_dt.strftime('%Y-%m-%d')
+
+            # Tokens created in this week
+            cursor.execute("""
+                SELECT COUNT(*) AS total FROM university_tokens
+                WHERE requested_at BETWEEN %s AND %s
+            """, (week_start + ' 00:00:00', week_end + ' 23:59:59'))
+            tokens_created = int(cursor.fetchone()['total'])
+
+            # Total officer hours logged
+            cursor.execute("""
+                SELECT COALESCE(SUM(TIMESTAMPDIFF(MINUTE, login_time, COALESCE(logout_time, NOW()))), 0) AS total_minutes
+                FROM officer_sessions
+                WHERE session_date BETWEEN %s AND %s
+            """, (week_start, week_end))
+            total_minutes = int(cursor.fetchone()['total_minutes'])
+
+            # Unique officers who logged in
+            cursor.execute("""
+                SELECT COUNT(DISTINCT officer_id) AS cnt FROM officer_sessions
+                WHERE session_date BETWEEN %s AND %s
+            """, (week_start, week_end))
+            active_officers = int(cursor.fetchone()['cnt'])
+
+            # Avg wait time
+            cursor.execute("""
+                SELECT COALESCE(AVG(wait_duration_minutes), 0) AS avg_wait FROM university_tokens
+                WHERE requested_at BETWEEN %s AND %s AND wait_duration_minutes IS NOT NULL
+            """, (week_start + ' 00:00:00', week_end + ' 23:59:59'))
+            avg_wait = round(float(cursor.fetchone()['avg_wait']), 1)
+
+            # Avg service time
+            cursor.execute("""
+                SELECT COALESCE(AVG(service_duration_minutes), 0) AS avg_service FROM university_tokens
+                WHERE completed_at BETWEEN %s AND %s AND service_duration_minutes IS NOT NULL
+            """, (week_start + ' 00:00:00', week_end + ' 23:59:59'))
+            avg_service = round(float(cursor.fetchone()['avg_service']), 1)
+
+            weeks_data.append({
+                'week_start': week_start,
+                'week_end': week_end,
+                'label': f"W{datetime.strptime(week_start, '%Y-%m-%d').isocalendar()[1]}",
+                'tokens_created': tokens_created,
+                'total_hours': round(total_minutes / 60, 1),
+                'active_officers': active_officers,
+                'avg_wait_minutes': avg_wait,
+                'avg_service_minutes': avg_service,
+            })
+
+        weeks_data.reverse()
+
+        # Per-office demand over weeks
+        cursor.execute("""
+            SELECT off.id, off.office_code, off.office_name
+            FROM offices off WHERE off.is_active = 1
+        """)
+        all_offices = cursor.fetchall()
+
+        office_trends = []
+        for off in all_offices:
+            weekly = []
+            for w in range(num_weeks):
+                week_end = (today - timedelta(weeks=w)).strftime('%Y-%m-%d')
+                week_start = (datetime.strptime(week_end, '%Y-%m-%d') - timedelta(days=4)).strftime('%Y-%m-%d')
+                cursor.execute("""
+                    SELECT COUNT(*) AS cnt FROM university_tokens
+                    WHERE office_id = %s AND requested_at BETWEEN %s AND %s
+                """, (off['id'], week_start + ' 00:00:00', week_end + ' 23:59:59'))
+                weekly.append(int(cursor.fetchone()['cnt']))
+            weekly.reverse()
+            office_trends.append({
+                'office_id': off['id'],
+                'office_code': off['office_code'],
+                'office_name': off['office_name'],
+                'weekly_tokens': weekly
+            })
+
+        # Top officers by attendance
+        cursor.execute("""
+            SELECT o.id, o.officer_name, o.officer_number,
+                   COUNT(DISTINCT s.session_date) AS days_attended,
+                   COALESCE(SUM(TIMESTAMPDIFF(MINUTE, s.login_time, COALESCE(s.logout_time, NOW()))), 0) AS total_minutes,
+                   COALESCE(SUM(s.tokens_served), 0) AS total_served
+            FROM officer_sessions s
+            JOIN officers o ON s.officer_id = o.id
+            WHERE s.session_date >= %s
+            GROUP BY o.id, o.officer_name, o.officer_number
+            ORDER BY days_attended DESC, total_minutes DESC
+            LIMIT 10
+        """, ((today - timedelta(days=num_weeks * 7)).strftime('%Y-%m-%d'),))
+        top_officers = cursor.fetchall()
+        for row in top_officers:
+            row['total_minutes'] = int(row['total_minutes'])
+            row['total_served'] = int(row['total_served'])
+            row['days_attended'] = int(row['days_attended'])
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'weeks': weeks_data,
+            'office_trends': office_trends,
+            'top_officers': top_officers,
+        })
+
+    except Exception as e:
+        logger.error(f"Error fetching attendance trends: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/admin/attendance-log', methods=['GET'])
+def admin_attendance_log():
+    """Flat event log of all In/Out clock events for a given week."""
+    try:
+        week_start = request.args.get('week', '')
+        if not week_start:
+            today = datetime.now()
+            week_start = (today - timedelta(days=today.weekday())).strftime('%Y-%m-%d')
+
+        week_end_dt = datetime.strptime(week_start, '%Y-%m-%d') + timedelta(days=4)
+        week_end = week_end_dt.strftime('%Y-%m-%d')
+        fmt_dt = '%Y-%m-%d %H:%i:%s'
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT
+                s.id AS session_id,
+                DATE_FORMAT(s.login_time, %s) AS login_time,
+                DATE_FORMAT(s.logout_time, %s) AS logout_time,
+                s.login_location,
+                s.device_info,
+                o.id AS officer_id,
+                o.officer_name,
+                o.officer_number,
+                off.office_name,
+                off.location AS office_location
+            FROM officer_sessions s
+            JOIN officers o ON s.officer_id = o.id
+            JOIN offices off ON s.office_id = off.id
+            WHERE s.session_date BETWEEN %s AND %s
+            ORDER BY s.login_time, s.id
+        """, (fmt_dt, fmt_dt, week_start, week_end))
+
+        rows = cursor.fetchall()
+        log = []
+        for row in rows:
+            device = 'Desktop'
+            ua = (row['device_info'] or '')
+            s = ua.lower()
+            if re.search(r'(iphone|ipod|opera mini|blackberry|android.*mobile)', s):
+                device = 'Mobile'
+            elif re.search(r'(ipad|tablet|playbook|silk|android(?!.*mobile))', s):
+                device = 'Tablet'
+
+            log.append({
+                'datetime': row['login_time'],
+                'type': 'In',
+                'location': row['login_location'] or 'N/A',
+                'office_name': row['office_name'],
+                'office_location': row['office_location'] or '',
+                'device': device,
+                'officer_name': row['officer_name'],
+                'officer_number': row['officer_number'],
+            })
+            if row['logout_time']:
+                log.append({
+                    'datetime': row['logout_time'],
+                    'type': 'Out',
+                    'location': row['login_location'] or 'N/A',
+                    'office_name': row['office_name'],
+                    'office_location': row['office_location'] or '',
+                    'device': device,
+                    'officer_name': row['officer_name'],
+                    'officer_number': row['officer_number'],
+                })
+
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'log': log, 'week_start': week_start, 'week_end': week_end})
+
+    except Exception as e:
+        logger.error(f"Error fetching attendance log: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# ============================================
 # TEXT-TO-SPEECH (edge-tts)
 # ============================================
 @app.route('/api/tts', methods=['POST'])
@@ -2364,8 +3212,22 @@ application = app
 # ============================================
 if __name__ == '__main__':
     PORT = int(os.environ.get('PORT', 5000))
+
+    # Run session expiry on startup + schedule every 5 minutes
+    import threading
+    def session_cleanup_loop():
+        while True:
+            try:
+                auto_expire_sessions()
+            except Exception:
+                pass
+            time.sleep(300)
+
+    t = threading.Thread(target=session_cleanup_loop, daemon=True)
+    t.start()
+
     print("=" * 55)
-    print("MAKERERE UNIVERSITY QUEUE SYSTEM API")
+    print("SMQSS — Smart Queue Management System API (Piloted at Makerere University)")
     print("=" * 55)
     print(f"Server starting on port {PORT}")
     print()
@@ -2379,5 +3241,11 @@ if __name__ == '__main__':
     print("  - Public display with real-time called tokens")
     print("  - Voice announcements for called/serving tokens")
     print("  - Recall logging for public display synchronization")
+    print()
+    print(f"  >>> Login URL: http://127.0.0.1:{PORT}/login/{LOGIN_TOKEN}")
+    print(f"  >>> Workflow URL: http://127.0.0.1:{PORT}/workflow/{WORKFLOW_TOKEN}")
+    print(f"  >>> Admin URL: http://127.0.0.1:{PORT}/admin/{ADMIN_TOKEN}")
+    print(f"  >>> Officer URL: http://127.0.0.1:{PORT}/officer/{OFFICER_TOKEN}")
+    print(f"  >>> Feedback URL: http://127.0.0.1:{PORT}/feedback.html/{FEEDBACK_TOKEN}/TOKEN")
     print("=" * 55)
-    app.run(host='0.0.0.0', port=PORT, debug=True)
+    app.run(host='0.0.0.0', port=PORT, debug=os.environ.get('FLASK_ENV') == 'development')

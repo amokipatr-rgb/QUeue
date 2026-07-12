@@ -3,21 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - Makerere University</title>
+    <title>Admin Dashboard — SMQSS</title>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
             --green-dark: #1a3c2c;
             --green-mid: #2a5a3a;
             --green-light: #e8f5e9;
+            --green-hover: #1f4e35;
             --gold: #ffd700;
             --gold-dim: #b8960a;
             --bg: #f0f2f5;
             --white: #ffffff;
             --border: #e4e8ee;
-            --text-primary: #1a2332;
-            --text-secondary: #6b7a90;
-            --text-muted: #9ba8bb;
+            --text-primary: #0a0f18;
+            --text-secondary: #2a3a4e;
+            --text-muted: #4a5a6e;
             --red: #e53935;
             --red-light: #ffebee;
             --blue: #1565c0;
@@ -28,15 +29,20 @@
             --success-light: #e8f5e9;
             --shadow-sm: 0 1px 4px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04);
             --shadow-md: 0 4px 16px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04);
+            --shadow-lg: 0 8px 32px rgba(0,0,0,0.12);
             --radius: 12px;
             --radius-lg: 16px;
             --radius-sm: 8px;
+            --sidebar-width: 256px;
+            --topbar-height: 64px;
+            --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
         * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             font-family: 'Plus Jakarta Sans', sans-serif;
+            font-weight: 500;
             background: var(--bg);
             min-height: 100vh;
             display: flex;
@@ -45,8 +51,22 @@
         }
 
         /* ── SIDEBAR ── */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 99;
+            opacity: 0;
+            transition: opacity var(--transition);
+        }
+        .sidebar-overlay.open {
+            display: block;
+            opacity: 1;
+        }
+
         .sidebar {
-            width: 256px;
+            width: var(--sidebar-width);
             min-height: 100vh;
             background: var(--white);
             display: flex;
@@ -58,6 +78,7 @@
             overflow-y: auto;
             flex-shrink: 0;
             border-right: 1px solid var(--border);
+            transition: transform var(--transition);
         }
 
         .sidebar-logo {
@@ -147,69 +168,98 @@
 
         .sidebar-spacer { flex: 1; }
 
+        /* ── HAMBURGER ── */
+        .hamburger {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            width: 40px;
+            height: 40px;
+            border: none;
+            background: none;
+            cursor: pointer;
+            color: var(--text-primary);
+            padding: 8px;
+            border-radius: var(--radius-sm);
+            flex-shrink: 0;
+        }
+        .hamburger:hover { background: var(--green-light); }
+        .hamburger svg { width: 22px; height: 22px; }
+
         /* ── TOPBAR ── */
         .main-wrapper {
-            margin-left: 256px;
+            margin-left: var(--sidebar-width);
             flex: 1;
             display: flex;
             flex-direction: column;
             min-height: 100vh;
+            transition: margin var(--transition);
         }
 
         .topbar {
             background: var(--white);
-            padding: 0 28px;
-            height: 64px;
+            padding: 0 24px;
+            height: var(--topbar-height);
             border-bottom: 1px solid var(--border);
             display: flex; align-items: center; justify-content: space-between;
             position: sticky; top: 0; z-index: 50;
-            box-shadow: 0 1px 0 var(--border);
         }
 
-        /* Header alerts (success / error) — directly under top bar */
-        .header-alert-slot {
-            margin: 0;
-            padding: 0 28px;
-            min-height: 0;
-            transition: min-height 0.2s ease;
-            position: sticky;
-            top: 64px;
-            z-index: 49;
-            background: var(--bg);
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 99999;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            pointer-events: none;
         }
-        .header-alert-slot.visible { min-height: 1px; }
-        .header-alert {
-            margin-bottom: 12px;
-            padding: 11px 18px;
-            border-radius: var(--radius-sm);
-            font-size: 13.5px;
-            font-weight: 650;
-            line-height: 1.35;
-            box-shadow: var(--shadow-sm);
-            animation: alertIn 0.25s ease;
-            border: 1px solid transparent;
+        .toast-item {
+            pointer-events: auto;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 22px 12px 18px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            line-height: 1.4;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.18);
+            animation: toastIn 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            max-width: 480px;
+            cursor: pointer;
+            color: #fff;
+            border: 1px solid rgba(255,255,255,0.12);
         }
-        .header-alert--success {
-            background: var(--success-light);
-            color: #14632a;
-            border-color: rgba(0,168,79,0.25);
+        .toast-item--success {
+            background: linear-gradient(135deg, #1a7a3a, #2a9a4a);
         }
-        .header-alert--error {
-            background: var(--red-light);
-            color: #b71c1c;
-            border-color: rgba(229,57,53,0.25);
+        .toast-item--error {
+            background: linear-gradient(135deg, #b71c1c, #e53935);
         }
-        @keyframes alertIn {
-            from { opacity: 0; transform: translateY(-8px); }
+        @keyframes toastIn {
+            from { opacity: 0; transform: translateY(-24px) scale(0.92); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        @keyframes toastOut {
+            from { opacity: 1; transform: translateY(0) scale(1); }
+            to { opacity: 0; transform: translateY(-16px) scale(0.95); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
             to { opacity: 1; transform: translateY(0); }
         }
-        .topbar-left { display: flex; align-items: center; gap: 14px; }
-        .topbar-divider {
-            width: 1px; height: 24px; background: var(--border);
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
-        .topbar-title { font-size: 16px; font-weight: 800; color: var(--green-dark); letter-spacing: -0.02em; }
-        .topbar-sub { font-size: 11.5px; color: var(--text-muted); font-weight: 500; margin-top: 1px; }
-        .topbar-right { display: flex; align-items: center; gap: 10px; }
+        .topbar-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
+        .topbar-title-wrap { min-width: 0; }
+        .topbar-title { font-size: 16px; font-weight: 800; color: var(--green-dark); letter-spacing: -0.02em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .topbar-sub { font-size: 11.5px; color: var(--text-muted); font-weight: 500; margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .topbar-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 
         .btn-primary {
             background: linear-gradient(135deg, var(--green-dark), var(--green-mid));
@@ -218,56 +268,43 @@
             font-size: 12.5px; display: inline-flex; align-items: center; gap: 7px;
             transition: all 0.2s; letter-spacing: -0.01em;
             font-family: inherit; box-shadow: 0 2px 8px rgba(26,60,44,0.3);
+            white-space: nowrap;
         }
         .btn-primary:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(26,60,44,0.4); }
         .btn-primary svg { width: 14px; height: 14px; }
+
+        .btn-logout {
+            display: inline-flex; align-items: center; gap: 7px;
+            background: var(--red-light); color: var(--red);
+            border: 1px solid rgba(229,57,53,0.2);
+            padding: 8px 14px; border-radius: var(--radius-sm);
+            cursor: pointer; font-size: 12.5px; font-weight: 700;
+            transition: all 0.2s; font-family: inherit;
+            white-space: nowrap;
+        }
+        .btn-logout:hover { background: #ffcdd2; border-color: rgba(229,57,53,0.4); }
+        .btn-logout svg { width: 14px; height: 14px; }
 
         /* ── CHANGE PIN FORM ── */
         .pin-form-wrap {
             max-width: 480px;
             background: var(--white);
             border-radius: var(--radius);
-            padding: 32px;
+            padding: 28px;
             box-shadow: var(--shadow-sm);
             border: 1px solid var(--border);
             margin-top: 4px;
         }
-        .pin-form-wrap .form-group {
-            margin-bottom: 20px;
-        }
-        .pin-form-wrap label {
-            display: block;
-            font-size: 13px;
-            font-weight: 600;
-            color: var(--text-primary);
-            margin-bottom: 6px;
-        }
-        .pin-form-wrap input[type="password"],
-        .pin-form-wrap input[type="text"] {
-            width: 100%;
-            padding: 10px 14px;
-            border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
-            font-size: 14px;
-            font-family: inherit;
-            outline: none;
-            transition: border-color .2s;
-        }
-        .pin-form-wrap input[type="password"]:focus,
-        .pin-form-wrap input[type="text"]:focus {
-            border-color: var(--green-mid);
-        }
+        .pin-form-wrap .form-group { margin-bottom: 20px; }
         .pin-input-wrap {
             display: flex;
             align-items: center;
-            border: 1px solid var(--border);
+            border: 1.5px solid var(--border);
             border-radius: var(--radius-sm);
             background: var(--white);
             transition: border-color .2s;
         }
-        .pin-input-wrap:focus-within {
-            border-color: var(--green-mid);
-        }
+        .pin-input-wrap:focus-within { border-color: var(--green-mid); }
         .pin-input-wrap input {
             flex: 1;
             border: none !important;
@@ -278,35 +315,21 @@
             background: transparent;
         }
         .pin-toggle-eye {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            width: 40px;
-            height: 40px;
-            cursor: pointer;
-            color: var(--text-muted);
-            background: none;
-            border: none;
-            padding: 0;
-            flex-shrink: 0;
+            display: flex; align-items: center; justify-content: center;
+            width: 40px; height: 40px;
+            cursor: pointer; color: var(--text-muted);
+            background: none; border: none; padding: 0; flex-shrink: 0;
         }
         .pin-toggle-eye:hover { color: var(--text-secondary); }
         .pin-toggle-eye svg { width: 18px; height: 18px; }
-        .pin-form-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 8px;
-        }
+        .pin-form-actions { display: flex; gap: 10px; margin-top: 8px; flex-wrap: wrap; }
         .pin-form-actions .btn-save {
             padding: 10px 24px;
             background: var(--green-mid);
-            color: #fff;
-            border: none;
+            color: #fff; border: none;
             border-radius: var(--radius-sm);
-            font-size: 14px;
-            font-weight: 600;
-            font-family: inherit;
-            cursor: pointer;
+            font-size: 14px; font-weight: 600;
+            font-family: inherit; cursor: pointer;
             transition: background .2s;
         }
         .pin-form-actions .btn-save:hover { background: var(--green-dark); }
@@ -316,40 +339,24 @@
             color: var(--text-secondary);
             border: 1px solid var(--border);
             border-radius: var(--radius-sm);
-            font-size: 14px;
-            font-weight: 600;
-            font-family: inherit;
-            cursor: pointer;
+            font-size: 14px; font-weight: 600;
+            font-family: inherit; cursor: pointer;
             transition: background .2s;
         }
         .pin-form-actions .btn-cancel:hover { background: var(--bg); }
         .pin-toast {
             padding: 12px 18px;
             border-radius: var(--radius-sm);
-            font-size: 13px;
-            font-weight: 500;
-            margin-top: 16px;
-            display: none;
+            font-size: 13px; font-weight: 500;
+            margin-top: 16px; display: none;
         }
         .pin-toast.success { display: block; background: var(--success-light); color: var(--success); border: 1px solid #b7dfb9; }
         .pin-toast.error { display: block; background: var(--red-light); color: var(--red); border: 1px solid #f5c6cb; }
-        /* ── END CHANGE PIN ── */
-
-        .btn-logout {
-            display: inline-flex; align-items: center; gap: 7px;
-            background: var(--red-light); color: var(--red);
-            border: 1px solid rgba(229,57,53,0.2);
-            padding: 8px 14px; border-radius: var(--radius-sm);
-            cursor: pointer; font-size: 12.5px; font-weight: 700;
-            transition: all 0.2s; font-family: inherit;
-        }
-        .btn-logout:hover { background: #ffcdd2; border-color: rgba(229,57,53,0.4); }
-        .btn-logout svg { width: 14px; height: 14px; }
 
         /* ── CONTENT ── */
-        .content-area { padding: 26px 28px; flex: 1; }
+        .content-area { padding: 24px; flex: 1; }
 
-        .page { display: none; }
+        .page { display: none; animation: fadeIn 0.2s ease; }
         .page.active { display: block; }
 
         /* ── STATS GRID ── */
@@ -357,11 +364,11 @@
             display: grid;
             grid-template-columns: repeat(4, 1fr);
             gap: 16px;
-            margin-bottom: 28px;
+            margin-bottom: 24px;
         }
         .stat-card {
-            background: var(--white); border-radius: var(--radius-lg);
-            padding: 20px 22px;
+            background: var(--white); border-radius: var(--radius);
+            padding: 20px;
             box-shadow: var(--shadow-sm);
             border: 1px solid var(--border);
             position: relative; overflow: hidden;
@@ -374,42 +381,41 @@
         .stat-card.orange::before { background: var(--orange); }
         .stat-card.blue::before { background: var(--blue); }
         .stat-card.green::before { background: var(--success); }
-
-        .stat-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; }
+        .stat-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; gap: 8px; }
         .stat-icon-wrap {
             width: 40px; height: 40px; border-radius: 10px;
             display: flex; align-items: center; justify-content: center;
             background: var(--green-light);
+            flex-shrink: 0;
         }
         .stat-card.orange .stat-icon-wrap { background: var(--orange-light); }
         .stat-card.blue .stat-icon-wrap { background: var(--blue-light); }
         .stat-card.green .stat-icon-wrap { background: var(--success-light); }
         .stat-icon-wrap svg { width: 19px; height: 19px; }
-
-        .stat-number { font-size: 34px; font-weight: 800; color: var(--text-primary); line-height: 1; letter-spacing: -0.03em; }
-        .stat-label { color: var(--text-muted); font-size: 12px; font-weight: 600; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
+        .stat-number { font-size: clamp(24px, 4vw, 34px); font-weight: 800; color: var(--text-primary); line-height: 1; letter-spacing: -0.03em; }
+        .stat-label { color: var(--text-muted); font-size: 11px; font-weight: 600; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.04em; }
 
         /* ── SECTION ── */
-        .section { margin-bottom: 30px; }
+        .section { margin-bottom: 24px; }
         .section-header {
             display: flex; align-items: center; justify-content: space-between;
-            margin-bottom: 16px;
+            margin-bottom: 14px; gap: 12px; flex-wrap: wrap;
         }
         .section-title {
             font-size: 14px; font-weight: 800; color: var(--text-primary);
             display: flex; align-items: center; gap: 8px; letter-spacing: -0.01em;
         }
-        .section-title svg { width: 16px; height: 16px; color: var(--green-dark); }
+        .section-title svg { width: 16px; height: 16px; color: var(--green-dark); flex-shrink: 0; }
 
         /* ── OFFICE CARDS ── */
         .offices-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(380px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
             gap: 16px;
         }
         .office-card {
-            background: var(--white); border-radius: var(--radius-lg);
-            padding: 20px 22px;
+            background: var(--white); border-radius: var(--radius);
+            padding: 20px;
             box-shadow: var(--shadow-sm);
             border: 1px solid var(--border);
             transition: box-shadow 0.2s, transform 0.2s;
@@ -418,13 +424,14 @@
 
         .office-card-header {
             display: flex; align-items: center; justify-content: space-between;
-            margin-bottom: 6px;
+            margin-bottom: 6px; gap: 8px;
         }
         .office-card-name { font-size: 14.5px; font-weight: 800; color: var(--green-dark); letter-spacing: -0.02em; }
         .office-code-badge {
             background: var(--green-light); color: var(--green-dark);
             font-size: 10px; font-weight: 800; padding: 3px 10px; border-radius: 20px;
             border: 1px solid rgba(26,60,44,0.1);
+            flex-shrink: 0;
         }
         .office-unavail-badge {
             font-size: 9px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.04em;
@@ -434,21 +441,16 @@
             white-space: nowrap;
         }
         .office-unavail-hint {
-            font-size: 11px;
-            color: var(--orange);
-            font-weight: 600;
-            margin-top: 8px;
-            line-height: 1.35;
-            padding: 8px 10px;
-            background: var(--orange-light);
-            border-radius: var(--radius-sm);
-            border: 1px solid rgba(239,108,0,0.2);
+            font-size: 11px; color: var(--orange); font-weight: 600;
+            margin-top: 8px; line-height: 1.35;
+            padding: 8px 10px; background: var(--orange-light);
+            border-radius: var(--radius-sm); border: 1px solid rgba(239,108,0,0.2);
         }
         .office-location {
             font-size: 11.5px; color: var(--text-muted); margin-top: 2px;
             display: flex; align-items: center; gap: 5px; font-weight: 500;
         }
-        .office-location svg { width: 11px; height: 11px; }
+        .office-location svg { width: 11px; height: 11px; flex-shrink: 0; }
 
         .services-container {
             margin: 14px 0 10px;
@@ -458,9 +460,9 @@
         .services-title {
             font-size: 11px; font-weight: 700; color: var(--text-secondary);
             margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between;
-            text-transform: uppercase; letter-spacing: 0.05em;
+            text-transform: uppercase; letter-spacing: 0.05em; gap: 8px; flex-wrap: wrap;
         }
-        .services-list-mini { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+        .services-list-mini { display: flex; flex-wrap: wrap; gap: 6px; }
         .service-tag {
             background: var(--green-light); border: 1px solid rgba(26,60,44,0.08);
             padding: 4px 8px; border-radius: 8px; font-size: 10.5px; color: var(--green-dark);
@@ -489,7 +491,7 @@
 
         .btn-sm {
             display: inline-flex; align-items: center; gap: 5px;
-            padding: 6px 11px; border-radius: 7px; cursor: pointer;
+            padding: 7px 12px; border-radius: 7px; cursor: pointer;
             font-size: 11.5px; font-weight: 700; border: none; font-family: inherit;
             transition: all 0.15s;
         }
@@ -512,10 +514,8 @@
         .btn-success svg { width: 11px; height: 11px; }
 
         .toolbar-row {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            flex-wrap: wrap;
+            display: flex; align-items: center;
+            gap: 10px; flex-wrap: wrap;
             margin-bottom: 14px;
         }
         .toolbar-row input[type="date"] {
@@ -528,27 +528,26 @@
             color: var(--text-primary);
         }
         .qa-hint {
-            font-size: 12px;
-            color: var(--text-secondary);
-            line-height: 1.5;
-            margin-bottom: 14px;
-            max-width: 900px;
+            font-size: 12px; color: var(--text-secondary);
+            line-height: 1.5; margin-bottom: 14px;
         }
 
         /* ── TABLE ── */
         .table-wrap {
-            background: var(--white); border-radius: var(--radius-lg);
-            box-shadow: var(--shadow-sm); overflow: auto;
+            background: var(--white); border-radius: var(--radius);
+            box-shadow: var(--shadow-sm); overflow-x: auto;
             border: 1px solid var(--border);
+            -webkit-overflow-scrolling: touch;
         }
-        .data-table { width: 100%; border-collapse: collapse; min-width: 600px; }
+        .data-table { width: 100%; border-collapse: collapse; min-width: 600px; font-size: 13px; }
         .data-table th {
-            background: var(--bg); padding: 12px 18px; text-align: left;
+            background: var(--bg); padding: 12px 16px; text-align: left;
             font-size: 10.5px; color: var(--text-muted); font-weight: 700;
             text-transform: uppercase; border-bottom: 1px solid var(--border); letter-spacing: 0.06em;
+            white-space: nowrap;
         }
         .data-table td {
-            padding: 13px 18px; font-size: 13.5px; color: var(--text-primary);
+            padding: 12px 16px; font-size: 13.5px; color: var(--text-primary);
             border-bottom: 1px solid var(--border);
         }
         .data-table tr:last-child td { border-bottom: none; }
@@ -557,8 +556,9 @@
         .status-pill {
             display: inline-flex; align-items: center; gap: 5px;
             padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 700;
+            white-space: nowrap;
         }
-        .status-dot { width: 6px; height: 6px; border-radius: 50%; }
+        .status-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
         .pill-available { background: var(--success-light); color: #1b7a30; }
         .pill-available .status-dot { background: var(--success); }
         .pill-busy { background: var(--orange-light); color: #bf6c00; }
@@ -573,13 +573,14 @@
         /* ── MODAL ── */
         .modal-overlay {
             display: none; position: fixed; inset: 0;
-            background: rgba(15,30,20,0.6); backdrop-filter: blur(4px);
+            background: rgba(15,30,20,0.5); backdrop-filter: blur(4px);
             z-index: 1000; align-items: center; justify-content: center;
+            padding: 16px;
         }
         .modal-overlay.open { display: flex; }
         .modal-box {
-            background: var(--white); border-radius: var(--radius-lg); padding: 28px 30px;
-            width: 560px; max-width: 95%; max-height: 88vh; overflow-y: auto;
+            background: var(--white); border-radius: var(--radius); padding: 28px;
+            width: 560px; max-width: 100%; max-height: 85vh; overflow-y: auto;
             box-shadow: 0 20px 60px rgba(0,0,0,0.2);
         }
         .modal-header {
@@ -588,7 +589,7 @@
             border-bottom: 2px solid var(--green-light);
             display: flex; align-items: center; gap: 8px; letter-spacing: -0.02em;
         }
-        .modal-header svg { width: 18px; height: 18px; }
+        .modal-header svg { width: 18px; height: 18px; flex-shrink: 0; }
         .form-group { margin-bottom: 14px; }
         .form-group label {
             display: block; font-size: 11.5px; font-weight: 700;
@@ -658,23 +659,270 @@
             padding: 40px 20px; font-weight: 500; grid-column: 1/-1;
         }
 
+        /* ── ATTENDANCE ── */
+        .att-cell-times { font-size: 13px; font-weight: 700; color: var(--green-dark); line-height: 1.5; letter-spacing: 0.02em; }
+        .att-cell-dur { font-size: 11px; font-weight: 600; color: var(--text-secondary); }
+        .att-cell-absent { color: var(--text-muted); font-size: 13px; font-weight: 600; }
+
+        .att-action-btn {
+            background: var(--green-light);
+            border: none;
+            border-radius: 6px;
+            padding: 6px 10px;
+            cursor: pointer;
+            font-size: 16px;
+            line-height: 1;
+            transition: all .15s;
+        }
+        .att-action-btn:hover { background: var(--green-mid); transform: scale(1.1); }
+
+        /* ── OFFICER DETAIL MODAL ── */
+        .modal-overlay-officer {
+            display: none;
+            position: fixed; inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 999;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .modal-overlay-officer.open { display: flex; }
+        .modal-box-officer {
+            background: var(--white);
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-lg);
+            max-width: 900px;
+            width: 100%;
+            max-height: 85vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .modal-box-officer .modal-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 18px 24px;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+        }
+        .modal-box-officer .modal-header h2 {
+            font-size: 16px; font-weight: 800; color: var(--green-dark); margin: 0;
+        }
+        .modal-box-officer .modal-header .modal-close {
+            background: none; border: none; font-size: 22px; cursor: pointer;
+            color: var(--text-muted); padding: 4px 8px; border-radius: 4px;
+        }
+        .modal-box-officer .modal-header .modal-close:hover { background: var(--bg); color: var(--text-primary); }
+        .modal-box-officer .modal-body {
+            padding: 20px 24px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        .modal-box-officer .modal-body .officer-meta {
+            font-size: 13px; color: var(--text-secondary); margin-bottom: 16px;
+        }
+        .modal-box-officer .modal-body .officer-meta strong { color: var(--text-primary); font-weight: 700; }
+        .modal-box-officer table {
+            width: 100%; border-collapse: collapse; font-size: 13px;
+        }
+        .modal-box-officer th {
+            text-align: left; padding: 10px 12px; font-weight: 700; font-size: 12px;
+            color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em;
+            border-bottom: 2px solid var(--border);
+        }
+        .modal-box-officer td {
+            padding: 10px 12px; border-bottom: 1px solid var(--border-light, #eee);
+            font-weight: 600;
+        }
+        .modal-box-officer .modal-grade-bar {
+            margin-top: 16px; padding: 14px 18px; background: var(--green-light);
+            border-radius: var(--radius-sm); font-size: 14px; font-weight: 700; color: var(--green-dark);
+        }
+
+        .att-log-badge {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+        }
+        .att-log-badge--in {
+            background: var(--success-light);
+            color: var(--success);
+        }
+        .att-log-badge--out {
+            background: #f0f0f0;
+            color: var(--text-secondary);
+        }
+
+        /* Mobile attendance cards */
+        .att-mobile-cards { display: none; }
+        .att-card {
+            background: var(--white);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 12px;
+            cursor: pointer;
+            transition: box-shadow 0.15s;
+        }
+        .att-card:active { box-shadow: var(--shadow-sm); }
+        .att-card-header { margin-bottom: 8px; }
+        .att-card-header strong { font-size: 14px; color: var(--green-dark); }
+        .att-card-num { font-size: 11px; color: var(--text-muted); }
+        .att-card-meta { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+        .att-card-info {
+            display: flex; flex-wrap: wrap; gap: 8px;
+            font-size: 11px; color: var(--text-muted);
+            margin-bottom: 8px; padding-bottom: 8px;
+            border-bottom: 1px solid var(--border);
+        }
+        .att-card-info span { display: inline-flex; align-items: center; gap: 3px; }
+        .att-card-days {
+            display: flex; flex-wrap: wrap; gap: 4px;
+            margin-bottom: 8px;
+        }
+        .att-card-day {
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .att-card-day.present { background: var(--success-light); color: #1b7a30; }
+        .att-card-day.absent { background: var(--bg); color: var(--text-muted); }
+        .att-card-footer {
+            display: flex; justify-content: space-between;
+            font-size: 12px; font-weight: 600; color: var(--text-primary);
+            padding-top: 8px; border-top: 1px solid var(--border);
+        }
+
+        /* ── ATTENDANCE TABS ── */
+        .tab-item.active { color: var(--green-dark) !important; border-bottom-color: var(--green-dark) !important; }
+
+        /* ── HEAT MAP ── */
+        .hm-grid { display: flex; flex-direction: column; gap: 20px; }
+        .hm-office { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+        .hm-office-title { padding: 12px 16px; font-weight: 700; font-size: 14px; color: var(--text-primary); background: var(--green-light); border-bottom: 1px solid var(--border); }
+        .hm-wrap { overflow-x: auto; padding: 8px 4px; }
+        .hm-table { width: 100%; border-collapse: separate; border-spacing: 2px; font-size: 12px; min-width: 500px; }
+        .hm-table th { padding: 6px 4px; text-align: center; color: var(--text-muted); font-weight: 600; font-size: 10px; text-transform: uppercase; letter-spacing: 0.6px; }
+        .hm-table td { padding: 0; text-align: center; border-radius: 4px; cursor: default; transition: transform .15s; }
+        .hm-table td:hover { transform: scale(1.08); z-index: 2; position: relative; }
+        .hm-table td .hm-cell { display: block; padding: 10px 6px; font-weight: 700; font-size: 13px; border-radius: 4px; line-height: 1; font-family: 'Plus Jakarta Sans', sans-serif; }
+        .hm-table .hm-day-label { text-align: left; font-weight: 600; font-size: 11px; color: var(--text-secondary); padding: 6px 12px; white-space: nowrap; border: none; background: none; min-width: 40px; }
+        .hm-legend { display: flex; align-items: center; gap: 4px; margin-top: 16px; font-size: 11px; color: var(--text-muted); justify-content: center; flex-wrap: wrap; gap: 6px; }
+        .hm-legend-swatch { width: 24px; height: 16px; border-radius: 3px; border: 1px solid var(--border); }
+        .hm-meta { display: flex; gap: 20px; margin-top: 12px; font-size: 12px; color: var(--text-muted); justify-content: center; flex-wrap: wrap; }
+        .hm-meta span { display: inline-flex; align-items: center; gap: 4px; }
+
+        /* ── TRENDS ── */
+        .trend-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+        .trend-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 16px; }
+        .trend-card h4 { font-size: 13px; font-weight: 700; margin-bottom: 12px; color: var(--text-primary); }
+        .trend-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+        .trend-stat { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; text-align: center; }
+        .trend-stat-val { font-size: 22px; font-weight: 800; color: var(--green-dark); }
+        .trend-stat-lbl { font-size: 11px; color: var(--text-muted); margin-top: 2px; }
+        .trend-chart { position: relative; height: 120px; display: flex; align-items: flex-end; gap: 3px; padding: 4px 0; }
+        .trend-bar { flex: 1; background: var(--green-dark); border-radius: 3px 3px 0 0; min-height: 2px; position: relative; transition: background .2s; }
+        .trend-bar:hover { background: var(--mak-green-mid); }
+        .trend-bar-label { position: absolute; bottom: -18px; left: 50%; transform: translateX(-50%); font-size: 9px; color: var(--text-muted); white-space: nowrap; }
+        .trend-bar-val { position: absolute; top: -16px; left: 50%; transform: translateX(-50%); font-size: 9px; font-weight: 600; color: var(--text-secondary); }
+        .trend-busy-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+        .trend-busy-hour { text-align: center; padding: 6px 4px; border-radius: 4px; font-size: 10px; font-weight: 600; }
+
         /* ── RESPONSIVE ── */
-        @media (max-width: 960px) {
+
+        /* Tablet: collapse sidebar to icons */
+        @media (max-width: 1024px) {
             .sidebar { width: 64px; }
-            .logo-text, .admin-meta, .nav-item > span:not(.nav-icon),
-            .nav-section-label { display: none; }
-            .admin-pill { padding: 8px; justify-content: center; }
-            .nav-item { padding: 12px 16px; justify-content: center; }
-            .nav-badge { position: absolute; top: 6px; right: 6px; }
-            .sidebar-logo { padding: 16px 13px; justify-content: center; }
-            .logo-icon { margin: 0; }
+            .sidebar .logo-text,
+            .sidebar .admin-meta,
+            .sidebar .nav-item > span:not(.nav-icon),
+            .sidebar .nav-section-label { display: none; }
+            .sidebar .admin-pill { padding: 8px; justify-content: center; }
+            .sidebar .nav-item { padding: 12px 16px; justify-content: center; }
+            .sidebar .nav-badge { position: absolute; top: 6px; right: 6px; }
+            .sidebar .sidebar-logo { padding: 16px 13px; justify-content: center; }
+            .sidebar .logo-icon { margin: 0; }
             .main-wrapper { margin-left: 64px; }
-            .stats-grid { grid-template-columns: 1fr 1fr; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .offices-grid { grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); }
+            .trend-grid { grid-template-columns: 1fr; }
+            .trend-stats { grid-template-columns: repeat(2, 1fr); }
+            .feedback-analytics .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+        }
+
+        /* Mobile: hide sidebar, show hamburger */
+        @media (max-width: 768px) {
+            .hamburger { display: flex; }
+            .sidebar {
+                transform: translateX(-100%);
+                width: 280px;
+                box-shadow: 4px 0 24px rgba(0,0,0,0.15);
+            }
+            .sidebar.open { transform: translateX(0); }
+            .sidebar .logo-text,
+            .sidebar .admin-meta,
+            .sidebar .nav-item > span:not(.nav-icon),
+            .sidebar .nav-section-label { display: revert; }
+            .sidebar .admin-pill { padding: 12px 14px; justify-content: flex-start; }
+            .sidebar .nav-item { padding: 10px 20px; justify-content: flex-start; }
+            .sidebar .nav-badge { position: relative; top: auto; right: auto; }
+            .sidebar .sidebar-logo { padding: 20px 18px; justify-content: flex-start; }
+            .sidebar .logo-icon { margin: 0; }
+            .main-wrapper { margin-left: 0; }
+            .topbar { padding: 0 16px; }
+            .content-area { padding: 16px; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+            .stat-card { padding: 16px; }
+            .stat-number { font-size: clamp(20px, 6vw, 28px); }
             .offices-grid { grid-template-columns: 1fr; }
+            .modal-box { padding: 20px; border-radius: var(--radius-sm); margin: 8px; max-height: 90vh; }
+            .modal-overlay { padding: 8px; align-items: flex-end; }
+            .modal-overlay.open { align-items: flex-end; }
+            .pin-form-wrap { padding: 20px; }
+            .add-service-row { flex-wrap: wrap; }
+            .add-service-row input { flex: 1 1 100% !important; }
+            .table-wrap { border-radius: var(--radius-sm); }
+            .data-table th,
+            .data-table td { padding: 10px 12px; }
+            .trend-stats { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+            .feedback-analytics .stats-grid { grid-template-columns: repeat(2, 1fr) !important; }
+            footer { flex-direction: column; gap: 4px; text-align: center; padding: 12px 16px !important; }
+            .topbar-title { font-size: 14px; }
+            .topbar-sub { font-size: 10px; }
+            .btn-logout span { display: none; }
+            .topbar-divider { display: none; }
+        }
+
+        /* Small phones */
+        @media (max-width: 480px) {
+            .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; }
+            .stat-card { padding: 12px; }
+            .stat-icon-wrap { width: 32px; height: 32px; }
+            .stat-icon-wrap svg { width: 15px; height: 15px; }
+            .stat-number { font-size: clamp(18px, 5vw, 22px); }
+            .stat-label { font-size: 9px; }
+            .office-card { padding: 16px; }
+            .content-area { padding: 12px; }
+            .topbar-right .btn-primary { padding: 8px 12px; font-size: 11px; }
+            .toolbar-row input[type="date"] { font-size: 11px; padding: 6px 8px; }
+            .data-table { min-width: 100%; font-size: 12px; }
+            .data-table th,
+            .data-table td { padding: 8px 10px; }
+            .hm-table { min-width: 400px; }
+            .hm-table td .hm-cell { padding: 6px 4px; font-size: 11px; }
+        }
+
+        /* Mobile attendance: show cards, hide table */
+        @media (max-width: 768px) {
+            .att-table-desktop { display: none; }
+            .att-mobile-cards { display: block; }
         }
     </style>
 </head>
-<body>
+<body oncontextmenu="return false" onkeydown="if(event.key==='F12'||(event.ctrlKey&&event.shiftKey&&event.key==='I')||(event.ctrlKey&&event.shiftKey&&event.key==='J')||(event.ctrlKey&&event.key==='U')){event.preventDefault();return false}">
 
     <!-- SIDEBAR -->
     <div class="sidebar">
@@ -685,7 +933,7 @@
                 </svg>
             </div>
             <div class="logo-text">
-                <div class="logo-title">Makerere</div>
+                <div class="logo-title">SMQSS</div>
                 <div class="logo-sub">Admin Portal</div>
             </div>
         </div>
@@ -735,6 +983,14 @@
             </div>
                         <span>Working Status</span>
         </div>
+        <div class="nav-item" onclick="showPage('attendance', this)">
+            <div class="nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M12 14l1.5 1.5L16 13"/>
+                </svg>
+            </div>
+            <span>Officer Attendance</span>
+        </div>
         <div class="nav-item" onclick="showPage('feedback', this)">
             <div class="nav-icon">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
@@ -771,10 +1027,18 @@
         <div class="sidebar-spacer"></div>
     </div>
 
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
     <!-- MAIN WRAPPER -->
     <div class="main-wrapper">
         <div class="topbar">
             <div class="topbar-left">
+                <button class="hamburger" onclick="toggleSidebar()" aria-label="Toggle menu">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                        <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/>
+                        <line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                </button>
                 <div>
                     <div class="topbar-title" id="topbarTitle">Dashboard Overview</div>
                     <div class="topbar-sub" id="topbarSub">Manage Offices &amp; Services</div>
@@ -792,8 +1056,6 @@
                 </button>
             </div>
         </div>
-
-        <div class="header-alert-slot" id="headerAlertSlot" role="status" aria-live="polite"></div>
 
         <div class="content-area">
 
@@ -926,6 +1188,140 @@
                         </thead>
                         <tbody id="performanceTableBody"></tbody>
                     </table>
+                </div>
+            </div>
+
+            <!-- ATTENDANCE PAGE -->
+            <div class="page" id="page-attendance">
+                <div class="toolbar-row" style="flex-wrap:wrap;gap:8px">
+                    <label style="font-size:12px;font-weight:600;color:var(--text-muted)">Year:</label>
+                    <select id="attYear" onchange="onYearMonthChange()" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:inherit;font-weight:700;background:var(--white)">
+                    </select>
+                    <label style="font-size:12px;font-weight:600;color:var(--text-muted)">Month:</label>
+                    <select id="attMonth" onchange="onYearMonthChange()" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:inherit;font-weight:700;background:var(--white)">
+                    </select>
+                    <select id="attWeek" onchange="loadAttendance(true)" style="padding:7px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:inherit;font-weight:600;background:var(--white);min-width:200px">
+                        <option value="">Select week</option>
+                    </select>
+                    <button type="button" class="btn-primary" onclick="loadAttendance()">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                            <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+                        </svg>
+                        Refresh
+                    </button>
+                    <button type="button" class="btn-sm" id="attExportBtn" onclick="exportAttendanceCSV()" style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--white);cursor:pointer;font-size:12px;font-weight:600;color:var(--text-secondary);font-family:inherit">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:14px;height:14px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                        Export CSV
+                    </button>
+                </div>
+                <div style="font-size:13px;color:var(--text-secondary);margin-bottom:16px" id="attWeekLabel">Loading...</div>
+
+                <div style="margin-bottom:16px;display:flex;gap:10px;align-items:center">
+                    <form autocomplete="off" style="margin:0;padding:0;display:inline;flex:1;max-width:360px">
+                    <input type="text" id="attSearch" placeholder="Search officer by name..." oninput="filterAttendance()" style="width:100%;padding:8px 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;font-family:inherit">
+                    </form>
+                </div>
+
+                <div class="tab-bar" style="display:flex;gap:0;border-bottom:2px solid var(--border);margin-bottom:20px;overflow-x:auto;-webkit-overflow-scrolling:touch">
+                    <div class="tab-item active" data-tab="table" onclick="switchAttTab('table',this)" style="padding:10px 20px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;white-space:nowrap;flex-shrink:0">Weekly Table</div>
+                    <div class="tab-item" data-tab="heatmap" onclick="switchAttTab('heatmap',this)" style="padding:10px 20px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;white-space:nowrap;flex-shrink:0">Heat Map</div>
+                    <div class="tab-item" data-tab="trends" onclick="switchAttTab('trends',this)" style="padding:10px 20px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;white-space:nowrap;flex-shrink:0">Trends</div>
+                    <div class="tab-item" data-tab="log" onclick="switchAttTab('log',this)" style="padding:10px 20px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;white-space:nowrap;flex-shrink:0">Detailed Log</div>
+                </div>
+
+                <div id="attTabTable" class="att-tab-content" style="display:block">
+                    <div class="table-wrap att-table-desktop">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Officer</th>
+                                    <th>Office</th>
+                                    <th>Location</th>
+                                    <th>Device</th>
+                                    <th>Mon</th>
+                                    <th>Tue</th>
+                                    <th>Wed</th>
+                                    <th>Thu</th>
+                                    <th>Fri</th>
+                                    <th>Attend %</th>
+                                    <th>Monthly Grade</th>
+                                    <th>Served</th>
+                                    <th style="width:50px">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendanceTableBody"></tbody>
+                        </table>
+                    </div>
+                    <div id="attMobileCards" class="att-mobile-cards"></div>
+                </div>
+
+                <div id="attTabHeatmap" class="att-tab-content" style="display:none">
+                    <div class="toolbar-row" style="justify-content:flex-start;gap:12px;padding:0 0 16px 0">
+                        <label style="font-size:12px;font-weight:600;color:var(--text-muted)">Metric:</label>
+                        <select id="hmMetric" onchange="loadHeatmap()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:inherit">
+                            <option value="tokens">Token Demand</option>
+                            <option value="wait">Average Wait</option>
+                            <option value="officers">Available Officers</option>
+                        </select>
+                        <label style="font-size:12px;font-weight:600;color:var(--text-muted)">Office:</label>
+                        <select id="hmOffice" onchange="loadHeatmap()" style="padding:6px 10px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:12px;font-family:inherit">
+                            <option value="">All Offices</option>
+                        </select>
+                    </div>
+                    <div id="heatmapContainer" style="font-size:13px;color:var(--text-muted);padding:20px 0">Select a week to view heat map.</div>
+                </div>
+
+                <div id="attTabTrends" class="att-tab-content" style="display:none">
+                    <div id="trendsContainer" style="font-size:13px;color:var(--text-muted);padding:20px 0">Loading trends...</div>
+                </div>
+
+                <div id="attTabLog" class="att-tab-content" style="display:none">
+                    <div class="table-wrap">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>Date & Time</th>
+                                    <th>Type</th>
+                                    <th>Officer</th>
+                                    <th>Location</th>
+                                    <th>Org Details</th>
+                                    <th>Device</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attLogBody"></tbody>
+                        </table>
+                    </div>
+                    <div id="attLogEmpty" style="display:none;text-align:center;padding:30px;color:var(--text-muted)">No clock events for this week.</div>
+                </div>
+            </div>
+
+            <!-- OFFICER DETAIL MODAL -->
+            <div class="modal-overlay-officer" id="officerModal">
+                <div class="modal-box-officer">
+                    <div class="modal-header">
+                        <h2 id="officerModalTitle">Officer Details</h2>
+                        <button class="modal-close" onclick="closeOfficerModal()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="officer-meta" id="officerModalMeta"></div>
+                        <div style="overflow-x:auto">
+                            <table>
+                                <thead>
+                                    <tr>
+                                        <th>Date</th>
+                                        <th>Login</th>
+                                        <th>Logout</th>
+                                        <th>Duration</th>
+                                        <th>Location</th>
+                                        <th>Device</th>
+                                        <th>Served</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="officerModalBody"></tbody>
+                            </table>
+                        </div>
+                        <div id="officerModalSummary" class="modal-grade-bar"></div>
+                    </div>
                 </div>
             </div>
 
@@ -1143,7 +1539,7 @@
             </div>
         </div>
         <footer style="border-top:1px solid var(--border);padding:12px 28px;font-size:12px;color:var(--text-muted);display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
-            <span>&copy; 2026 Makerere University Queue Management System</span>
+            <span>&copy; 2026 Makerere University &mdash; SMQSS</span>
             <span>Admin Dashboard v1.0</span>
         </footer>
     </div>
@@ -1365,9 +1761,9 @@
 
         function checkLogin() {
             const loggedIn = sessionStorage.getItem('loggedInUser');
-            if (!loggedIn) { window.location.href = 'login.html'; return null; }
+            if (!loggedIn) { window.location.href = '/'; return null; }
             const user = JSON.parse(loggedIn);
-            if (user.role !== 'admin') { window.location.href = 'officer-dashboard.html'; return null; }
+            if (user.role !== 'admin') { window.location.href = '/'; return null; }
             return user;
         }
 
@@ -1381,7 +1777,19 @@
 
         function logout() {
             sessionStorage.removeItem('loggedInUser');
-            window.location.href = 'index.html';
+            window.location.href = '/';
+        }
+
+        function toggleSidebar() {
+            document.querySelector('.sidebar').classList.toggle('open');
+            document.getElementById('sidebarOverlay').classList.toggle('open');
+        }
+
+        function closeSidebarMobile() {
+            if (window.innerWidth <= 768) {
+                document.querySelector('.sidebar').classList.remove('open');
+                document.getElementById('sidebarOverlay').classList.remove('open');
+            }
         }
 
         function togglePinVis(inputId, btn) {
@@ -1471,11 +1879,14 @@
             const pg = document.getElementById('page-' + id);
             if (pg) pg.classList.add('active');
             if (navEl) navEl.classList.add('active');
+            closeSidebarMobile();
+            localStorage.setItem('adminActiveTab', id);
 
             const titles = {
                 overview: { title: 'Dashboard Overview', sub: 'Manage Offices & Services' },
                 offices: { title: 'Service Offices', sub: 'Manage offices and their services' },
                 officers: { title: 'Officers', sub: 'Manage officers and assignments' },
+                attendance: { title: 'Officer Attendance', sub: 'Weekly officer attendance and availability analysis' },
                 performance: { title: 'Working Status', sub: 'Users served per officer and desk activity for the selected day' },
                 queue: { title: 'Live Queue', sub: 'Real-time queue monitoring' },
                 feedback: { title: 'Feedback & Complaints', sub: 'Student ratings and complaints from completed and non-completed tokens' },
@@ -1501,18 +1912,14 @@
                         </svg>
                         Add New Officer
                     </button>`;
+            } else if (id === 'attendance') {
+                document.getElementById('topbarActions').innerHTML = '';
+                loadAttendance(true);
             } else if (id === 'feedback') {
                 document.getElementById('topbarActions').innerHTML = '';
                 loadFeedback();
             } else if (id === 'performance') {
-                document.getElementById('topbarActions').innerHTML = `
-                    <button type="button" class="btn-primary" onclick="exportOfficerServiceCSV()">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" style="width:14px;height:14px;">
-                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                            <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-                        </svg>
-                        Export CSV
-                    </button>`;
+                document.getElementById('topbarActions').innerHTML = '';
             } else {
                 document.getElementById('topbarActions').innerHTML = '';
             }
@@ -1521,19 +1928,24 @@
         function openModal(id) { document.getElementById(id).classList.add('open'); }
         function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
-        let headerAlertTimer = null;
-        function showToast(message, type = 'success') {
-            const slot = document.getElementById('headerAlertSlot');
-            if (!slot) return;
-            clearTimeout(headerAlertTimer);
-            const safe = escapeHtml(message);
-            const klass = type === 'error' ? 'header-alert--error' : 'header-alert--success';
-            slot.innerHTML = '<div class="header-alert ' + klass + '">' + safe + '</div>';
-            slot.classList.add('visible');
-            headerAlertTimer = setTimeout(() => {
-                slot.innerHTML = '';
-                slot.classList.remove('visible');
-            }, 5200);
+        function showToast(message, type) {
+            var c = document.getElementById('toastContainer');
+            if (!c) return;
+            var safe = escapeHtml(message);
+            var icon = type === 'error'
+                ? '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:18px;height:18px;flex-shrink:0"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>'
+                : '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="width:18px;height:18px;flex-shrink:0"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>';
+            var el = document.createElement('div');
+            el.className = 'toast-item toast-item--' + (type === 'error' ? 'error' : 'success');
+            el.innerHTML = icon + '<span>' + safe + '</span>';
+            c.appendChild(el);
+            var remove = function() {
+                if (!el.parentNode) return;
+                el.style.animation = 'toastOut 0.3s ease forwards';
+                setTimeout(function() { if (el.parentNode) el.parentNode.removeChild(el); }, 300);
+            };
+            setTimeout(remove, 3000);
+            el.addEventListener('click', remove);
         }
 
         async function apiCall(endpoint, method = 'GET', data = null) {
@@ -1741,7 +2153,7 @@
             if (!confirm('Reset all waiting students for this office?')) return;
             if (!currentAdmin || !currentAdmin.id) {
                 showToast('Session expired. Sign in again.', 'error');
-                window.location.href = 'login.html';
+                window.location.href = '/';
                 return;
             }
             const result = await apiCall(`/api/admin/office/${officeId}/reset`, 'POST', { officer_id: currentAdmin.id });
@@ -2150,7 +2562,6 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                                 ${escapeHtml(office.location || 'Main Campus')}
                     </div>
-                    ${officeAvailBadgesMarkup(office)}
                     <div class="services-container">
                         <div class="services-title">
                             <span>Services</span>
@@ -2370,10 +2781,637 @@
             }).join('');
         }
 
+        // ── ATTENDANCE ──
+        function getMonday(d) {
+            var date = new Date(d);
+            var day = date.getDay();
+            var diff = date.getDate() - day + (day === 0 ? -6 : 1);
+            date.setDate(diff);
+            return date.toISOString().slice(0, 10);
+        }
+
+        function formatMinutes(mins) {
+            if (!mins) return '0h';
+            var h = Math.floor(mins / 60);
+            var m = mins % 60;
+            return h + 'h' + (m ? m + 'm' : '');
+        }
+
+        function parseDevice(ua) {
+            if (!ua) return '—';
+            var s = String(ua).toLowerCase();
+            if (/(iphone|ipod|opera mini|blackberry|android.*mobile)/i.test(s)) return 'Mobile';
+            if (/(ipad|tablet|playbook|silk|android(?!.*mobile))/i.test(s)) return 'Tablet';
+            return 'Desktop';
+        }
+
+        var _attData = null;
+
+        // ── MONTH / WEEK SELECTORS ──
+        function populateYearMonthDropdowns() {
+            var now = new Date();
+            var yearSel = document.getElementById('attYear');
+            var monthSel = document.getElementById('attMonth');
+            var monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+            for (var y = 2020; y <= 2030; y++) {
+                var opt = document.createElement('option');
+                opt.value = y;
+                opt.textContent = y;
+                if (y === now.getFullYear()) opt.selected = true;
+                yearSel.appendChild(opt);
+            }
+
+            for (var m = 0; m < 12; m++) {
+                var opt2 = document.createElement('option');
+                opt2.value = String(m + 1).padStart(2, '0');
+                opt2.textContent = monthNames[m];
+                if (m === now.getMonth()) opt2.selected = true;
+                monthSel.appendChild(opt2);
+            }
+        }
+
+        function getWeeksOfMonth(year, month) {
+            var weeks = [];
+            var firstDay = new Date(year, month, 1);
+            var lastDay = new Date(year, month + 1, 0);
+            var firstMonday = new Date(firstDay);
+            while (firstMonday.getDay() !== 1) {
+                firstMonday.setDate(firstMonday.getDate() + 1);
+            }
+            var cur = new Date(firstMonday);
+            var wn = 1;
+            var mNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            while (cur <= lastDay) {
+                var fri = new Date(cur);
+                fri.setDate(fri.getDate() + 4);
+                if (fri <= lastDay) {
+                    var monVal = cur.getFullYear() + '-' + String(cur.getMonth() + 1).padStart(2, '0') + '-' + String(cur.getDate()).padStart(2, '0');
+                    var label = 'Week ' + wn + ' (' + mNames[cur.getMonth()] + ' ' + cur.getDate() + ' – ' + mNames[fri.getMonth()] + ' ' + fri.getDate() + ')';
+                    weeks.push({ monday: cur, value: monVal, label: label });
+                    wn++;
+                }
+                cur.setDate(cur.getDate() + 7);
+            }
+            return weeks;
+        }
+
+        function onYearMonthChange() {
+            var year = parseInt(document.getElementById('attYear').value);
+            var month = parseInt(document.getElementById('attMonth').value) - 1;
+            if (!year || month < 0) return;
+            var weeks = getWeeksOfMonth(year, month);
+            var weekSel = document.getElementById('attWeek');
+            weekSel.innerHTML = '';
+            if (!weeks.length) {
+                weekSel.innerHTML = '<option value="">No weeks in this month</option>';
+                return;
+            }
+            weeks.forEach(function(w) {
+                var opt = document.createElement('option');
+                opt.value = w.value;
+                opt.textContent = w.label;
+                weekSel.appendChild(opt);
+            });
+            weekSel.selectedIndex = 0;
+            loadAttendance(true);
+        }
+
+        async function loadAttendance(silent) {
+            var btn = document.querySelector('#page-attendance .btn-primary');
+            var origHTML = btn.innerHTML;
+            if (!silent) {
+                btn.disabled = true;
+                btn.innerHTML = '<span style="display:inline-block;animation:spin 0.8s linear infinite">&#x27F3;</span> Refreshing...';
+            }
+
+            var weekVal = document.getElementById('attWeek').value;
+            if (!weekVal) { if (!silent) { btn.disabled = false; btn.innerHTML = origHTML; } return; }
+            var d = new Date(weekVal + 'T00:00:00');
+            var monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            var dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+            var weekOfMonth = Math.ceil(d.getDate() / 7);
+            var startStr = dayNames[d.getDay()] + ' ' + monthNames[d.getMonth()] + ' ' + d.getDate();
+            var end = new Date(d);
+            end.setDate(end.getDate() + 4);
+            var endStr = dayNames[end.getDay()] + ' ' + monthNames[end.getMonth()] + ' ' + end.getDate() + ', ' + end.getFullYear();
+            document.getElementById('attWeekLabel').textContent = startStr + ' – ' + endStr + ' (Week ' + weekOfMonth + ')';
+
+            try {
+                var res = await fetch(API_BASE_URL + '/api/admin/officer-attendance?week=' + encodeURIComponent(weekVal));
+                var data = await res.json();
+                if (!data.success) { if (!silent) { showToast('Failed to load attendance', 'error'); btn.disabled = false; btn.innerHTML = origHTML; } return; }
+                _attData = data;
+                renderAttendance(data);
+                if (!silent) showToast('Attendance refreshed', 'success');
+            } catch(e) {
+                if (!silent) showToast('Failed to load attendance data', 'error');
+            }
+
+            if (!silent) { btn.disabled = false; btn.innerHTML = origHTML; }
+        }
+
+        function filterAttendance() {
+            if (!_attData) return;
+            var q = document.getElementById('attSearch').value.trim().toLowerCase();
+            if (!q) {
+                renderAttendance(_attData);
+                return;
+            }
+            var filtered = _attData.attendance.filter(function(o) {
+                return o.officer_name.toLowerCase().includes(q) || String(o.officer_number).toLowerCase().includes(q);
+            });
+            renderAttendance({success: true, attendance: filtered, week_start: _attData.week_start, week_end: _attData.week_end});
+        }
+
+        // ── OFFICER DETAIL MODAL ──
+        function closeOfficerModal() {
+            document.getElementById('officerModal').classList.remove('open');
+        }
+        async function viewOfficerDetail(officerId, officerName, officerNumber, officeName) {
+            var modal = document.getElementById('officerModal');
+            var tbody = document.getElementById('officerModalBody');
+            var meta = document.getElementById('officerModalMeta');
+            var title = document.getElementById('officerModalTitle');
+            var summary = document.getElementById('officerModalSummary');
+            tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)">Loading...</td></tr>';
+            summary.textContent = '';
+            modal.classList.add('open');
+
+            var monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            var year = parseInt(document.getElementById('attYear').value);
+            var month = parseInt(document.getElementById('attMonth').value);
+            var lastDay = new Date(year, month, 0).getDate();
+            var fromDate = year + '-' + String(month).padStart(2, '0') + '-01';
+            var toDate = year + '-' + String(month).padStart(2, '0') + '-' + String(lastDay).padStart(2, '0');
+
+            title.textContent = escapeHtml(officerName) + ' (#' + escapeHtml(officerNumber) + ')';
+            meta.innerHTML = '<strong>' + escapeHtml(officeName || '') + '</strong> &middot; ' + monthNames[month - 1] + ' ' + year;
+
+            try {
+                var res = await fetch(API_BASE_URL + '/api/admin/officer-attendance/' + officerId + '?from=' + fromDate + '&to=' + toDate);
+                var data = await res.json();
+                if (!data.success) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--red)">Failed to load data</td></tr>'; return; }
+
+                var sessions = data.sessions || [];
+                meta.innerHTML = '<strong>' + escapeHtml(officeName || '') + '</strong> &middot; ' + monthNames[month - 1] + ' ' + year + ' &middot; ' + sessions.length + ' session(s)';
+
+                if (!sessions.length) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)">No sessions this month</td></tr>';
+                    summary.textContent = '';
+                    return;
+                }
+
+                var totalMin = 0;
+                var rows = '';
+                sessions.forEach(function(s) {
+                    var date = s.session_date ? s.session_date.slice(5) : '—';
+                    var login = s.login_time ? s.login_time.slice(11, 16) : '—';
+                    var logout = s.logout_time ? s.logout_time.slice(11, 16) : '—';
+                    var dur = s.duration_minutes || 0;
+                    totalMin += dur;
+                    rows += '<tr>' +
+                        '<td>' + escapeHtml(date) + '</td>' +
+                        '<td>' + login + '</td>' +
+                        '<td>' + logout + '</td>' +
+                        '<td>' + formatMinutes(dur) + '</td>' +
+                        '<td style="font-size:12px">' + escapeHtml(s.login_location || '—') + '</td>' +
+                        '<td style="font-size:12px">' + parseDevice(s.device_info) + '</td>' +
+                        '<td><strong>' + (s.tokens_served || 0) + '</strong></td>' +
+                    '</tr>';
+                });
+                tbody.innerHTML = rows;
+
+                var dailyTarget = 540;
+                var workingDays = 0;
+                for (var dd = 1; dd <= lastDay; dd++) {
+                    var wd = new Date(year, month - 1, dd).getDay();
+                    if (wd >= 1 && wd <= 5) workingDays++;
+                }
+                var pct = Math.min(Math.round(totalMin / (dailyTarget * workingDays) * 100), 100);
+                summary.textContent = 'Monthly Attendance: ' + pct + '% (' + formatMinutes(totalMin) + ' of ' + (dailyTarget * workingDays / 60).toFixed(0) + 'h target)';
+
+            } catch(e) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--red)">Error loading data</td></tr>';
+            }
+        }
+        // Close modal on overlay click
+        document.getElementById('officerModal').addEventListener('click', function(e) {
+            if (e.target === this) closeOfficerModal();
+        });
+
+        function renderAttendance(data) {
+            var tbody = document.getElementById('attendanceTableBody');
+            var cards = document.getElementById('attMobileCards');
+            var list = data.attendance || [];
+            if (!list.length) {
+                tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;color:var(--text-muted);padding:30px;">No attendance data for this week</td></tr>';
+                if (cards) cards.innerHTML = '<div class="empty-state">No attendance data for this week</div>';
+                return;
+            }
+
+            function timeOnly(dtStr) {
+                if (!dtStr) return '—';
+                var parts = dtStr.split(' ');
+                return parts.length > 1 ? parts[1].slice(0, 5) : dtStr;
+            }
+
+            var dayLabels = ['Mon','Tue','Wed','Thu','Fri'];
+            var tableRows = '';
+            var cardHtml = '';
+            list.forEach(function(o, idx) {
+                var dayCells = '';
+                var cardDayCells = '';
+                for (var d = 0; d < 5; d++) {
+                    var dd = o.days[d];
+                    if (dd.present) {
+                        var sessions = dd.sessions || [];
+                        var s = sessions[0] || {};
+                        var login = timeOnly(s.login_time);
+                        var logout = timeOnly(s.logout_time);
+                        dayCells += '<td>' +
+                            '<div class="att-cell-times">' + login + '→' + logout + '</div>' +
+                            '<div class="att-cell-dur">' + formatMinutes(s.duration_minutes || 0) + '</div>' +
+                        '</td>';
+                        cardDayCells += '<span class="att-card-day present" title="' + escapeHtml(dd.date) + '">' + dayLabels[d] + ' ' + login + '→' + logout + '</span> ';
+                    } else {
+                        dayCells += '<td><span class="att-cell-absent">—</span></td>';
+                        cardDayCells += '<span class="att-card-day absent">' + dayLabels[d] + ' —</span> ';
+                    }
+                }
+
+                var firstDay = o.days.find(function(dd) { return dd.present; }) || o.days[0];
+                var loc = escapeHtml(firstDay.login_location || '—');
+                var dev = parseDevice(firstDay.device_info);
+                var deviceTitle = escapeAttr(firstDay.device_info || '');
+
+                // Desktop row
+                tableRows += '<tr>' +
+                    '<td><strong>' + escapeHtml(o.officer_name) + '</strong><br><span style="font-size:11px;color:var(--text-muted)">#' + o.officer_number + '</span></td>' +
+                    '<td style="font-weight:600">' + escapeHtml(o.office_name) + '</td>' +
+                    '<td style="font-size:12px;font-weight:600;color:var(--text-secondary)" title="' + escapeAttr(firstDay.login_location || '') + '">' + loc + '</td>' +
+                    '<td style="font-size:12px;font-weight:600;color:var(--text-secondary)" title="' + deviceTitle + '">' + dev + '</td>' +
+                    dayCells +
+                    '<td style="font-weight:700">' + o.availability_pct + '%</td>' +
+                    '<td style="font-weight:700">' + (o.monthly_grade_pct != null ? o.monthly_grade_pct + '%' : '—') + '</td>' +
+                    '<td><strong>' + o.tokens_served + '</strong></td>' +
+                    '<td><button class="att-action-btn" onclick="viewOfficerDetail(' + o.officer_id + ', \'' + escapeAttr(o.officer_name) + '\', \'' + escapeAttr(o.officer_number) + '\', \'' + escapeAttr(o.office_name) + '\')" title="View all data">👁</button></td>' +
+                '</tr>';
+
+                // Mobile card
+                cardHtml += '<div class="att-card">' +
+                    '<div class="att-card-header">' +
+                        '<div><strong>' + escapeHtml(o.officer_name) + '</strong> <span class="att-card-num">#' + o.officer_number + '</span></div>' +
+                        '<div class="att-card-meta">' + escapeHtml(o.office_name) + '</div>' +
+                    '</div>' +
+                    '<div class="att-card-info">' +
+                        '<span title="' + escapeAttr(firstDay.login_location || '') + '">📍 ' + loc + '</span>' +
+                        '<span title="' + deviceTitle + '">💻 ' + dev + '</span>' +
+                    '</div>' +
+                    '<div class="att-card-days">' + cardDayCells + '</div>' +
+                    '<div class="att-card-footer">' +
+                        '<span>⏱ ' + formatMinutes(o.total_minutes) + '</span>' +
+                        '<span>📊 ' + o.availability_pct + '%</span>' +
+                        '<span>📈 ' + (o.monthly_grade_pct != null ? o.monthly_grade_pct + '%' : '—') + '</span>' +
+                        '<span>✅ ' + o.tokens_served + ' served</span>' +
+                    '</div>' +
+                '</div>';
+            });
+            tbody.innerHTML = tableRows;
+            if (cards) cards.innerHTML = cardHtml;
+        }
+
+        function exportAttendanceCSV() {
+            if (!_attData || !_attData.attendance) { showToast('No attendance data to export', 'error'); return; }
+            var rows = [['Officer','Number','Office','Location','Mon','Tue','Wed','Thu','Fri','Total Hours','Attend %','Served']];
+            _attData.attendance.forEach(function(o) {
+                var dayVals = o.days.map(function(d) {
+                    return d.present ? (d.total_minutes / 60).toFixed(1) + 'h' : '—';
+                });
+                rows.push([
+                    o.officer_name,
+                    o.officer_number,
+                    o.office_code,
+                    o.location || '',
+                    dayVals[0], dayVals[1], dayVals[2], dayVals[3], dayVals[4],
+                    o.total_hours + 'h',
+                    o.availability_pct + '%',
+                    o.tokens_served
+                ]);
+            });
+            var csv = rows.map(function(r) { return r.map(function(c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(','); }).join('\n');
+            var blob = new Blob([csv], { type: 'text/csv' });
+            var a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'attendance_' + (_attData.week_start || 'week') + '.csv';
+            a.click();
+        }
+
+        // ── ATTENDANCE TABS ──
+        function switchAttTab(id, el) {
+            document.querySelectorAll('.att-tab-content').forEach(function(c) { c.style.display = 'none'; });
+            document.getElementById('attTab' + id.charAt(0).toUpperCase() + id.slice(1)).style.display = 'block';
+            document.querySelectorAll('.tab-item').forEach(function(t) { t.classList.remove('active'); });
+            if (el) el.classList.add('active');
+            if (id === 'heatmap') loadHeatmap();
+            if (id === 'trends') loadTrends();
+            if (id === 'log') loadAttendanceLog();
+        }
+
+        // ── HEAT MAP ──
+        var _hmData = null;
+
+        function loadHeatmap() {
+            var weekVal = document.getElementById('attWeek').value;
+            if (!weekVal) { document.getElementById('heatmapContainer').innerHTML = 'Please select a week first.'; return; }
+            var metric = document.getElementById('hmMetric').value;
+            var office = document.getElementById('hmOffice').value;
+            var url = API_BASE_URL + '/api/admin/heatmap?week=' + encodeURIComponent(weekVal) + '&metric=' + encodeURIComponent(metric);
+            if (office) url += '&office_id=' + office;
+
+            document.getElementById('heatmapContainer').innerHTML = 'Loading heat map...';
+            fetch(url).then(function(r) { return r.json(); }).then(function(data) {
+                if (!data.success) { document.getElementById('heatmapContainer').innerHTML = 'Failed to load heat map.'; return; }
+                _hmData = data;
+                renderHeatmap(data);
+                // Populate office dropdown
+                var sel = document.getElementById('hmOffice');
+                if (sel.options.length <= 1) {
+                    data.offices.forEach(function(o) {
+                        var opt = document.createElement('option');
+                        opt.value = o.office_id;
+                        opt.textContent = o.office_code + ' — ' + o.office_name;
+                        sel.appendChild(opt);
+                    });
+                }
+            }).catch(function() {
+                document.getElementById('heatmapContainer').innerHTML = 'Error loading heat map.';
+            });
+        }
+
+        function getHeatColor(val, maxVal, metric) {
+            if (maxVal === 0) return '#e8f5e9';
+            var pct = Math.min(val / maxVal, 1);
+            // System brand color stops: green-light -> gold -> red
+            // green-light: #e8f5e9, green-mid: #2a5a3a, gold: #ffd700, red: #e53935
+            var r, g, b;
+            if (metric === 'officers') {
+                // Low (understaffed) = red, High (well-staffed) = green
+                if (pct < 0.5) {
+                    var t = pct / 0.5;
+                    r = Math.round(229 + (42 - 229) * t);
+                    g = Math.round(53 + (90 - 53) * t);
+                    b = Math.round(53 + (58 - 53) * t);
+                } else {
+                    var t = (pct - 0.5) / 0.5;
+                    r = Math.round(42 + (26 - 42) * t);
+                    g = Math.round(90 + (60 - 90) * t);
+                    b = Math.round(58 + (42 - 58) * t);
+                }
+            } else {
+                // tokens/wait: Low (quiet/fast) = green-light, Medium = gold, High (busy/slow) = red
+                if (pct < 0.33) {
+                    var t = pct / 0.33;
+                    r = Math.round(232 + (255 - 232) * t);
+                    g = Math.round(245 + (215 - 245) * t);
+                    b = Math.round(233 + (0 - 233) * t);
+                } else if (pct < 0.66) {
+                    var t = (pct - 0.33) / 0.33;
+                    r = Math.round(255 + (229 - 255) * t);
+                    g = Math.round(215 + (53 - 215) * t);
+                    b = Math.round(0 + (53 - 0) * t);
+                } else {
+                    var t = (pct - 0.66) / 0.34;
+                    r = 229;
+                    g = Math.round(53 + (53 - 53) * t);
+                    b = Math.round(53 + (53 - 53) * t);
+                }
+            }
+            return 'rgb(' + Math.round(r) + ',' + Math.round(g) + ',' + Math.round(b) + ')';
+        }
+
+        function renderHeatmap(data) {
+            var container = document.getElementById('heatmapContainer');
+            var metric = data.metric;
+            var days = data.summary.days;
+            var hours = data.summary.hours;
+            var maxVal = data.max_value || 1;
+
+            var metricLabel = metric === 'tokens' ? 'tokens' : metric === 'wait' ? 'min' : 'officers';
+            var metricTitle = metric === 'tokens' ? 'Token Demand' : metric === 'wait' ? 'Avg Wait (min)' : 'Available Officers';
+
+            var html = '<div class="hm-grid">';
+
+            data.offices.forEach(function(off) {
+                html += '<div class="hm-office">';
+                html += '<div class="hm-office-title">' + escapeHtml(off.office_code) + ' — ' + escapeHtml(off.office_name) + '</div>';
+                html += '<div class="hm-wrap"><table class="hm-table"><thead><tr><th class="hm-day-label"></th>';
+                hours.forEach(function(h) {
+                    var ampm = h < 12 ? 'AM' : 'PM';
+                    var h12 = h <= 12 ? h : h - 12;
+                    html += '<th>' + h12 + ampm + '</th>';
+                });
+                html += '</tr></thead><tbody>';
+                days.forEach(function(d, di) {
+                    html += '<tr><td class="hm-day-label">' + d + '</td>';
+                    var dd = off.days[di];
+                    dd.hours.forEach(function(hh) {
+                        var bg = getHeatColor(hh.value, maxVal, metric);
+                        var intensity = maxVal > 0 ? hh.value / maxVal : 0;
+                        var textColor = intensity > 0.5 ? '#ffffff' : '#1a3c2c';
+                        var displayVal = metric === 'wait' ? hh.value + 'm' : hh.value;
+                        html += '<td title="' + d + ' ' + hh.label + ': ' + hh.value + ' ' + metricLabel + '" style="background:' + bg + '">';
+                        html += '<span class="hm-cell" style="color:' + textColor + '">' + displayVal + '</span>';
+                        html += '</td>';
+                    });
+                    html += '</tr>';
+                });
+                html += '</tbody></table></div></div>';
+            });
+
+            // Legend
+            var legendSteps = 5;
+            var legendColors = [];
+            for (var i = 0; i < legendSteps; i++) {
+                var pct = i / (legendSteps - 1);
+                legendColors.push(getHeatColor(pct * maxVal, maxVal, metric));
+            }
+            html += '<div class="hm-legend">';
+            html += '<span>Low</span>';
+            legendColors.forEach(function(c) {
+                html += '<span class="hm-legend-swatch" style="background:' + c + '"></span>';
+            });
+            html += '<span>High</span>';
+            html += '</div>';
+
+            html += '<div class="hm-meta">';
+            html += '<span>Metric: <strong>' + metricTitle + '</strong></span>';
+            if (data.summary.peak_hour) html += '<span>Peak hour: <strong>' + data.summary.peak_hour + '</strong></span>';
+            if (data.summary.busiest_office) html += '<span>Busiest office: <strong>' + escapeHtml(data.summary.busiest_office) + '</strong></span>';
+            html += '</div>';
+
+            html += '</div>';
+            container.innerHTML = html;
+        }
+
+        // ── TRENDS ──
+        function loadTrends() {
+            var container = document.getElementById('trendsContainer');
+            container.innerHTML = 'Loading trends...';
+            fetch(API_BASE_URL + '/api/admin/attendance-trends?weeks=8').then(function(r) { return r.json(); }).then(function(data) {
+                if (!data.success) { container.innerHTML = 'Failed to load trends.'; return; }
+                renderTrends(data);
+            }).catch(function() {
+                container.innerHTML = 'Error loading trends.';
+            });
+        }
+
+        function renderTrends(data) {
+            var container = document.getElementById('trendsContainer');
+            var weeks = data.weeks || [];
+            var officeTrends = data.office_trends || [];
+            var topOfficers = data.top_officers || [];
+
+            if (!weeks.length) { container.innerHTML = 'No trend data available yet.'; return; }
+
+            var html = '';
+
+            // Stats cards
+            var latest = weeks[weeks.length - 1];
+            var prev = weeks.length > 1 ? weeks[weeks.length - 2] : null;
+            var tokenChange = prev ? ((latest.tokens_created - prev.tokens_created) / prev.tokens_created * 100).toFixed(1) : 0;
+            var tokenChangeLabel = tokenChange > 0 ? '▲ ' + tokenChange + '%' : (tokenChange < 0 ? '▼ ' + Math.abs(tokenChange) + '%' : '—');
+
+            html += '<div class="trend-stats">';
+            html += '<div class="trend-stat"><div class="trend-stat-val">' + latest.tokens_created + '</div><div class="trend-stat-lbl">Tokens This Week <span style="font-size:10px;color:' + (tokenChange > 0 ? 'var(--red)' : 'var(--green-dark)') + '">' + tokenChangeLabel + '</span></div></div>';
+            html += '<div class="trend-stat"><div class="trend-stat-val">' + (latest.active_officers || 0) + '</div><div class="trend-stat-lbl">Active Officers</div></div>';
+            html += '<div class="trend-stat"><div class="trend-stat-val">' + (latest.avg_wait_minutes || 0) + 'm</div><div class="trend-stat-lbl">Avg Wait Time</div></div>';
+            html += '<div class="trend-stat"><div class="trend-stat-val">' + (latest.total_hours || 0) + 'h</div><div class="trend-stat-lbl">Staff Hours Logged</div></div>';
+            html += '</div>';
+
+            html += '<div class="trend-grid">';
+
+            // Chart 1: Tokens per week
+            var maxTokens = Math.max.apply(null, weeks.map(function(w) { return w.tokens_created; })) || 1;
+            html += '<div class="trend-card"><h4>Tokens Created per Week</h4><div class="trend-chart">';
+            weeks.forEach(function(w) {
+                var pct = (w.tokens_created / maxTokens * 80);
+                html += '<div class="trend-bar" style="height:' + Math.max(pct, 2) + '%" title="' + w.label + ': ' + w.tokens_created + ' tokens">';
+                html += '<span class="trend-bar-val">' + w.tokens_created + '</span>';
+                html += '<span class="trend-bar-label">' + w.label + '</span></div>';
+            });
+            html += '</div></div>';
+
+            // Chart 2: Staff hours per week
+            var maxHours = Math.max.apply(null, weeks.map(function(w) { return w.total_hours; })) || 1;
+            html += '<div class="trend-card"><h4>Staff Hours Logged per Week</h4><div class="trend-chart">';
+            weeks.forEach(function(w) {
+                var pct = (w.total_hours / maxHours * 80);
+                html += '<div class="trend-bar" style="height:' + Math.max(pct, 2) + '%;background:var(--mak-gold-bright)" title="' + w.label + ': ' + w.total_hours + 'h">';
+                html += '<span class="trend-bar-val">' + w.total_hours + '</span>';
+                html += '<span class="trend-bar-label">' + w.label + '</span></div>';
+            });
+            html += '</div></div>';
+
+            // Chart 3: Avg wait time (inverted: lower is better)
+            var maxWait = Math.max.apply(null, weeks.map(function(w) { return w.avg_wait_minutes; })) || 1;
+            html += '<div class="trend-card"><h4>Average Wait Time (min)</h4><div class="trend-chart">';
+            weeks.forEach(function(w) {
+                var pct = (w.avg_wait_minutes / maxWait * 80);
+                var isHigh = w.avg_wait_minutes > maxWait * 0.7;
+                html += '<div class="trend-bar" style="height:' + Math.max(pct, 2) + '%;background:' + (isHigh ? '#c0392b' : 'var(--green-dark)') + '" title="' + w.label + ': ' + w.avg_wait_minutes + 'm">';
+                html += '<span class="trend-bar-val">' + w.avg_wait_minutes + '</span>';
+                html += '<span class="trend-bar-label">' + w.label + '</span></div>';
+            });
+            html += '</div></div>';
+
+            // Chart 4: Active officers
+            var maxOff = Math.max.apply(null, weeks.map(function(w) { return w.active_officers; })) || 1;
+            html += '<div class="trend-card"><h4>Active Officers per Week</h4><div class="trend-chart">';
+            weeks.forEach(function(w) {
+                var pct = (w.active_officers / maxOff * 80);
+                html += '<div class="trend-bar" style="height:' + Math.max(pct, 2) + '%;background:var(--purple)" title="' + w.label + ': ' + w.active_officers + ' officers">';
+                html += '<span class="trend-bar-val">' + w.active_officers + '</span>';
+                html += '<span class="trend-bar-label">' + w.label + '</span></div>';
+            });
+            html += '</div></div>';
+
+            // Chart 5: Office demand comparison (latest week)
+            html += '<div class="trend-card"><h4>Office Demand — Latest Week</h4><div class="trend-chart" style="height:100px">';
+            var maxOffTok = Math.max.apply(null, officeTrends.map(function(o) { var w = o.weekly_tokens; return w[w.length - 1] || 0; })) || 1;
+            officeTrends.forEach(function(o) {
+                var val = o.weekly_tokens[o.weekly_tokens.length - 1] || 0;
+                var pct = (val / maxOffTok * 80);
+                html += '<div class="trend-bar" style="height:' + Math.max(pct, 2) + '%;background:var(--blue)" title="' + o.office_code + ': ' + val + ' tokens">';
+                html += '<span class="trend-bar-val">' + val + '</span>';
+                html += '<span class="trend-bar-label">' + o.office_code + '</span></div>';
+            });
+            html += '</div></div>';
+
+            // Chart 6: Top officers by attendance
+            html += '<div class="trend-card"><h4>Top Officers by Attendance (Last ' + weeks.length + ' Weeks)</h4>';
+            html += '<table style="width:100%;font-size:12px;border-collapse:collapse">';
+            html += '<thead><tr><th style="text-align:left;padding:4px 8px;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border)">Officer</th><th style="text-align:center;padding:4px 8px;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border)">Days</th><th style="text-align:center;padding:4px 8px;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border)">Hours</th><th style="text-align:center;padding:4px 8px;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border)">Served</th></tr></thead>';
+            html += '<tbody>';
+            topOfficers.forEach(function(o) {
+                html += '<tr><td style="padding:5px 8px;border-bottom:1px solid var(--border-light)"><strong>' + escapeHtml(o.officer_name) + '</strong> <span style="color:var(--text-muted)">#' + o.officer_number + '</span></td>';
+                html += '<td style="text-align:center;padding:5px 8px;border-bottom:1px solid var(--border-light)">' + o.days_attended + '</td>';
+                html += '<td style="text-align:center;padding:5px 8px;border-bottom:1px solid var(--border-light)">' + formatMinutes(o.total_minutes) + '</td>';
+                html += '<td style="text-align:center;padding:5px 8px;border-bottom:1px solid var(--border-light)"><strong>' + o.total_served + '</strong></td></tr>';
+            });
+            html += '</tbody></table></div>';
+
+            html += '</div>'; // end trend-grid
+            container.innerHTML = html;
+        }
+
+        // ── ATTENDANCE DETAILED LOG ──
+        async function loadAttendanceLog() {
+            var weekVal = document.getElementById('attWeek').value;
+            if (!weekVal) return;
+
+            var tbody = document.getElementById('attLogBody');
+            var empty = document.getElementById('attLogEmpty');
+            tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--text-muted)">Loading...</td></tr>';
+            empty.style.display = 'none';
+
+            try {
+                var res = await fetch(API_BASE_URL + '/api/admin/attendance-log?week=' + encodeURIComponent(weekVal));
+                var data = await res.json();
+                if (!data.success || !data.log.length) {
+                    tbody.innerHTML = '';
+                    empty.style.display = 'block';
+                    return;
+                }
+                var html = '';
+                data.log.forEach(function(row) {
+                    var badgeClass = row.type === 'In' ? 'att-log-badge--in' : 'att-log-badge--out';
+                    html += '<tr>' +
+                        '<td>' + escapeHtml(row.datetime) + '</td>' +
+                        '<td><span class="att-log-badge ' + badgeClass + '">' + row.type + '</span></td>' +
+                        '<td><strong>' + escapeHtml(row.officer_name) + '</strong><br><span style="font-size:11px;color:var(--text-muted)">#' + row.officer_number + '</span></td>' +
+                        '<td style="font-size:12px;color:var(--text-secondary)">' + escapeHtml(row.location || '—') + '</td>' +
+                        '<td>' + escapeHtml(row.office_name) + '<br><span style="font-size:11px;color:var(--text-muted)">' + escapeHtml(row.office_location || '') + '</span></td>' +
+                        '<td style="font-size:12px">' + escapeHtml(row.device) + '</td>' +
+                    '</tr>';
+                });
+                tbody.innerHTML = html;
+            } catch(e) {
+                tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:30px;color:var(--red)">Error loading log</td></tr>';
+            }
+        }
+
         // Initialize
         document.getElementById('reportDate').value = new Date().toISOString().slice(0, 10);
+        var attInput = document.getElementById('attSearch');
+        attInput.value = '';
+        setTimeout(function() { attInput.value = ''; }, 150);
+        populateYearMonthDropdowns();
+        onYearMonthChange();
         syncOfficeAvailNoticeUi();
-        showPage('overview', document.querySelector('.nav-item.active'));
+        var savedTab = localStorage.getItem('adminActiveTab') || 'overview';
+        var navEl = document.querySelector('[onclick*="' + savedTab + '"]');
+        showPage(savedTab, navEl || document.querySelector('.nav-item.active'));
         loadAllData();
         updateFeedbackBadge();
         setInterval(() => {
@@ -2384,5 +3422,6 @@
             for (const office of officesData) loadOfficeStats(office.id);
         }, 10000);
     </script>
+    <div id="toastContainer" class="toast-container"></div>
 </body>
 </html>

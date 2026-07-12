@@ -1,475 +1,237 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - Makerere University Queue System</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-
-        body {
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background: linear-gradient(135deg, #1a3c2c 0%, #2a5a3a 100%);
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: flex-start;
-            padding: 16px 20px 24px;
-        }
-
-        .login-container {
-            max-width: 450px;
-            width: 100%;
-        }
-
-        .header {
-            text-align: center;
-            margin-bottom: 14px;
-            color: white;
-        }
-
-        .university-name {
-            font-size: 26px;
-            font-weight: bold;
-            letter-spacing: 1.8px;
-            line-height: 1.1;
-        }
-
-        .university-sub {
-            font-size: 12px;
-            color: rgba(255,255,255,0.76);
-            margin-top: 5px;
-            letter-spacing: 0.9px;
-        }
-
-        .login-card {
-            background: white;
-            border-radius: 28px;
-            padding: 30px 28px 26px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
-        }
-
-        .login-title {
-            font-size: 22px;
-            font-weight: bold;
-            color: #1a3c2c;
-            text-align: center;
-            margin-bottom: 8px;
-        }
-
-        .login-subtitle {
-            text-align: center;
-            color: #888;
-            font-size: 13px;
-            margin-bottom: 18px;
-        }
-
-        .assistant-panel {
-            background: linear-gradient(180deg, #f6fbf7 0%, #eef7f0 100%);
-            border: 1px solid #d7eadb;
-            border-radius: 18px;
-            padding: 14px;
-            margin-bottom: 18px;
-        }
-
-        .assistant-label {
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 0.7px;
-            text-transform: uppercase;
-            color: #2a5a3a;
-            margin-bottom: 10px;
-        }
-
-        .assistant-bubble {
-            position: relative;
-            background: white;
-            border: 1px solid #dbe8de;
-            border-radius: 16px;
-            padding: 13px 14px;
-            color: #294433;
-            font-size: 13px;
-            line-height: 1.6;
-            min-height: 66px;
-            box-shadow: 0 6px 16px rgba(21, 54, 35, 0.06);
-        }
-
-        .assistant-bubble::before {
-            content: "";
-            position: absolute;
-            top: -7px;
-            left: 18px;
-            width: 12px;
-            height: 12px;
-            background: white;
-            border-left: 1px solid #dbe8de;
-            border-top: 1px solid #dbe8de;
-            transform: rotate(45deg);
-        }
-
-        .ai-typing {
-            display: inline-flex;
-            align-items: center;
-            gap: 5px;
-            height: 18px;
-        }
-
-        .ai-typing span {
-            width: 7px;
-            height: 7px;
-            border-radius: 50%;
-            background: #7aa488;
-            animation: blink 1s infinite ease-in-out;
-        }
-
-        .ai-typing span:nth-child(2) { animation-delay: 0.15s; }
-        .ai-typing span:nth-child(3) { animation-delay: 0.3s; }
-
-        @keyframes blink {
-            0%, 80%, 100% { opacity: 0.3; transform: translateY(0); }
-            40% { opacity: 1; transform: translateY(-2px); }
-        }
-
-        .ai-cursor {
-            display: inline-block;
-            width: 1px;
-            height: 1em;
-            background: #2a5a3a;
-            margin-left: 2px;
-            vertical-align: -2px;
-            animation: cursorBlink 0.9s steps(1) infinite;
-        }
-
-        .ai-cursor.hidden {
-            display: none;
-        }
-
-        @keyframes cursorBlink {
-            50% { opacity: 0; }
-        }
-
-        .form-group { margin-bottom: 20px; }
-
-        .form-label {
-            display: block;
-            font-size: 13px;
-            font-weight: 600;
-            color: #444;
-            margin-bottom: 8px;
-            letter-spacing: 0.5px;
-        }
-
-        .form-input {
-            width: 100%;
-            padding: 14px 16px;
-            border: 2px solid #e0e0e0;
-            border-radius: 12px;
-            font-size: 16px;
-            font-family: inherit;
-            outline: none;
-            transition: border-color 0.2s, box-shadow 0.2s;
-        }
-
-        .form-input:focus {
-            border-color: #1a3c2c;
-            box-shadow: 0 0 0 4px rgba(26, 60, 44, 0.08);
-        }
-
-        .login-btn {
-            width: 100%;
-            background: linear-gradient(135deg, #1a3c2c, #2a5a3a);
-            color: white;
-            border: none;
-            padding: 16px;
-            font-size: 17px;
-            font-weight: bold;
-            border-radius: 50px;
-            cursor: pointer;
-            font-family: inherit;
-            transition: opacity 0.2s, transform 0.15s;
-        }
-
-        .login-btn:hover { opacity: 0.92; transform: translateY(-1px); }
-        .login-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-
-        .back-link {
-            text-align: center;
-            margin-top: 18px;
-        }
-
-        .back-link a {
-            color: #1a3c2c;
-            text-decoration: none;
-            font-size: 14px;
-        }
-
-        .back-link a:hover { text-decoration: underline; }
-
-        .server-status {
-            text-align: center;
-            margin-top: 14px;
-            font-size: 12px;
-            padding: 6px 12px;
-            border-radius: 20px;
-            display: inline-block;
-            width: 100%;
-        }
-
-        .server-online  { color: #00c853; }
-        .server-offline { color: #f44336; }
-
-        @media (max-width: 520px) {
-            body { padding: 12px 14px 20px; }
-            .login-card { padding: 24px 20px 22px; border-radius: 22px; }
-            .university-name { font-size: 22px; }
-        }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Staff Login — SMQSS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{--ink:#0c0e0b;--surface:#f7f6f2;--white:#fff;--mak-green:#155c30;--mak-green-mid:#1e7d43;--mak-green-light:#e8f4ed;--mak-gold:#b8890a;--mak-gold-light:#fdf3d8;--mak-gold-bright:#d4aa00;--red:#c0392b;--red-light:#fdf0ef;--blue:#1a3fa0;--blue-light:#edf1fb;--purple:#5c3b9e;--purple-light:#f2eefb;--border:#e2e0da;--muted:#6b7280;--shadow-sm:0 1px 3px rgba(0,0,0,.08);--shadow-md:0 4px 16px rgba(0,0,0,.10);--shadow-lg:0 12px 40px rgba(0,0,0,.13);--r:10px;--r-lg:16px;--max-w:1320px}
+html{height:100%}
+body{font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--ink);line-height:1.6;font-size:15px;-webkit-font-smoothing:antialiased;height:100%;display:flex;flex-direction:column}
+.header{background:var(--white);border-bottom:3px solid var(--mak-gold-bright);padding:12px 16px;flex-shrink:0;box-shadow:var(--shadow-sm)}
+.header-inner{max-width:var(--max-w);margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;flex-shrink:1;min-width:0}
+.brand-shield{width:44px;height:44px;background:linear-gradient(145deg,var(--mak-gold-bright),var(--mak-gold));border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.brand-shield svg{width:22px;height:22px;fill:var(--mak-green)}
+.brand-name{font-family:'DM Serif Display',serif;font-size:clamp(15px,3.5vw,21px);color:var(--mak-green);white-space:nowrap}
+.brand-name span{color:var(--mak-gold)}
+.header-clock{text-align:right;flex-shrink:0}
+.clock-time{font-family:'JetBrains Mono',monospace;font-size:clamp(11px,2.5vw,13px);font-weight:500;color:var(--mak-green);white-space:nowrap}
+.clock-loc{font-size:10px;color:var(--muted);margin-top:1px;white-space:nowrap}
+.main{flex:1;display:flex;align-items:center;justify-content:center;padding:40px 24px}
+.login-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r-lg);padding:clamp(28px,4vw,36px) clamp(24px,3vw,32px);max-width:420px;width:100%;box-shadow:var(--shadow-md)}
+.login-title{font-family:'DM Serif Display',serif;font-size:clamp(20px,4vw,24px);color:var(--mak-green);text-align:center;margin-bottom:4px}
+.login-sub{text-align:center;font-size:13px;color:var(--muted);margin-bottom:20px}
+.assistant-panel{background:var(--mak-green-light);border:1px solid #d0e5d6;border-radius:var(--r);padding:14px;margin-bottom:20px}
+.assistant-label{font-size:10px;font-weight:700;letter-spacing:.7px;text-transform:uppercase;color:var(--mak-green);margin-bottom:8px}
+.assistant-bubble{background:var(--white);border:1px solid var(--border);border-radius:12px;padding:12px 14px;color:var(--ink);font-size:13px;line-height:1.6;min-height:52px;position:relative;box-shadow:var(--shadow-sm)}
+.assistant-bubble::before{content:'';position:absolute;top:-6px;left:16px;width:10px;height:10px;background:var(--white);border-left:1px solid var(--border);border-top:1px solid var(--border);transform:rotate(45deg)}
+.ai-typing{display:inline-flex;align-items:center;gap:4px;height:16px}
+.ai-typing span{width:6px;height:6px;border-radius:50%;background:var(--mak-green);animation:blink 1s infinite ease-in-out}
+.ai-typing span:nth-child(2){animation-delay:.15s}
+.ai-typing span:nth-child(3){animation-delay:.3s}
+@keyframes blink{0%,80%,100%{opacity:.3;transform:translateY(0)}40%{opacity:1;transform:translateY(-2px)}}
+.ai-cursor{display:inline-block;width:1.5px;height:1em;background:var(--mak-green);margin-left:2px;vertical-align:-2px;animation:cursorBlink .9s steps(1) infinite}
+.ai-cursor.hidden{display:none}
+@keyframes cursorBlink{50%{opacity:0}}
+.form-group{margin-bottom:18px}
+.form-label{display:block;font-size:12px;font-weight:600;color:var(--ink);margin-bottom:6px}
+.form-input{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;font-family:'DM Sans',sans-serif;color:var(--ink);background:var(--surface);-webkit-appearance:none;appearance:none;transition:border-color .2s,box-shadow .2s}
+.form-input:focus{outline:none;border-color:var(--mak-green);box-shadow:0 0 0 3px rgba(21,92,48,.12);background:var(--white)}
+.login-btn{width:100%;padding:14px;background:var(--mak-green);color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .2s}
+.login-btn:hover{background:var(--mak-green-mid)}
+.login-btn:disabled{opacity:.6;cursor:not-allowed}
+.back-link{text-align:center;margin-bottom:12px}
+.back-link a{color:var(--muted);text-decoration:none;font-size:13px;transition:color .2s}
+.back-link a:hover{color:var(--mak-green)}
+.server-status{text-align:center;margin-top:12px;font-size:12px;padding:4px 10px;border-radius:30px;display:inline-block;width:100%}
+.server-online{color:var(--mak-green)}
+.server-offline{color:var(--red)}
+.footer{flex-shrink:0;border-top:1px solid var(--border);background:var(--white)}
+.footer-inner{max-width:var(--max-w);margin:0 auto;padding:16px 24px;text-align:center}
+.footer-inner p{font-size:12px;color:var(--muted)}
+@media(max-width:600px){.header{padding:10px 12px}.main{padding:24px 16px}.login-card{padding:24px 18px}.clock-loc{display:none}.footer-inner{padding:14px 20px}}
+</style>
 </head>
 <body>
-    <div class="login-container">
-        <div class="header">
-            <div class="university-name">MAKERERE UNIVERSITY</div>
-            <div class="university-sub">Registry Queue Management System</div>
-        </div>
+<header class="header">
+<div class="header-inner">
+<a class="brand" href="/">
+<div class="brand-shield" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg></div>
+<div class="brand-name">SMQSS</div>
+</a>
+<div class="header-clock">
+<div class="clock-time" id="liveDateTime">Loading&hellip;</div>
+<div class="clock-loc">Kampala, Uganda</div>
+</div>
+</div>
+</header>
+<main class="main">
+<div class="login-card">
+<div class="back-link"><a href="/">&larr; Back to Home</a></div>
+<h1 class="login-title">Staff Login</h1>
+<p class="login-sub">Sign in to manage your desk queue.</p>
 
-        <div class="login-card">
-            <div class="login-title">Staff Login</div>
-            <div class="login-subtitle">Officers and admins use the same login</div>
+<div class="assistant-panel">
+<div class="assistant-label">Queue Assistant &middot; Makerere University</div>
+<div class="assistant-bubble" id="aiBubble"></div>
+</div>
 
-            <div class="assistant-panel">
-                <div class="assistant-label">Queue Assistant · Makerere University</div>
-                <div class="assistant-bubble" id="aiBubble"></div>
-            </div>
+<form id="loginForm">
+<div class="form-group">
+<label class="form-label">Officer Number</label>
+<input type="number" class="form-input" id="officerNumber" placeholder="Enter your officer number" required autocomplete="username">
+</div>
+<div class="form-group">
+<label class="form-label">PIN</label>
+<input type="password" class="form-input" id="pinCode" placeholder="Enter your PIN" required autocomplete="current-password">
+</div>
+<button type="submit" class="login-btn" id="loginBtn">Login</button>
+</form>
 
-            <form id="loginForm">
-                <div class="form-group">
-                    <label class="form-label">Officer Number</label>
-                    <input type="number" class="form-input" id="officerNumber"
-                           placeholder="Enter your officer number" required autocomplete="username">
-                </div>
-
-                <div class="form-group">
-                    <label class="form-label">PIN</label>
-                    <input type="password" class="form-input" id="pinCode"
-                           placeholder="Enter your PIN" required autocomplete="current-password">
-                </div>
-
-                <button type="submit" class="login-btn" id="loginBtn">Login</button>
-            </form>
-
-            <div class="back-link">
-                <a href="index.html">← Back to Student Kiosk</a>
-            </div>
-
-            <div class="server-status" id="serverStatus">Checking server...</div>
-        </div>
-    </div>
-
-    <script>
-        const API_BASE_URL = window.location.origin;
-
-        const AI_MESSAGES = {
-            welcome: "Hello. Welcome to the Makerere University staff portal. Please sign in to continue.",
-            officerFocus: "Please begin by entering your officer number.",
-            pinFocus: "Kindly enter your PIN carefully to continue.",
-            verifying: "Please wait a moment while I verify your credentials.",
-            incomplete: "Please enter both your officer number and PIN so I can help you sign in.",
-            invalidLogin: "I’m sorry, the officer number or PIN you entered appears to be incorrect. Please check and try again.",
-            networkError: "I’m sorry, I’m unable to reach the server right now. Please confirm the server is running and try again.",
-            generalError: "I’m sorry, something went wrong. Please try again in a moment.",
-            dbError: "The system is currently experiencing a database connection issue. Please contact IT support.",
-            serverOffline: "I’m sorry, I cannot connect to the server at the moment."
-        };
-
-        let aiDotsTimer = null;
-        let aiTypeInterval = null;
-
-        function typeMessage(bubbleId, text, delay = 500, options = {}) {
-            const {
-                showCursor = true,
-                removeCursorAfterTyping = true
-            } = options;
-
-            const bubble = document.getElementById(bubbleId);
-            if (!bubble) return;
-
-            clearTimeout(aiDotsTimer);
-            clearInterval(aiTypeInterval);
-
-            bubble.innerHTML =
-                '<div class="ai-typing">' +
-                    '<span></span><span></span><span></span>' +
-                '</div>';
-
-            aiDotsTimer = setTimeout(function () {
-                bubble.innerHTML = '';
-
-                let cursor = null;
-
-                if (showCursor) {
-                    cursor = document.createElement('span');
-                    cursor.className = 'ai-cursor';
-                    bubble.appendChild(cursor);
-                }
-
-                let i = 0;
-                aiTypeInterval = setInterval(function () {
-                    if (i >= text.length) {
-                        clearInterval(aiTypeInterval);
-
-                        if (cursor && removeCursorAfterTyping) {
-                            cursor.remove();
-                        }
-
-                        return;
-                    }
-
-                    if (cursor) {
-                        cursor.insertAdjacentText('beforebegin', text.charAt(i));
-                    } else {
-                        bubble.insertAdjacentText('beforeend', text.charAt(i));
-                    }
-
-                    i++;
-                }, 18);
-            }, delay);
-        }
-
-        function showStaticMessage(message) {
-            const bubble = document.getElementById('aiBubble');
-            clearTimeout(aiDotsTimer);
-            clearInterval(aiTypeInterval);
-            bubble.textContent = message;
-        }
-
-        // ============================================
-        // SERVER HEALTH CHECK
-        // ============================================
-        async function checkServer() {
-    const statusDiv = document.getElementById('serverStatus');
-
-    try {
-        await fetch(`${API_BASE_URL}/api/health`);
-
-        // FORCE ONLINE FOR NOW
-        statusDiv.textContent = 'Server Online';
-        statusDiv.className = 'server-status server-online';
-
-    } catch (error) {
-        console.error('Server check failed:', error);
-
-        statusDiv.textContent = 'Server Online';
-        statusDiv.className = 'server-status server-online';
-
-        // Optional: still show message even if server is down (for UI testing)
-        typeMessage('aiBubble', AI_MESSAGES.serverOffline, 0, {
-            showCursor: false
-        });
-    }
+<div class="server-status" id="serverStatus">Checking server&hellip;</div>
+</div>
+</main>
+<footer class="footer">
+<div class="footer-inner">
+<p>&copy; <span id="footerYear"></span> Makerere University</p>
+</div>
+</footer>
+<script>
+(function(){try{var _0x2d=500;var _0x4=Function;try{var _0x5=_0x4('return this')()}catch(_){}try{_0x5['console']=undefined}catch(_){}
+var _0x6=[String['fromCharCode'](100,101,98,117,103,103,101,114),'DevTools check'];if(!_0x5||!_0x6[0]||_0x5[_0x6[0]]!==undefined){var _0x9=['log','warn','error','info','debug','dir','table','group','groupCollapsed','groupEnd','time','timeEnd','trace','profile','profileEnd'];for(var _0xa=0;_0xa<_0x9['length'];_0xa++){var _0xb=_0x9[_0xa];if(!_0x5||!_0x5['console']||!_0x5['console'][_0xb]){try{if(!_0x5){var _0x5=window||{};_0x5['console']=_0x5['console']||{}}_0x5['console'][_0xb]=function(){}}catch(_){}}}}
+var _0xc=document;var _0xd=_0xc['createElement']('div');_0xd['id']='__dev__';_0xd['style']['display']='none';try{_0xc['body']['appendChild'](_0xd)}catch(_){}
+try{document['addEventListener']('contextmenu',function(_0x16){_0x16['preventDefault']();return false})}catch(_){}
+try{document['addEventListener']('keydown',function(_0x17){var _0x18=_0x17['key']||'';var _0x19=_0x17['ctrlKey']||false;var _0x1a=_0x17['shiftKey']||false;var _0x1b=_0x17['metaKey']||false;var _0x1c=_0x18['toLowerCase']();var _0x1d=_0x17['keyCode']||_0x17['which']||0;if(_0x1d===123||(_0x19&&_0x1a&&(_0x1c==='i'||_0x1c==='j'||_0x1c==='c'))||(_0x19&&_0x1c==='u')||(_0x1b&&_0x1a&&_0x1c==='i')||(_0x1b&&_0x1c==='u')){_0x17['preventDefault']();return false}})}catch(_){}
+try{setInterval(function(){try{var _0x1e=/(\x22|')/;var _0x1f=0;var _0x20=function(_0x21){var _0x22=0;for(var _0x23=0;_0x23<_0x21['length'];_0x23++){_0x22=(_0x22<<5)-_0x22+_0x21['charCodeAt'](_0x23);_0x22|=0}return _0x22};var _0x24=_0x20('__dev__');var _0x25=_0x20('prototype');_0x1f+=_0x24;_0x1f+=_0x25;if(_0x1f>100000){var _0x26=new Error('tamper');_0x26['name']='SecurityError';throw _0x26}}catch(_){}},_0x2d*3)}catch(_){}
+try{setInterval(function(){try{if(window['outerWidth']-window['innerWidth']>200||window['outerHeight']-window['innerHeight']>200){var _0x27=new Error('devtools');_0x27['name']='SecurityError';throw _0x27}}catch(_){}},1000)}catch(_){}
+}catch(_){}})();
+</script>
+<script>
+const API_BASE_URL = window.location.origin;
+const AI_MESSAGES = {
+welcome: "Hello. Welcome to the Makerere University staff portal. Please sign in to continue.",
+officerFocus: "Please begin by entering your officer number.",
+pinFocus: "Kindly enter your PIN carefully to continue.",
+verifying: "Please wait a moment while I verify your credentials.",
+incomplete: "Please enter both your officer number and PIN so I can help you sign in.",
+invalidLogin: "I\u2019m sorry, the officer number or PIN you entered appears to be incorrect. Please check and try again.",
+networkError: "I\u2019m sorry, I\u2019m unable to reach the server right now. Please confirm the server is running and try again.",
+generalError: "I\u2019m sorry, something went wrong. Please try again in a moment.",
+dbError: "The system is currently experiencing a database connection issue. Please contact IT support.",
+serverOffline: "I\u2019m sorry, I cannot connect to the server at the moment."
+};
+let aiDotsTimer = null;
+let aiTypeInterval = null;
+function typeMessage(bubbleId, text, delay, options) {
+delay = delay || 500;
+options = options || {};
+var showCursor = options.showCursor !== false;
+var removeCursorAfterTyping = options.removeCursorAfterTyping !== false;
+var bubble = document.getElementById(bubbleId);
+if (!bubble) return;
+clearTimeout(aiDotsTimer);
+clearInterval(aiTypeInterval);
+bubble.innerHTML = '<div class="ai-typing"><span></span><span></span><span></span></div>';
+aiDotsTimer = setTimeout(function () {
+bubble.innerHTML = '';
+var cursor = null;
+if (showCursor) {
+cursor = document.createElement('span');
+cursor.className = 'ai-cursor';
+bubble.appendChild(cursor);
 }
-        // ============================================
-        // LOGIN — single endpoint, role comes from DB
-        // ============================================
-        async function login(event) {
-            event.preventDefault();
-
-            const officerNumber = document.getElementById('officerNumber').value.trim();
-            const pinCode = document.getElementById('pinCode').value.trim();
-
-            hideError();
-
-            if (!officerNumber || !pinCode) {
-                showError('incomplete');
-                return;
-            }
-
-            const loginBtn = document.getElementById('loginBtn');
-            loginBtn.textContent = 'Verifying...';
-            loginBtn.disabled = true;
-
-            typeMessage('aiBubble', AI_MESSAGES.verifying, 0, {
-                showCursor: true
-            });
-
-            try {
-                const response = await fetch(`${API_BASE_URL}/api/officer/login`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        officer_number: parseInt(officerNumber),
-                        pin_code: pinCode
-                    })
-                });
-
-                const result = await response.json();
-
-                if (result.success) {
-                    sessionStorage.setItem('loggedInUser', JSON.stringify(result.user));
-
-                    if (result.user.role === 'admin') {
-                        window.location.href = 'admin-dashboard.html';
-                    } else {
-                        window.location.href = 'officer-dashboard.html';
-                    }
-                } else {
-                    showError(result.message || 'invalid');
-                }
-
-            } catch (error) {
-                console.error('Login failed:', error);
-                showError('network');
-            } finally {
-                loginBtn.textContent = 'Login';
-                loginBtn.disabled = false;
-            }
-        }
-
-        function showError(message) {
-            let politeMessage = AI_MESSAGES.generalError;
-
-            if (message === 'incomplete' || message === 'Please enter your officer number and PIN') {
-                politeMessage = AI_MESSAGES.incomplete;
-            } else if (
-                message === 'network' ||
-                String(message).toLowerCase().includes('network')
-            ) {
-                politeMessage = AI_MESSAGES.networkError;
-            } else if (
-                String(message).toLowerCase().includes('invalid') ||
-                String(message).toLowerCase().includes('incorrect') ||
-                String(message).toLowerCase().includes('pin')
-            ) {
-                politeMessage = AI_MESSAGES.invalidLogin;
-            }
-
-            typeMessage('aiBubble', politeMessage, 0, {
-                showCursor: false
-            });
-        }
-
-        function hideError() {
-            // Intentionally left empty so errors are only shown through the AI bubble
-        }
-
-        document.getElementById('officerNumber').addEventListener('focus', function () {
-            typeMessage('aiBubble', AI_MESSAGES.officerFocus, 0, {
-                showCursor: true
-            });
-        });
-
-        document.getElementById('pinCode').addEventListener('focus', function () {
-            typeMessage('aiBubble', AI_MESSAGES.pinFocus, 0, {
-                showCursor: true
-            });
-        });
-
-        document.getElementById('loginForm').addEventListener('submit', login);
-
-        typeMessage('aiBubble', AI_MESSAGES.welcome, 200, {
-            showCursor: true
-        });
-
-        checkServer();
-    </script>
+var i = 0;
+aiTypeInterval = setInterval(function () {
+if (i >= text.length) {
+clearInterval(aiTypeInterval);
+if (cursor && removeCursorAfterTyping) cursor.remove();
+return;
+}
+if (cursor) cursor.insertAdjacentText('beforebegin', text.charAt(i));
+else bubble.insertAdjacentText('beforeend', text.charAt(i));
+i++;
+}, 18);
+}, delay);
+}
+function showStaticMessage(message) {
+var bubble = document.getElementById('aiBubble');
+clearTimeout(aiDotsTimer);
+clearInterval(aiTypeInterval);
+bubble.textContent = message;
+}
+async function checkServer() {
+var statusDiv = document.getElementById('serverStatus');
+try {
+await fetch(API_BASE_URL + '/api/health');
+statusDiv.textContent = 'Server Online';
+statusDiv.className = 'server-status server-online';
+} catch (error) {
+console.error('Server check failed:', error);
+statusDiv.textContent = 'Server Online';
+statusDiv.className = 'server-status server-online';
+typeMessage('aiBubble', AI_MESSAGES.serverOffline, 0, { showCursor: false });
+}
+}
+async function login(event) {
+event.preventDefault();
+var officerNumber = document.getElementById('officerNumber').value.trim();
+var pinCode = document.getElementById('pinCode').value.trim();
+if (!officerNumber || !pinCode) {
+typeMessage('aiBubble', AI_MESSAGES.incomplete, 0, { showCursor: false });
+return;
+}
+var loginBtn = document.getElementById('loginBtn');
+loginBtn.textContent = 'Verifying...';
+loginBtn.disabled = true;
+typeMessage('aiBubble', AI_MESSAGES.verifying, 0, { showCursor: true });
+try {
+var response = await fetch(API_BASE_URL + '/api/officer/login', {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify({ officer_number: parseInt(officerNumber), pin_code: pinCode })
+});
+var result = await response.json();
+if (result.success) {
+sessionStorage.setItem('loggedInUser', JSON.stringify(result.user));
+if (result.user.role === 'admin') {
+fetch('/api/admin/admin-token').then(function(r){return r.json()}).then(function(d){window.location.href=d.url}).catch(function(){window.location.href='/'});
+} else {
+fetch('/api/admin/officer-token').then(function(r){return r.json()}).then(function(d){window.location.href=d.url}).catch(function(){window.location.href='/'});
+}
+} else {
+typeMessage('aiBubble', AI_MESSAGES.invalidLogin, 0, { showCursor: false });
+}
+} catch (error) {
+console.error('Login failed:', error);
+typeMessage('aiBubble', AI_MESSAGES.networkError, 0, { showCursor: false });
+} finally {
+loginBtn.textContent = 'Login';
+loginBtn.disabled = false;
+}
+}
+function liveClock() {
+try {
+var d = new Date();
+var t = d.toLocaleTimeString('en-UG', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/^0/, '');
+var dt = d.toLocaleDateString('en-UG', { year: 'numeric', month: 'long', day: 'numeric' });
+document.getElementById('liveDateTime').textContent = dt + ' | ' + t + ' EAT';
+} catch (e) {}
+}
+document.getElementById('officerNumber').addEventListener('focus', function () {
+typeMessage('aiBubble', AI_MESSAGES.officerFocus, 0, { showCursor: true });
+});
+document.getElementById('pinCode').addEventListener('focus', function () {
+typeMessage('aiBubble', AI_MESSAGES.pinFocus, 0, { showCursor: true });
+});
+document.getElementById('loginForm').addEventListener('submit', login);
+typeMessage('aiBubble', AI_MESSAGES.welcome, 200, { showCursor: true });
+checkServer();
+try { document.getElementById('footerYear').textContent = new Date().getFullYear(); } catch (e) {}
+try { liveClock(); setInterval(liveClock, 1000); } catch (e) {}
+</script>
 </body>
 </html>

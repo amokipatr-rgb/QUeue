@@ -22,7 +22,7 @@ function createWindow() {
     width: 960,
     height: 680,
     center: true,
-    title: 'Makerere University — Queue Management System',
+    title: 'SMQSS — Smart Queue Management System',
     autoHideMenuBar: true,
     backgroundColor: '#070d09',
     show: true,

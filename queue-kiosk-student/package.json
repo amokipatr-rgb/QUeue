@@ -1,7 +1,7 @@
 {
   "name": "queue-kiosk-student",
   "version": "1.0.0",
-  "description": "Makerere University Queue Management System — Student Token Kiosk",
+  "description": "SMQSS — Student Token Kiosk",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
@@ -10,7 +10,7 @@
   },
   "build": {
     "appId": "com.makerere.queue-kiosk-student",
-    "productName": "Queue Student Kiosk",
+    "productName": "SMQSS Student Kiosk",
     "directories": {
       "output": "dist"
     },
@@ -30,7 +30,7 @@
       "runAfterFinish": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Queue Student Kiosk"
+      "shortcutName": "SMQSS Student Kiosk"
     },
     "extraResources": []
   },

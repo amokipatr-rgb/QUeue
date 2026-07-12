@@ -38,6 +38,7 @@ if not table_exists('offices'):
             display_order INT DEFAULT 0,
             availability_status VARCHAR(20) DEFAULT 'available',
             unavailability_notice TEXT DEFAULT NULL,
+            availability_updated_at TIMESTAMP NULL DEFAULT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
@@ -50,6 +51,9 @@ else:
     if not column_exists('offices', 'unavailability_notice'):
         cursor.execute("ALTER TABLE offices ADD COLUMN unavailability_notice TEXT DEFAULT NULL AFTER availability_status")
         print("  [OK] Added unavailability_notice to offices")
+    if not column_exists('offices', 'availability_updated_at'):
+        cursor.execute("ALTER TABLE offices ADD COLUMN availability_updated_at TIMESTAMP NULL DEFAULT NULL AFTER unavailability_notice")
+        print("  [OK] Added availability_updated_at to offices")
 
 # ── OFFICERS ──
 if not table_exists('officers'):
@@ -213,6 +217,49 @@ else:
 
 conn.commit()
 
+# ── OFFICER SESSIONS ──
+if not table_exists('officer_sessions'):
+    cursor.execute("""
+        CREATE TABLE officer_sessions (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            officer_id INT NOT NULL,
+            office_id INT NOT NULL,
+            session_date DATE NOT NULL,
+            login_time DATETIME NOT NULL,
+            logout_time DATETIME NULL,
+            login_ip VARCHAR(45) NULL,
+            logout_ip VARCHAR(45) NULL,
+            device_info VARCHAR(255) NULL,
+            status VARCHAR(20) DEFAULT 'active',
+            tokens_served INT DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            CONSTRAINT fk_session_officer FOREIGN KEY (officer_id) REFERENCES officers(id) ON DELETE CASCADE,
+            CONSTRAINT fk_session_office FOREIGN KEY (office_id) REFERENCES offices(id) ON DELETE CASCADE
+        )
+    """)
+    print("[OK] Created officer_sessions table")
+else:
+    print("[OK] officer_sessions table exists")
+
+# ── OFFICER STATUS LOG ──
+if not table_exists('officer_status_log'):
+    cursor.execute("""
+        CREATE TABLE officer_status_log (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            session_id INT NOT NULL,
+            officer_id INT NOT NULL,
+            status VARCHAR(20) NOT NULL,
+            started_at DATETIME NOT NULL,
+            ended_at DATETIME NULL,
+            duration_minutes INT DEFAULT 0,
+            CONSTRAINT fk_statuslog_session FOREIGN KEY (session_id) REFERENCES officer_sessions(id) ON DELETE CASCADE,
+            CONSTRAINT fk_statuslog_officer FOREIGN KEY (officer_id) REFERENCES officers(id) ON DELETE CASCADE
+        )
+    """)
+    print("[OK] Created officer_status_log table")
+else:
+    print("[OK] officer_status_log table exists")
+
 # ── INDEXES ──
 print("\n[INDEXES]")
 for name, table, col in [
@@ -234,6 +281,12 @@ for name, table, col in [
     ('idx_logs_token', 'queue_logs', 'token_number'),
     ('idx_logs_officer', 'queue_logs', 'officer_id'),
     ('idx_offices_availability', 'offices', 'availability_status'),
+    ('idx_sessions_date', 'officer_sessions', 'session_date'),
+    ('idx_sessions_officer_date', 'officer_sessions', 'officer_id, session_date'),
+    ('idx_sessions_status', 'officer_sessions', 'status'),
+    ('idx_statuslog_session', 'officer_status_log', 'session_id'),
+    ('idx_statuslog_officer', 'officer_status_log', 'officer_id'),
+    ('idx_statuslog_started', 'officer_status_log', 'started_at'),
 ]:
     create_index_if_missing(name, table, col)
 

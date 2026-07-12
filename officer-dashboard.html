@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Officer Dashboard — Makerere University</title>
+  <title>Officer Dashboard — SMQSS</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Outfit:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -258,11 +258,7 @@
         row-gap: 8px;
       }
       .header-center { order: 3; width: 100%; display: flex; justify-content: flex-start; }
-      .office-pill { width: 100%; border-radius: 10px; text-align: left; }
-      .header-right { margin-left: auto; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
-      .officer-pill { padding: 6px 10px; gap: 7px; }
-      .officer-name-text { max-width: 120px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-      .logout-btn { padding: 6px 10px; }
+      .header-center { display: none; }
       .stats-row { grid-template-columns: 1fr; margin-bottom: 14px; }
       .stat-card { padding: 14px; gap: 12px; }
       .stat-num { font-size: 24px; }
@@ -274,12 +270,6 @@
     @media (max-width: 520px) {
       .brand-name { font-size: 14px; }
       .brand-icon { width: 30px; height: 30px; }
-      .header-right { width: 100%; justify-content: space-between; }
-      .officer-pill { flex: 1; min-width: 0; }
-      .officer-name-text { max-width: 95px; }
-      .status-text { font-size: 10px; }
-      .icon-btn, .logout-btn { flex-shrink: 0; }
-      .logout-btn { font-size: 11px; padding: 6px 8px; }
       .content { padding: 12px 10px 24px; }
       .card-title { font-size: 13px; }
       .btn-sm { font-size: 10px; padding: 5px 8px; }
@@ -387,17 +377,56 @@
     .pin-toggle-eye { display:flex; align-items:center; justify-content:center; width:38px; height:40px; cursor:pointer; color:var(--text-muted); background:none; border:none; padding:0; flex-shrink:0; }
     .pin-toggle-eye:hover { color:var(--text-secondary); }
     .pin-toggle-eye svg { width:18px; height:18px; }
+
+    /* ── HAMBURGER ── */
+    .hamburger { display:none; width:36px; height:36px; border:none; background:rgba(255,255,255,0.15); border-radius:10px; cursor:pointer; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:0; margin-left:auto; flex-shrink:0; transition:background 0.2s; }
+    .hamburger:hover { background:rgba(255,255,255,0.25); }
+    .hamburger span { display:block; width:18px; height:2px; background:white; border-radius:2px; transition:all 0.25s; }
+    .hamburger.active span:nth-child(1) { transform:translateY(6px) rotate(45deg); }
+    .hamburger.active span:nth-child(2) { opacity:0; }
+    .hamburger.active span:nth-child(3) { transform:translateY(-6px) rotate(-45deg); }
+
+    /* ── DRAWER OVERLAY ── */
+    .drawer-overlay { display:none; position:fixed; inset:0; z-index:999; background:rgba(0,0,0,0.5); opacity:0; transition:opacity 0.25s; }
+    .drawer-overlay.show { display:block; opacity:1; }
+
+    /* ── DRAWER ── */
+    .drawer { position:fixed; top:0; right:-300px; width:280px; height:100%; z-index:1000; background:#0f1a14; border-left:1px solid rgba(255,255,255,0.08); display:flex; flex-direction:column; transition:right 0.25s ease; box-shadow:-4px 0 24px rgba(0,0,0,0.4); }
+    .drawer.open { right:0; }
+    .drawer-header { padding:20px; border-bottom:1px solid rgba(255,255,255,0.06); }
+    .drawer-officer-info { display:flex; align-items:center; gap:8px; font-size:14px; font-weight:600; color:white; }
+    .drawer-officer-info .status-dot { width:7px; height:7px; }
+    .drawer-officer-info .status-text { font-size:11px; font-weight:600; font-family:var(--mono); color:rgba(255,255,255,0.6); }
+    .drawer-office-info { display:flex; flex-direction:column; margin-top:8px; padding-left:26px; }
+    .drawer-office-info .office-pill-name { font-size:12.5px; color:rgba(255,255,255,0.8); font-weight:500; }
+    .drawer-office-info .office-pill-loc { font-size:11px; color:rgba(255,255,255,0.4); margin-top:2px; }
+    .drawer-body { flex:1; overflow-y:auto; padding:12px; }
+    .drawer-item { display:flex; align-items:center; gap:12px; width:100%; padding:12px 14px; border:none; border-radius:10px; background:transparent; color:rgba(255,255,255,0.85); font-size:13.5px; font-weight:500; font-family:var(--font); cursor:pointer; transition:background 0.15s; text-align:left; }
+    .drawer-item:hover { background:rgba(255,255,255,0.08); }
+    .drawer-item svg { flex-shrink:0; width:18px; height:18px; color:rgba(255,255,255,0.5); }
+    .drawer-item .drawer-badge { margin-left:auto; background:var(--red); color:white; font-size:10px; font-weight:700; min-width:18px; height:18px; border-radius:9px; display:flex; align-items:center; justify-content:center; padding:0 5px; }
+    .drawer-divider { height:1px; background:rgba(255,255,255,0.06); margin:6px 14px; }
+    .drawer-logout { color:#ef4444; }
+    .drawer-logout svg { color:#ef4444; }
+
+    @media (max-width: 768px) {
+      .hamburger { display:flex; }
+      .header-right { display:none; }
+    }
   </style>
 </head>
-<body>
+<body oncontextmenu="return false" onkeydown="if(event.key==='F12'||(event.ctrlKey&&event.shiftKey&&event.key==='I')||(event.ctrlKey&&event.shiftKey&&event.key==='J')||(event.ctrlKey&&event.key==='U')){event.preventDefault();return false}">
 
 <div class="toast-container" id="toastContainer"></div>
 
 <header class="header">
   <div class="brand">
     <div class="brand-icon"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#14532D" stroke-width="2"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c0 1.657 2.686 3 6 3s6-1.343 6-3v-5"/></svg></div>
-    <div class="brand-name">Makerere <span>Queue</span></div>
+    <div class="brand-name">SMQSS</div>
   </div>
+  <button class="hamburger" id="hamburgerBtn" onclick="toggleDrawer()" aria-label="Menu">
+    <span></span><span></span><span></span>
+  </button>
   <div class="header-center">
     <div class="office-pill">
       <div class="office-pill-name" id="officeName">Loading…</div>
@@ -419,11 +448,6 @@
       </svg>
       <span class="sound-badge" id="soundBadge"></span>
     </button>
-    <!-- NOTIFICATION STATUS INDICATOR -->
-<div class="notif-status" id="notifStatus">
-  <div class="dot" id="notifDot"></div>
-  <span class="text" id="notifText">Checking notifications...</span>
-</div>
     <button class="icon-btn" id="messageIconBtn" title="Messages">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
       <span class="msg-badge" id="messageCountBadge" style="display:none;">0</span>
@@ -449,6 +473,13 @@
     </button>
   </div>
 </header>
+
+<!-- NOTIFICATION STATUS INDICATOR -->
+<div class="notif-status" id="notifStatus">
+  <div class="dot" id="notifDot"></div>
+  <span class="text" id="notifText">Checking notifications...</span>
+</div>
+
 <div class="overlay" id="searchOverlay">
   <div class="search-modal-box">
     <div class="search-modal-header">
@@ -568,7 +599,7 @@
 </div>
 
 <footer style="border-top:1px solid var(--border);padding:14px 28px;font-size:12px;color:var(--text-muted);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;background:var(--white)">
-  <span>&copy; 2026 Makerere University Queue Management System</span>
+  <span>&copy; 2026 Makerere University &mdash; SMQSS</span>
   <span>Officer Dashboard v1.0</span>
 </footer>
 
@@ -621,6 +652,56 @@
         </div>
       </div>
     </div>
+
+<div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
+<div class="drawer" id="drawer">
+  <div class="drawer-header">
+    <div class="drawer-officer-info">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      <span id="drawerOfficerName">Loading...</span>
+      <div class="status-dot dot-green" id="drawerStatusDot"></div>
+      <span class="status-text" id="drawerOfficerStatus">Available</span>
+    </div>
+    <div class="drawer-office-info">
+      <span class="office-pill-name" id="drawerOfficeName">Loading...</span>
+      <span class="office-pill-loc" id="drawerOfficeLoc"></span>
+    </div>
+  </div>
+  <div class="drawer-body">
+    <button class="drawer-item" onclick="toggleDeskStatus()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="9" x2="15" y2="15"/><line x1="15" y1="9" x2="9" y2="15"/></svg>
+      <span id="drawerDeskText">Desk: Available</span>
+    </button>
+    <button class="drawer-item" onclick="toggleOfficeAvailability()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <span id="drawerAvailText">Office: Available</span>
+    </button>
+    <button class="drawer-item" id="drawerSoundBtn" onclick="toggleSound()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+      <span id="drawerSoundText">Sound: On</span>
+    </button>
+    <button class="drawer-item" id="drawerMsgBtn" onclick="openMessageModal()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+      <span>Messages</span>
+      <span class="drawer-badge" id="drawerMsgBadge" style="display:none;">0</span>
+    </button>
+    <div class="drawer-divider"></div>
+    <button class="drawer-item" onclick="openSearchModal()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <span>Search Tokens</span>
+    </button>
+    <button class="drawer-item" onclick="openChangePinModal()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+      <span>Change PIN</span>
+    </button>
+    <div class="drawer-divider"></div>
+    <button class="drawer-item drawer-logout" onclick="logout()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      <span>Logout</span>
+    </button>
+  </div>
+</div>
+
     <script>
   const ic = {
     phone: `<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.5 12.38a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.41 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.29 6.29l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>`,
@@ -737,6 +818,7 @@
       badge.className = 'sound-badge muted';
       badge.style.backgroundColor = '#ff9800';
     }
+    if (typeof syncDrawer === 'function') syncDrawer();
   }
 
   function toggleSound() {
@@ -786,9 +868,9 @@
 
   function checkLogin() {
     const loggedIn = sessionStorage.getItem('loggedInUser');
-    if (!loggedIn) { window.location.href = 'login.html'; return null; }
+    if (!loggedIn) { window.location.href = '/'; return null; }
     const user = JSON.parse(loggedIn);
-    if (user.role !== 'officer') { window.location.href = 'admin-dashboard.html'; return null; }
+    if (user.role !== 'officer') { window.location.href = '/'; return null; }
     return user;
   }
 
@@ -797,7 +879,7 @@
   document.getElementById('officeName').textContent = currentOfficer.office_name;
   document.getElementById('officeLocation').textContent = currentOfficer.location || 'Main Campus';
 
-  function logout() { sessionStorage.removeItem('loggedInUser'); window.location.href = 'index.html'; }
+  function logout() { sessionStorage.removeItem('loggedInUser'); window.location.href = '/'; }
 
   async function apiCall(endpoint, method = 'GET', data = null) {
     try {
@@ -1180,19 +1262,25 @@
     if (!pendingAvailChange) return;
     const btn = document.getElementById('availReasonConfirmBtn');
     setLoading(btn, true);
-    try {
-      const { office, newStatus } = pendingAvailChange;
-      const input = document.getElementById('availReasonInput');
-      const reason = newStatus === 'available' ? '' : input.value.trim();
-      if (newStatus === 'unavailable' && !reason) {
-        showToast('Please enter a reason for closing the office', 'warning');
-        input.focus();
-        setLoading(btn, false);
-        return;
-      }
+    const { office, newStatus } = pendingAvailChange;
+    const input = document.getElementById('availReasonInput');
+    const reason = newStatus === 'available' ? '' : input.value.trim();
+    if (newStatus === 'unavailable' && !reason) {
+      showToast('Please enter a reason for closing the office', 'warning');
+      input.focus();
+      setLoading(btn, false);
+      return;
+    }
+    const notice = newStatus === 'unavailable' ? reason : '';
+    const officeId = currentOfficer && currentOfficer.office_id;
+    if (!officeId) {
+      showToast('Office ID not found — please re-login', 'error');
+      setLoading(btn, false);
       closeAvailReasonModal();
-      const notice = newStatus === 'unavailable' ? reason : '';
-      const updateResult = await apiCall(`/api/admin/office/${currentOfficer.office_id}`, 'PUT', {
+      return;
+    }
+    try {
+      const updateResult = await apiCall(`/api/admin/office/${officeId}`, 'PUT', {
         office_code: office.office_code,
         office_name: office.office_name,
         location: office.location,
@@ -1207,11 +1295,17 @@
         showToast(`Office marked as ${newStatus}`, newStatus === 'available' ? 'success' : 'warning');
         addLog(`Office availability changed to ${newStatus}${reason ? ': ' + reason : ''}`, newStatus === 'available' ? 'success' : 'warning');
         await loadOfficeStatus();
+        syncDrawer();
       } else {
-        showToast('Failed to update office status', 'error');
+        showToast(updateResult.message || 'Failed to update office status', 'error');
       }
-    } finally { setLoading(btn, false); }
-    pendingAvailChange = null;
+    } catch (e) {
+      console.error('Availability change error:', e);
+      showToast('Network error — office status not updated', 'error');
+    } finally {
+      setLoading(btn, false);
+      closeAvailReasonModal();
+    }
   }
 
   function closeAvailReasonModal() {
@@ -1297,7 +1391,7 @@
       } else {
         showToast('Failed to update desk status', 'error');
       }
-    } finally { setLoading(btn, false); }
+    } finally { setLoading(btn, false); syncDrawer(); }
   }
 
   function loadDeskStatus() {
@@ -1466,12 +1560,56 @@
   window.confirmDeskStatusChange = confirmDeskStatusChange; window.closeDeskReasonModal = closeDeskReasonModal;
   window.confirmReset = confirmReset; window.logout = logout; window.postOfficeMessage = postOfficeMessage;
   window.deleteMessage = deleteMessage; window.closeMessageModal = closeMessageModal;
+  function syncDrawer() {
+    var on = document.getElementById('officerName');
+    var os = document.getElementById('officerStatus');
+    var sd = document.getElementById('statusDot');
+    var off = document.getElementById('officeName');
+    var ol = document.getElementById('officeLocation');
+    var dt = document.getElementById('deskToggleText');
+    var at = document.getElementById('availToggleText');
+    var sb = document.getElementById('soundBadge');
+    var mb = document.getElementById('messageCountBadge');
+    if (on) document.getElementById('drawerOfficerName').textContent = on.textContent;
+    if (os) document.getElementById('drawerOfficerStatus').textContent = os.textContent;
+    if (off) document.getElementById('drawerOfficeName').textContent = off.textContent;
+    if (ol) document.getElementById('drawerOfficeLoc').textContent = ol.textContent;
+    if (sd) document.getElementById('drawerStatusDot').className = sd.className;
+    if (dt) document.getElementById('drawerDeskText').textContent = dt.textContent;
+    if (at) document.getElementById('drawerAvailText').textContent = at.textContent;
+    if (sb) document.getElementById('drawerSoundText').textContent = sb.classList.contains('muted') ? 'Sound: Off' : 'Sound: On';
+    if (mb) {
+      var db = document.getElementById('drawerMsgBadge');
+      if (mb.style.display !== 'none' && parseInt(mb.textContent) > 0) {
+        db.textContent = mb.textContent;
+        db.style.display = 'flex';
+      } else {
+        db.style.display = 'none';
+      }
+    }
+  }
+
+  function toggleDrawer() {
+    syncDrawer();
+    document.getElementById('drawer').classList.toggle('open');
+    document.getElementById('drawerOverlay').classList.toggle('show');
+    document.getElementById('hamburgerBtn').classList.toggle('active');
+  }
+
+  function closeDrawer() {
+    document.getElementById('drawer').classList.remove('open');
+    document.getElementById('drawerOverlay').classList.remove('show');
+    document.getElementById('hamburgerBtn').classList.remove('active');
+  }
+
+  window.toggleDrawer = toggleDrawer; window.closeDrawer = closeDrawer; window.syncDrawer = syncDrawer;
   window.toggleSound = toggleSound; window.toggleDeskStatus = toggleDeskStatus;
-  window.openChangePinModal = openChangePinModal; window.closeChangePinModal = closeChangePinModal;
+  window.openMessageModal = openMessageModal; window.openChangePinModal = openChangePinModal;
   window.submitChangePin = submitChangePin; window.onSearchInput = onSearchInput;
   window.clearSearch = clearSearch; window.closeSearchModal = closeSearchModal;
 
   init();
 </script>
+
 </body>
 </html>

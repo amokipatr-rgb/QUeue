@@ -1,215 +1,216 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Kiosk Setup Guide — Queue Management System</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #070d09; color: #e0e0e0; min-height: 100vh;
-    }
-    .wrap { max-width: 800px; margin: 0 auto; padding: 40px 20px; }
-    h1 { font-size: 28px; color: #ffd700; margin-bottom: 8px; }
-    .subtitle { color: rgba(255,255,255,0.5); margin-bottom: 32px; }
-    .detect-card {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,215,0,0.15);
-      border-radius: 12px; padding: 24px; margin-bottom: 32px;
-    }
-    .detect-card .label { color: rgba(255,255,255,0.4); font-size: 13px; text-transform: uppercase; letter-spacing: 1px; }
-    .detect-card .value { font-size: 20px; margin-top: 4px; }
-    .step {
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.06);
-      border-radius: 12px; padding: 20px 24px; margin-bottom: 16px;
-    }
-    .step .num {
-      display: inline-flex; align-items: center; justify-content: center;
-      width: 28px; height: 28px; border-radius: 50%;
-      background: rgba(255,215,0,0.15); color: #ffd700;
-      font-size: 14px; font-weight: 600; margin-right: 12px;
-      flex-shrink: 0;
-    }
-    .step .head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-    .step .head h3 { font-size: 16px; font-weight: 500; }
-    .step p, .step li { color: rgba(255,255,255,0.7); font-size: 14px; line-height: 1.6; }
-    .step ul { padding-left: 20px; margin-top: 8px; }
-    .step code, .cmd {
-      display: block;
-      background: rgba(0,0,0,0.4); padding: 10px 14px;
-      border-radius: 6px; font-family: 'DM Mono', 'Courier New', monospace;
-      font-size: 13px; color: #a8d8ea; margin: 8px 0; white-space: pre-wrap; word-break: break-all;
-    }
-    .step .cmd { border-left: 3px solid #ffd700; }
-    .btn-copy {
-      display: inline-block; margin-top: 8px;
-      padding: 6px 16px; border-radius: 6px;
-      background: rgba(255,215,0,0.12); color: #ffd700;
-      border: 1px solid rgba(255,215,0,0.2); cursor: pointer;
-      font-size: 13px; transition: background 0.2s;
-    }
-    .btn-copy:hover { background: rgba(255,215,0,0.2); }
-    .btn-copy.copied { background: rgba(0,230,118,0.15); color: #00e676; border-color: rgba(0,230,118,0.3); }
-    .badge {
-      display: inline-block; padding: 2px 10px; border-radius: 20px;
-      font-size: 12px; font-weight: 500; margin-left: 8px;
-    }
-    .badge-win { background: rgba(0,150,255,0.15); color: #0096ff; }
-    .badge-mac { background: rgba(150,150,150,0.15); color: #aaa; }
-    .badge-linux { background: rgba(255,200,0,0.15); color: #ffc800; }
-    .badge-android { background: rgba(0,200,80,0.15); color: #00c850; }
-    .badge-ios { background: rgba(100,100,100,0.15); color: #888; }
-    .tabs { display: flex; gap: 4px; margin-bottom: 24px; flex-wrap: wrap; }
-    .tab {
-      padding: 8px 18px; border-radius: 8px;
-      background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.06);
-      color: rgba(255,255,255,0.5); cursor: pointer; font-size: 14px;
-      transition: all 0.2s;
-    }
-    .tab:hover { background: rgba(255,255,255,0.08); }
-    .tab.active { background: rgba(255,215,0,0.12); color: #ffd700; border-color: rgba(255,215,0,0.25); }
-    .tab-content { display: none; }
-    .tab-content.active { display: block; }
-    .footer { margin-top: 40px; text-align: center; color: rgba(255,255,255,0.3); font-size: 13px; }
-    .qrcode { text-align: center; margin: 20px 0; }
-    .qrcode svg { width: 160px; height: 160px; background: white; padding: 12px; border-radius: 12px; }
-    @media (max-width: 600px) { .wrap { padding: 20px 16px; } }
-    a { color: #ffd700; }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Kiosk Setup Guide — SMQSS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+:root{--ink:#0c0e0b;--surface:#f7f6f2;--white:#fff;--mak-green:#155c30;--mak-green-mid:#1e7d43;--mak-green-light:#e8f4ed;--mak-gold:#b8890a;--mak-gold-light:#fdf3d8;--mak-gold-bright:#d4aa00;--red:#c0392b;--blue:#1a3fa0;--purple:#5c3b9e;--border:#e2e0da;--muted:#6b7280;--shadow-sm:0 1px 3px rgba(0,0,0,.08);--shadow-md:0 4px 16px rgba(0,0,0,.10);--shadow-lg:0 12px 40px rgba(0,0,0,.13);--r:10px;--r-lg:16px;--max-w:960px}
+html{height:100%}
+body{font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--ink);line-height:1.6;font-size:15px;-webkit-font-smoothing:antialiased;height:100%;display:flex;flex-direction:column}
+.header{background:var(--white);border-bottom:3px solid var(--mak-gold-bright);padding:12px 16px;flex-shrink:0;box-shadow:var(--shadow-sm)}
+.header-inner{max-width:var(--max-w);margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;align-items:center;gap:10px;text-decoration:none;flex-shrink:1;min-width:0}
+.brand-shield{width:44px;height:44px;background:linear-gradient(145deg,var(--mak-gold-bright),var(--mak-gold));border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.brand-shield svg{width:22px;height:22px;fill:var(--mak-green)}
+.brand-name{font-family:'DM Serif Display',serif;font-size:clamp(15px,3.5vw,21px);color:var(--mak-green);white-space:nowrap}
+.brand-name span{color:var(--mak-gold)}
+.header-clock{text-align:right;flex-shrink:0}
+.clock-time{font-family:'JetBrains Mono',monospace;font-size:clamp(11px,2.5vw,13px);font-weight:500;color:var(--mak-green);white-space:nowrap}
+.clock-loc{font-size:10px;color:var(--muted);margin-top:1px;white-space:nowrap}
+.main{flex:1;max-width:var(--max-w);margin:0 auto;padding:clamp(28px,4vw,48px) 24px;width:100%}
+.page-title{font-family:'DM Serif Display',serif;font-size:clamp(24px,4vw,32px);color:var(--mak-green);margin-bottom:4px}
+.page-sub{font-size:14px;color:var(--muted);margin-bottom:clamp(24px,3vw,36px)}
+.back-top{display:inline-flex;align-items:center;gap:5px;color:var(--muted);text-decoration:none;font-size:13px;margin-bottom:20px;transition:color .2s}
+.back-top:hover{color:var(--mak-green)}
+.back-top svg{width:14px;height:14px;fill:currentColor}
+.detect-card{background:var(--white);border:1px solid var(--border);border-radius:var(--r);padding:20px 24px;margin-bottom:28px;box-shadow:var(--shadow-sm)}
+.detect-card .label{font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+.detect-card .value{font-size:20px;font-weight:600;color:var(--mak-green);margin-top:4px}
+.tabs{display:flex;gap:6px;margin-bottom:24px;flex-wrap:wrap}
+.tab{padding:8px 20px;border-radius:var(--r);background:var(--white);border:1px solid var(--border);color:var(--muted);cursor:pointer;font-size:14px;font-weight:500;font-family:'DM Sans',sans-serif;transition:all .2s}
+.tab:hover{border-color:var(--mak-gold-bright);color:var(--mak-green)}
+.tab.active{background:var(--mak-green-light);color:var(--mak-green);border-color:var(--mak-green)}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.step{background:var(--white);border:1px solid var(--border);border-radius:var(--r-lg);padding:clamp(20px,2.5vw,28px);margin-bottom:16px;box-shadow:var(--shadow-sm)}
+.step-highlight{border-color:var(--mak-gold);background:var(--mak-gold-light)}
+.step-header{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.step-num{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'DM Serif Display',serif;font-size:16px;font-weight:700;background:var(--mak-green-light);color:var(--mak-green);border:2px solid var(--mak-green);flex-shrink:0}
+.step-highlight .step-num{background:var(--mak-gold-light);color:var(--mak-gold);border-color:var(--mak-gold)}
+.step-header h3{font-size:16px;font-weight:700;color:var(--ink)}
+.step p{font-size:14px;color:var(--muted);line-height:1.65}
+.step ol,.step ul{padding-left:20px;margin-top:8px;color:var(--muted);font-size:14px;line-height:1.8}
+.step li{margin-bottom:4px}
+.cmd{background:var(--surface);border:1px solid var(--border);border-left:3px solid var(--mak-gold);padding:12px 16px;border-radius:6px;font-family:'JetBrains Mono',monospace;font-size:13px;color:var(--ink);margin:10px 0;white-space:pre-wrap;word-break:break-all;line-height:1.5}
+.btn-copy{display:inline-flex;align-items:center;gap:6px;margin-top:6px;padding:7px 18px;border-radius:8px;background:var(--white);color:var(--mak-green);border:1px solid var(--border);cursor:pointer;font-size:13px;font-weight:600;font-family:'DM Sans',sans-serif;transition:all .2s}
+.btn-copy:hover{background:var(--mak-green-light);border-color:var(--mak-green)}
+.btn-copy.copied{background:var(--mak-green-light);color:var(--mak-green);border-color:var(--mak-green-mid)}
+.dl-link{display:inline-flex;align-items:center;gap:8px;background:var(--mak-green);color:#fff;text-decoration:none;padding:10px 24px;border-radius:8px;font-weight:600;font-size:14px;margin:4px 0 8px;transition:background .2s}
+.dl-link:hover{background:var(--mak-green-mid)}
+.dl-link svg{width:18px;height:18px;fill:currentColor}
+.dl-link-alt{background:var(--blue)}
+.dl-link-alt:hover{background:#14308c}
+.tip{font-size:13px;color:var(--muted);margin-top:10px;padding:12px 16px;background:var(--surface);border-radius:var(--r);border:1px solid var(--border)}
+.tip strong{color:var(--ink)}
+.badge{display:inline-block;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600;margin-left:6px;vertical-align:middle}
+.badge-win{background:#e3f2fd;color:#1565c0}
+.badge-mac{background:#f3f0f0;color:#6b6b6b}
+.badge-linux{background:#fff3e0;color:#e65100}
+.badge-android{background:#e8f5e9;color:#2e7d32}
+.badge-ios{background:#f3eefb;color:#5c3b9e}
+.qrcode{text-align:center;margin:24px 0}
+.qrcode svg{width:160px;height:160px;background:var(--white);padding:12px;border-radius:var(--r);border:1px solid var(--border);box-shadow:var(--shadow-sm)}
+.footer{flex-shrink:0;border-top:1px solid var(--border);background:var(--white)}
+.footer-inner{max-width:var(--max-w);margin:0 auto;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.footer-inner p{font-size:12px;color:var(--muted)}
+@media(max-width:768px){.tab{padding:7px 14px;font-size:13px}}
+@media(max-width:600px){.header{padding:10px 12px}.main{padding:20px 16px}.clock-loc{display:none}.dl-link,.dl-link-alt{padding:10px 16px;font-size:13px}}
+</style>
 </head>
 <body>
-<div class="wrap">
-  <h1>&#9881; Kiosk Display Setup</h1>
-  <p class="subtitle">Configure any device to act as an automatic announcement display</p>
+<header class="header">
+<div class="header-inner">
+<a class="brand" href="/">
+<div class="brand-shield" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg></div>
+<div class="brand-name">SMQSS</div>
+</a>
+<div class="header-clock">
+<div class="clock-time" id="liveDateTime">Loading&hellip;</div>
+<div class="clock-loc">Kampala, Uganda</div>
+</div>
+</div>
+</header>
+<main class="main">
+<a class="back-top" href="/"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>Back to Home</a>
+<h1 class="page-title">Kiosk Display Setup</h1>
+<p class="page-sub">Configure any device to act as an automatic announcement display</p>
 
-  <div class="detect-card" id="detectCard">
-    <div class="label">Detected Platform</div>
-    <div class="value" id="detectedPlatform">Detecting...</div>
-  </div>
+<div class="detect-card" id="detectCard">
+<div class="label">Detected Platform</div>
+<div class="value" id="detectedPlatform">Detecting...</div>
+</div>
 
-  <div class="tabs" id="tabs">
-    <button class="tab active" data-tab="windows">Windows</button>
-    <button class="tab" data-tab="android">Android</button>
-    <button class="tab" data-tab="ios">iPad / iPhone</button>
-    <button class="tab" data-tab="linux">Linux / Raspberry Pi</button>
-    <button class="tab" data-tab="mac">macOS</button>
-  </div>
+<div class="tabs" id="tabs">
+<button class="tab active" data-tab="windows">Windows</button>
+<button class="tab" data-tab="android">Android</button>
+<button class="tab" data-tab="ios">iPad / iPhone</button>
+<button class="tab" data-tab="linux">Linux / Raspberry Pi</button>
+<button class="tab" data-tab="mac">macOS</button>
+</div>
 
-  <!-- WINDOWS -->
-  <div class="tab-content active" id="tab-windows">
-    <div class="step" style="border-color:rgba(255,215,0,0.3);background:rgba(255,215,0,0.04);">
-      <div class="head"><span class="num">&#9733;</span><h3>Electron Kiosk App (Recommended) <span class="badge badge-win">Windows</span></h3></div>
-      <p>No Chrome, no flags, no configuration needed. A dedicated kiosk app that runs fullscreen with autoplay built-in. Double-click and it works.</p>
-      <ol style="margin-top:8px;padding-left:20px;color:rgba(255,255,255,0.7);font-size:14px;line-height:1.8;">
-        <li><a href="/download" style="display:inline-flex;align-items:center;gap:8px;background:#ffd700;color:#070d09;text-decoration:none;padding:10px 24px;border-radius:8px;font-weight:600;font-size:14px;margin:4px 0 8px"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>Download Installer (77 MB)</a></li>
-        <li>Run the downloaded <strong>QueueKiosk-Setup-1.0.0.exe</strong> as Administrator.</li>
-        <li>Done! A "Queue Kiosk Display" shortcut appears on the Desktop and auto-starts on next boot.</li>
-      </ol>
-      <p style="margin-top:8px;color:rgba(255,255,255,0.5);font-size:13px">
-        <strong>Tip:</strong> After setup, configure the kiosk URL by setting the <code>KIOSK_URL</code> environment variable
-        (e.g., <code>http://localhost:5000/public-display.html</code> for local,
-        <code>https://queue-production-2a11.up.railway.app/public-display.html</code> for production).
-      </p>
-    </div>
-    <div class="step" style="border-color:rgba(100,180,255,0.3);background:rgba(100,180,255,0.04);">
-      <div class="head"><span class="num">&#9733;</span><h3>Student Token Kiosk <span class="badge badge-win">Windows</span></h3></div>
-      <p>Self-service touchscreen kiosk for generating queue tokens. Students select an office, choose a service, and enter their details — no staff assistance needed.</p>
-      <ol style="margin-top:8px;padding-left:20px;color:rgba(255,255,255,0.7);font-size:14px;line-height:1.8;">
-        <li><a href="/download" style="display:inline-flex;align-items:center;gap:8px;background:#64b4ff;color:#070d09;text-decoration:none;padding:10px 24px;border-radius:8px;font-weight:600;font-size:14px;margin:4px 0 8px"><svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>Download Student Kiosk (77 MB)</a></li>
-        <li>Run the downloaded <strong>QueueKiosk-Student-Setup-1.0.0.exe</strong> as Administrator.</li>
-        <li>Done! The student token kiosk appears fullscreen on the touchscreen and auto-starts on next boot.</li>
-      </ol>
-      <p style="margin-top:8px;color:rgba(255,255,255,0.5);font-size:13px">
-        <strong>Tip:</strong> On a touchscreen device, the OS virtual keyboard appears automatically when students tap the input fields. No additional setup needed.
-      </p>
-    </div>
-    <div class="step">
-      <div class="head"><span class="num">1</span><h3>Install Chrome <span class="badge badge-win">Windows</span></h3></div>
-      <p>If using the web version, install Chrome from <a href="https://google.com/chrome" target="_blank">google.com/chrome</a>.</p>
-    </div>
-    <div class="step">
-      <div class="head"><span class="num">2</span><h3>Run the Setup Script</h3></div>
-      <p>Run the automated setup script to register Chrome autoplay policy and create a kiosk shortcut:</p>
-      <div class="cmd" id="winScriptCmd">powershell -Command "iwr -Uri https://YOUR-RAILWAY-URL/setup-kiosk.ps1 -OutFile setup-kiosk.ps1; .\setup-kiosk.ps1"</div>
-      <button class="btn-copy" data-copy="winScriptCmd">Copy Command</button>
-    </div>
-    <div class="step">
-      <div class="head"><span class="num">3</span><h3>Manual Chrome Setup (Alternative)</h3></div>
-      <p>Create a Chrome shortcut with these flags:</p>
-      <div class="cmd" id="winCmdManual">
+<!-- WINDOWS -->
+<div class="tab-content active" id="tab-windows">
+<div class="step step-highlight">
+<div class="step-header"><span class="step-num">&#9733;</span><h3>Electron Kiosk App <span class="badge badge-win">Windows</span></h3></div>
+<p>No Chrome, no flags, no configuration needed. A dedicated kiosk app that runs fullscreen with autoplay built-in. Double-click and it works.</p>
+<ol>
+<li><a class="dl-link" href="/download"><svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>Download Installer (77 MB)</a></li>
+<li>Run the downloaded <strong>QueueKiosk-Setup-1.0.0.exe</strong> as Administrator.</li>
+<li>Done! A "Queue Kiosk Display" shortcut appears on the Desktop and auto-starts on next boot.</li>
+</ol>
+<div class="tip"><strong>Tip:</strong> After setup, configure the kiosk URL by setting the <code>KIOSK_URL</code> environment variable (e.g., <code>http://localhost:5000/public-display.html</code> for local, <code>https://queue-production-2a11.up.railway.app/public-display.html</code> for production).</div>
+</div>
+
+<div class="step step-highlight">
+<div class="step-header"><span class="step-num">&#9733;</span><h3>Student Token Kiosk <span class="badge badge-win">Windows</span></h3></div>
+<p>Self-service touchscreen kiosk for generating queue tokens. Students select an office, choose a service, and enter their details — no staff assistance needed.</p>
+<ol>
+<li><a class="dl-link dl-link-alt" href="/download"><svg viewBox="0 0 24 24"><path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"/></svg>Download Student Kiosk (77 MB)</a></li>
+<li>Run the downloaded <strong>QueueKiosk-Student-Setup-1.0.0.exe</strong> as Administrator.</li>
+<li>Done! The student token kiosk appears fullscreen on the touchscreen and auto-starts on next boot.</li>
+</ol>
+<div class="tip"><strong>Tip:</strong> On a touchscreen device, the OS virtual keyboard appears automatically when students tap the input fields. No additional setup needed.</div>
+</div>
+
+<div class="step">
+<div class="step-header"><span class="step-num">1</span><h3>Install Chrome <span class="badge badge-win">Windows</span></h3></div>
+<p>If using the web version, install Chrome from <a href="https://google.com/chrome" target="_blank">google.com/chrome</a>.</p>
+</div>
+
+<div class="step">
+<div class="step-header"><span class="step-num">2</span><h3>Run the Setup Script</h3></div>
+<p>Run the automated setup script to register Chrome autoplay policy and create a kiosk shortcut:</p>
+<div class="cmd" id="winScriptCmd">powershell -Command "iwr -Uri https://YOUR-RAILWAY-URL/setup-kiosk.ps1 -OutFile setup-kiosk.ps1; .\setup-kiosk.ps1"</div>
+<button class="btn-copy" data-copy="winScriptCmd">Copy Command</button>
+</div>
+
+<div class="step">
+<div class="step-header"><span class="step-num">3</span><h3>Manual Chrome Setup</h3></div>
+<p>Create a Chrome shortcut with these flags:</p>
+<div class="cmd" id="winCmdManual">
 "C:\Program Files\Google\Chrome\Application\chrome.exe"
   --autoplay-policy=no-user-gesture-required
   --kiosk
   --no-first-run
   --disable-features=TranslateUI
   https://YOUR-RAILWAY-URL/public-display.html</div>
-      <button class="btn-copy" data-copy="winCmdManual">Copy</button>
-      <p style="margin-top:12px;color:rgba(255,255,255,0.5);font-size:13px">
-        Place this shortcut in <code style="display:inline;padding:2px 6px;">shell:startup</code> for auto-launch.
-      </p>
-    </div>
-  </div>
+<button class="btn-copy" data-copy="winCmdManual">Copy</button>
+<div class="tip">Place this shortcut in <code>shell:startup</code> for auto-launch.</div>
+</div>
+</div>
 
-  <!-- ANDROID -->
-  <div class="tab-content" id="tab-android">
-    <div class="step">
-      <div class="head"><span class="num">1</span><h3>Open in Chrome <span class="badge badge-android">Android</span></h3></div>
-      <p>Open the display URL in Chrome on your Android device/tablet.</p>
-      <div class="cmd" id="androidUrl">https://YOUR-RAILWAY-URL/public-display.html</div>
-      <button class="btn-copy" data-copy="androidUrl">Copy URL</button>
-    </div>
-    <div class="step">
-      <div class="head"><span class="num">2</span><h3>Enable Autoplay in Chrome Flags</h3></div>
-      <p>In the Chrome address bar, go to:</p>
-      <div class="cmd">chrome://flags/#autoplay-policy</div>
-      <p>Set <strong>"Autoplay policy"</strong> to <strong>"No user gesture is required"</strong>, then tap <strong>Relaunch</strong>.</p>
-    </div>
-    <div class="step">
-      <div class="head"><span class="num">3</span><h3>Add to Home Screen</h3></div>
-      <p>Tap the menu (three dots) &rarr; <strong>Add to Home screen</strong>. This creates a fullscreen app-like icon. Open it and the display will fill the whole screen.</p>
-    </div>
-    <div class="step">
-      <div class="head"><span class="num">4</span><h3>Lock Screen Rotation &amp; Stay Awake</h3></div>
-      <p>Use any "Stay Awake" or "Kiosk" app from the Play Store to prevent screen timeout. Or enable <strong>Developer options</strong> &rarr; <strong>Stay awake</strong> while charging.</p>
-    </div>
-  </div>
+<!-- ANDROID -->
+<div class="tab-content" id="tab-android">
+<div class="step">
+<div class="step-header"><span class="step-num">1</span><h3>Open in Chrome <span class="badge badge-android">Android</span></h3></div>
+<p>Open the display URL in Chrome on your Android device or tablet.</p>
+<div class="cmd" id="androidUrl">https://YOUR-RAILWAY-URL/public-display.html</div>
+<button class="btn-copy" data-copy="androidUrl">Copy URL</button>
+</div>
+<div class="step">
+<div class="step-header"><span class="step-num">2</span><h3>Enable Autoplay in Chrome Flags</h3></div>
+<p>In the Chrome address bar, go to:</p>
+<div class="cmd">chrome://flags/#autoplay-policy</div>
+<p>Set <strong>"Autoplay policy"</strong> to <strong>"No user gesture is required"</strong>, then tap <strong>Relaunch</strong>.</p>
+</div>
+<div class="step">
+<div class="step-header"><span class="step-num">3</span><h3>Add to Home Screen</h3></div>
+<p>Tap the menu (three dots) &rarr; <strong>Add to Home screen</strong>. This creates a fullscreen app-like icon. Open it and the display will fill the whole screen.</p>
+</div>
+<div class="step">
+<div class="step-header"><span class="step-num">4</span><h3>Lock Screen Rotation &amp; Stay Awake</h3></div>
+<p>Use any "Stay Awake" or "Kiosk" app from the Play Store to prevent screen timeout. Or enable <strong>Developer options</strong> &rarr; <strong>Stay awake</strong> while charging.</p>
+</div>
+</div>
 
-  <!-- iOS / iPad -->
-  <div class="tab-content" id="tab-ios">
-    <div class="step">
-      <div class="head"><span class="num">1</span><h3>Open in Safari <span class="badge badge-ios">iPad / iPhone</span></h3></div>
-      <p>Open the display URL in Safari.</p>
-      <div class="cmd" id="iosUrl">https://YOUR-RAILWAY-URL/public-display.html</div>
-      <button class="btn-copy" data-copy="iosUrl">Copy URL</button>
-    </div>
-    <div class="step">
-      <div class="head"><span class="num">2</span><h3>Add to Home Screen</h3></div>
-      <p>Tap the <strong>Share</strong> button &rarr; <strong>Add to Home Screen</strong>. Name it "Queue Display". This creates a fullscreen web app icon.</p>
-    </div>
-    <div class="step">
-      <div class="head"><span class="num">3</span><h3>Enable Guided Access</h3></div>
-      <p>Go to <strong>Settings</strong> &rarr; <strong>Accessibility</strong> &rarr; <strong>Guided Access</strong> &rarr; turn it on. Set a passcode. Then triple-click the side button to start Guided Access — this locks the iPad to one app and prevents accidental exit.</p>
-    </div>
-    <div class="step">
-      <div class="head"><span class="num">4</span><h3>Disable Auto-Lock</h3></div>
-      <p>Go to <strong>Settings</strong> &rarr; <strong>Display & Brightness</strong> &rarr; <strong>Auto-Lock</strong> &rarr; <strong>Never</strong>.</p>
-    </div>
-  </div>
+<!-- iOS / iPad -->
+<div class="tab-content" id="tab-ios">
+<div class="step">
+<div class="step-header"><span class="step-num">1</span><h3>Open in Safari <span class="badge badge-ios">iPad / iPhone</span></h3></div>
+<p>Open the display URL in Safari.</p>
+<div class="cmd" id="iosUrl">https://YOUR-RAILWAY-URL/public-display.html</div>
+<button class="btn-copy" data-copy="iosUrl">Copy URL</button>
+</div>
+<div class="step">
+<div class="step-header"><span class="step-num">2</span><h3>Add to Home Screen</h3></div>
+<p>Tap the <strong>Share</strong> button &rarr; <strong>Add to Home Screen</strong>. Name it "Queue Display". This creates a fullscreen web app icon.</p>
+</div>
+<div class="step">
+<div class="step-header"><span class="step-num">3</span><h3>Enable Guided Access</h3></div>
+<p>Go to <strong>Settings</strong> &rarr; <strong>Accessibility</strong> &rarr; <strong>Guided Access</strong> &rarr; turn it on. Set a passcode. Then triple-click the side button to lock the iPad to one app and prevent accidental exit.</p>
+</div>
+<div class="step">
+<div class="step-header"><span class="step-num">4</span><h3>Disable Auto-Lock</h3></div>
+<p>Go to <strong>Settings</strong> &rarr; <strong>Display & Brightness</strong> &rarr; <strong>Auto-Lock</strong> &rarr; <strong>Never</strong>.</p>
+</div>
+</div>
 
-  <!-- LINUX / RASPBERRY PI -->
-  <div class="tab-content" id="tab-linux">
-    <div class="step">
-      <div class="head"><span class="num">1</span><h3>Install Chromium <span class="badge badge-linux">Linux</span></h3></div>
-      <p>Install Chromium browser if not already installed:</p>
-      <div class="cmd" id="linuxInstall">sudo apt update && sudo apt install -y chromium-browser unclutter</div>
-      <button class="btn-copy" data-copy="linuxInstall">Copy</button>
-    </div>
-    <div class="step">
-      <div class="head"><span class="num">2</span><h3>Create Autostart Entry</h3></div>
-      <p>Create a desktop autostart file that launches Chromium in kiosk mode:</p>
-      <div class="cmd" id="linuxCmd">
+<!-- LINUX / RASPBERRY PI -->
+<div class="tab-content" id="tab-linux">
+<div class="step">
+<div class="step-header"><span class="step-num">1</span><h3>Install Chromium <span class="badge badge-linux">Linux</span></h3></div>
+<p>Install Chromium browser if not already installed:</p>
+<div class="cmd" id="linuxInstall">sudo apt update && sudo apt install -y chromium-browser unclutter</div>
+<button class="btn-copy" data-copy="linuxInstall">Copy</button>
+</div>
+<div class="step">
+<div class="step-header"><span class="step-num">2</span><h3>Create Autostart Entry</h3></div>
+<p>Create a desktop autostart file that launches Chromium in kiosk mode:</p>
+<div class="cmd" id="linuxCmd">
 mkdir -p ~/.config/autostart
 cat > ~/.config/autostart/queue-display.desktop << 'EOF'
 [Desktop Entry]
@@ -218,107 +219,96 @@ Name=Queue Display
 Exec=chromium-browser --noerrdialogs --disable-infobars --kiosk --autoplay-policy=no-user-gesture-required https://YOUR-RAILWAY-URL/public-display.html
 X-GNOME-Autostart-enabled=true
 EOF</div>
-      <button class="btn-copy" data-copy="linuxCmd">Copy</button>
-      <p style="margin-top:12px;color:rgba(255,255,255,0.5);font-size:13px">
-        On Raspberry Pi OS, the display will launch automatically on next boot. <code>unclutter</code> hides the mouse cursor.
-      </p>
-    </div>
-  </div>
+<button class="btn-copy" data-copy="linuxCmd">Copy</button>
+<div class="tip">On Raspberry Pi OS, the display will launch automatically on next boot. <code>unclutter</code> hides the mouse cursor.</div>
+</div>
+</div>
 
-  <!-- macOS -->
-  <div class="tab-content" id="tab-mac">
-    <div class="step">
-      <div class="head"><span class="num">1</span><h3>Install Chrome <span class="badge badge-mac">macOS</span></h3></div>
-      <p>Ensure Chrome is installed. Download from <a href="https://google.com/chrome" target="_blank">google.com/chrome</a>.</p>
-    </div>
-    <div class="step">
-      <div class="head"><span class="num">2</span><h3>Create Kiosk App with Automator</h3></div>
-      <p>Open <strong>Automator</strong> &rarr; New &rarr; Application. Add "Run Shell Script" and paste:</p>
-      <div class="cmd" id="macCmd">
+<!-- macOS -->
+<div class="tab-content" id="tab-mac">
+<div class="step">
+<div class="step-header"><span class="step-num">1</span><h3>Install Chrome <span class="badge badge-mac">macOS</span></h3></div>
+<p>Ensure Chrome is installed. Download from <a href="https://google.com/chrome" target="_blank">google.com/chrome</a>.</p>
+</div>
+<div class="step">
+<div class="step-header"><span class="step-num">2</span><h3>Create Kiosk App with Automator</h3></div>
+<p>Open <strong>Automator</strong> &rarr; New &rarr; Application. Add "Run Shell Script" and paste:</p>
+<div class="cmd" id="macCmd">
 open -a "Google Chrome" \
   --args --autoplay-policy=no-user-gesture-required \
   --kiosk --disable-features=TranslateUI \
   https://YOUR-RAILWAY-URL/public-display.html</div>
-      <button class="btn-copy" data-copy="macCmd">Copy</button>
-      <p style="margin-top:12px;color:rgba(255,255,255,0.5);font-size:13px">
-        Save the Automator app, then add it to <strong>System Settings &rarr; General &rarr; Login Items</strong>.
-      </p>
-    </div>
-    <div class="step">
-      <div class="head"><span class="num">3</span><h3>Prevent Sleep</h3></div>
-      <p>Go to <strong>System Settings &rarr; Energy Saver</strong> and set the display to never sleep.</p>
-    </div>
-  </div>
-
-  <div class="footer">
-    <p>Queue Management System &mdash; Makerere University</p>
-    <p style="margin-top:4px">
-      Display URL: <span id="displayUrlDisplay">https://YOUR-RAILWAY-URL/public-display.html</span>
-    </p>
-  </div>
+<button class="btn-copy" data-copy="macCmd">Copy</button>
+<div class="tip">Save the Automator app, then add it to <strong>System Settings &rarr; General &rarr; Login Items</strong>.</div>
+</div>
+<div class="step">
+<div class="step-header"><span class="step-num">3</span><h3>Prevent Sleep</h3></div>
+<p>Go to <strong>System Settings &rarr; Energy Saver</strong> and set the display to never sleep.</p>
+</div>
 </div>
 
+<div class="qrcode">
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:160px;height:160px;background:var(--white);padding:12px;border-radius:var(--r);border:1px solid var(--border);box-shadow:var(--shadow-sm)"><rect x="2" y="2" width="20" height="20" rx="3"/><path d="M6 6h4v4H6zM14 6h4v4h-4zM6 14h4v4H6zM14 14h4v4h-4z"/></svg>
+</div>
+
+</main>
+
 <script>
-  // --- Platform detection ---
-  function detectPlatform() {
-    const ua = navigator.userAgent;
-    const el = document.getElementById('detectedPlatform');
+function liveClock() {
+try { var d = new Date(); var t = d.toLocaleTimeString('en-UG', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/^0/, ''); var dt = d.toLocaleDateString('en-UG', { year: 'numeric', month: 'long', day: 'numeric' }); document.getElementById('liveDateTime').textContent = dt + ' | ' + t + ' EAT'; } catch(e) {}
+}
+detectPlatform();
 
-    if (/windows/i.test(ua)) {
-      el.textContent = '\u{1F4BB} Windows + ' + (navigator.userAgent.includes('Edge') ? 'Edge' : 'Chrome');
-      document.querySelector('[data-tab="windows"]').click();
-    } else if (/android/i.test(ua)) {
-      el.textContent = '\u{1F4F1} Android';
-      document.querySelector('[data-tab="android"]').click();
-    } else if (/iPad|iPhone|iPod/.test(ua) && !window.MSStream) {
-      el.textContent = '\u{1F4F1} iPad / iPhone';
-      document.querySelector('[data-tab="ios"]').click();
-    } else if (/linux|raspberry/i.test(ua)) {
-      el.textContent = '\u{1F4BB} Linux / Raspberry Pi';
-      document.querySelector('[data-tab="linux"]').click();
-    } else if (/mac/i.test(ua)) {
-      el.textContent = '\u{1F4BB} macOS';
-      document.querySelector('[data-tab="mac"]').click();
-    } else {
-      el.textContent = '\u{1F310} ' + navigator.platform || 'Unknown';
-      document.querySelector('[data-tab="windows"]').click();
-    }
-  }
+function detectPlatform() {
+try {
+var ua = navigator.userAgent;
+var el = document.getElementById('detectedPlatform');
+if (/windows/i.test(ua)) { el.textContent = '🖥 Windows + ' + (ua.includes('Edge') ? 'Edge' : 'Chrome'); clickTab('windows'); }
+else if (/android/i.test(ua)) { el.textContent = '📱 Android'; clickTab('android'); }
+else if (/iPad|iPhone|iPod/.test(ua) && !window.MSStream) { el.textContent = '📱 iPad / iPhone'; clickTab('ios'); }
+else if (/linux|raspberry/i.test(ua)) { el.textContent = '🖥 Linux / Raspberry Pi'; clickTab('linux'); }
+else if (/mac/i.test(ua)) { el.textContent = '🖥 macOS'; clickTab('mac'); }
+else { el.textContent = '🌐 Unknown'; clickTab('windows'); }
+} catch(e) {}
+}
 
-  // --- Tab switching ---
-  document.querySelectorAll('.tab').forEach(tab => {
-    tab.addEventListener('click', () => {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-      tab.classList.add('active');
-      document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
-    });
-  });
+function clickTab(id) {
+try {
+var tab = document.querySelector('[data-tab="' + id + '"]');
+if (tab) tab.click();
+} catch(e) {}
+}
 
-  // --- Copy buttons ---
-  document.querySelectorAll('.btn-copy').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const id = btn.dataset.copy;
-      const text = document.getElementById(id).textContent;
-      navigator.clipboard.writeText(text).then(() => {
-        btn.textContent = 'Copied!';
-        btn.classList.add('copied');
-        setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
-      });
-    });
-  });
+document.querySelectorAll('.tab').forEach(function(tab) {
+tab.addEventListener('click', function() {
+document.querySelectorAll('.tab').forEach(function(t) { t.classList.remove('active'); });
+document.querySelectorAll('.tab-content').forEach(function(t) { t.classList.remove('active'); });
+tab.classList.add('active');
+document.getElementById('tab-' + tab.dataset.tab).classList.add('active');
+});
+});
 
-  // --- Replace placeholder with actual origin ---
-  const origin = window.location.origin;
-  document.querySelectorAll('.cmd, #displayUrlDisplay').forEach(el => {
-    el.textContent = el.textContent.replace(/https:\/\/YOUR-RAILWAY-URL/g, origin);
-  });
-  document.getElementById('winScriptCmd').textContent =
-    document.getElementById('winScriptCmd').textContent.replace(
-      /https:\/\/YOUR-RAILWAY-URL/g, origin
-    );
+document.querySelectorAll('.btn-copy').forEach(function(btn) {
+btn.addEventListener('click', function() {
+var id = btn.dataset.copy;
+var text = document.getElementById(id).textContent;
+navigator.clipboard.writeText(text).then(function() {
+btn.textContent = 'Copied!';
+btn.classList.add('copied');
+setTimeout(function() { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
+});
+});
+});
 
-  detectPlatform();
+var origin = window.location.origin;
+document.querySelectorAll('.cmd, #displayUrlDisplay').forEach(function(el) {
+el.textContent = el.textContent.replace(/https:\/\/YOUR-RAILWAY-URL/g, origin);
+});
+document.getElementById('winScriptCmd').textContent =
+document.getElementById('winScriptCmd').textContent.replace(/https:\/\/YOUR-RAILWAY-URL/g, origin);
+
+try { liveClock(); setInterval(liveClock, 1000); } catch(e) {}
+detectPlatform();
 </script>
 </body>
 </html>

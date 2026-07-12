@@ -7,6 +7,11 @@ piper/
 # Flask logs
 flask_err.txt
 flask_out.txt
+flask*.log
+flask*.err.log
+
+# Stray binaries
+python
 
 # Test files
 test_*

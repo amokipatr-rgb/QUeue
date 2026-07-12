@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Rate Your Service – Makerere University</title>
+<title>Rate Your Service — SMQSS</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
@@ -49,6 +49,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--ink)
 .token-info-row:last-child{border-bottom:none}
 .token-info-row .lbl{color:var(--muted)}
 .token-info-row .val{font-weight:600;color:var(--ink)}
+.chat-bubble{background:#e8f5e9;border:1px solid #c8e6c9;border-radius:14px 14px 14px 4px;padding:16px 20px;font-size:15px;line-height:1.7;color:var(--ink);margin-bottom:20px;position:relative}
+.chat-bubble strong{color:#2e7d32}
+.chat-bubble.typing::after{content:'|';animation:blink 0.8s step-end infinite;color:#2e7d32;font-weight:700;margin-left:2px}
+@keyframes blink{50%{opacity:0}}
 .rating-title{text-align:center;font-size:15px;font-weight:700;color:var(--ink);margin-bottom:6px}
 .rating-sub{text-align:center;font-size:12.5px;color:var(--muted);margin-bottom:16px}
 .stars{display:flex;justify-content:center;gap:6px;margin:0 0 18px;flex-direction:row-reverse}
@@ -78,9 +82,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--ink)
 
 <header class="header">
   <div class="header-inner">
-    <a class="brand" href="index.html">
+    <a class="brand" href="/">
       <div class="brand-shield"><svg viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3z"/></svg></div>
-      <div class="brand-name">MAKERERE <span>UNIVERSITY</span></div>
+      <div class="brand-name">SMQSS</div>
     </a>
     <a id="backLink" class="btn-back" href="student-token.html" style="font-size:12px;font-weight:600;color:var(--muted);text-decoration:none;text-transform:uppercase;letter-spacing:.5px">&larr; Back</a>
   </div>
@@ -131,6 +135,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--ink)
 
 <script>
 const isElectron = navigator.userAgent.toLowerCase().includes('electron');
+if (!isElectron) {
+  document.querySelectorAll('.btn-back').forEach(function(el) {
+    el.style.display = 'none';
+  });
+}
 
 const backLink = document.getElementById('backLink');
 if (backLink) {
@@ -140,13 +149,6 @@ const API_BASE = window.location.origin;
 let currentToken = null;
 let selectedRating = 0;
 
-// Auto-load token from URL param
-const urlParams = new URLSearchParams(window.location.search);
-const tokenParam = urlParams.get('token');
-if (tokenParam) {
-  document.getElementById('tokenInput').value = tokenParam;
-  lookupToken();
-}
 
 document.getElementById('tokenInput').addEventListener('keydown', function(e){
   if(e.key === 'Enter') lookupToken();
@@ -173,35 +175,72 @@ async function lookupToken(){
     const t = data.token;
     currentToken = token;
 
+    function statusMessage(name, office, officeCode, service, status) {
+      var msg = 'Hello ' + (name || 'there');
+      switch (status) {
+        case 'waiting':
+          msg += ', you are currently in the queue at ' + office + ' for ' + (service || 'service') + '. Thanks for your patience - feel free to share any feedback while you wait.';
+          break;
+        case 'called':
+          msg += ', you were called to ' + office + ' for ' + (service || 'service') + '. We hope you were assisted. Let us know how it went below.';
+          break;
+        case 'serving':
+          msg += ', you are being served at ' + office + ' for ' + (service || 'service') + '. After your session, please rate your experience below.';
+          break;
+        case 'completed':
+          msg += ', thank you for visiting ' + office + ' for ' + (service || 'service') + '. We hope everything went well. Please rate your visit below - your feedback helps us improve.';
+          break;
+        case 'skipped':
+          msg += ', we noticed you were at ' + office + ' for ' + (service || 'service') + ' but your visit was skipped. We\u2019re sorry about that. Please let us know what happened.';
+          break;
+        default:
+          msg += ', you visited ' + office + ' for ' + (service || 'service') + '. Please share your feedback below.';
+      }
+      return msg;
+    }
+
+    function typeWriter(el, text, speed, callback) {
+      el.innerHTML = '';
+      el.classList.add('typing');
+      var i = 0;
+      function step() {
+        if (i < text.length) {
+          el.innerHTML += text.charAt(i);
+          i++;
+          setTimeout(step, speed);
+        } else {
+          el.classList.remove('typing');
+          if (callback) callback();
+        }
+      }
+      step();
+    }
+
     if(t.feedback_submitted){
       showStep('step1');
-      document.getElementById('tokenInfo').innerHTML =
-        '<div class="token-info-row"><span class="lbl">Token</span><span class="val">'+t.token_number+'</span></div>'+
-        '<div class="token-info-row"><span class="lbl">Student</span><span class="val">'+escapeHtml(t.student_name||'N/A')+'</span></div>'+
-        '<div class="token-info-row"><span class="lbl">Office</span><span class="val">'+escapeHtml(t.office_name)+'</span></div>'+
-        '<div class="token-info-row"><span class="lbl">Service</span><span class="val">'+escapeHtml(t.service_name||'N/A')+'</span></div>';
-      document.getElementById('ratingSection').innerHTML =
+      document.getElementById('tokenInfo').innerHTML = '<div class="chat-bubble"></div>';
+      var bubble = document.querySelector('#tokenInfo .chat-bubble');
+      var fullText = 'Hello ' + (t.student_name || 'there') + ', you previously visited ' + t.office_name + ' for ' + (t.service_name || 'service') + '. You\'ve already shared feedback \u2014 thank you!';
+      typeWriter(bubble, fullText, 30, function(){
+        document.getElementById('ratingSection').innerHTML =
         '<div class="already-rated">'+
           '<div class="check-icon"><svg viewBox="0 0 24 24"><polyline points="2,12 8,18 22,4" stroke="#2e7d32" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>'+
           '<p style="font-size:15px;font-weight:700;color:var(--mak-green)">Already Rated</p>'+
           '<p style="font-size:12.5px;color:var(--muted);margin-top:4px">You have already submitted feedback for this token. Thank you!</p>'+
         '</div>';
+      });
       document.getElementById('submitBtn').style.display='none';
       if (isElectron) {
-        setTimeout(function(){ window.location.href = 'student-token.html'; }, 3000);
+        setTimeout(function(){ window.location.href = '/student-token'; }, 3000);
       }
       return;
     }
 
     showStep('step1');
-    document.getElementById('tokenInfo').innerHTML =
-      '<div class="token-info-row"><span class="lbl">Token</span><span class="val" style="font-family:JetBrains Mono,monospace;letter-spacing:1px">'+t.token_number+'</span></div>'+
-      '<div class="token-info-row"><span class="lbl">Student</span><span class="val">'+escapeHtml(t.student_name||'N/A')+'</span></div>'+
-      '<div class="token-info-row"><span class="lbl">Office</span><span class="val">'+escapeHtml(t.office_name)+' ('+t.office_code+')</span></div>'+
-      '<div class="token-info-row"><span class="lbl">Service</span><span class="val">'+escapeHtml(t.service_name||'N/A')+'</span></div>'+
-      '<div class="token-info-row"><span class="lbl">Status</span><span class="val" style="text-transform:capitalize">'+t.status+'</span></div>';
-
-    var isCompleted = t.status === 'completed';
+    document.getElementById('tokenInfo').innerHTML = '<div class="chat-bubble"></div>';
+    var bubble = document.querySelector('#tokenInfo .chat-bubble');
+    typeWriter(bubble, statusMessage(t.student_name, t.office_name, t.office_code, t.service_name, t.status), 30, function(){
+      var isCompleted = t.status === 'completed';
 
     document.getElementById('ratingSection').innerHTML =
       '<div class="rating-title'+(isCompleted?'':' complaint')+'">'+(isCompleted?'How was your experience?':'Report an Issue')+'</div>'+
@@ -222,6 +261,7 @@ async function lookupToken(){
     document.getElementById('submitBtn').textContent = isCompleted ? 'Submit Feedback' : 'Submit Complaint';
     selectedRating = 0;
     document.getElementById('submitBtn').disabled = true;
+    });
 
   } catch(err){
     showStep('step0');
@@ -272,7 +312,7 @@ async function submitRating(){
         : 'Your feedback has been recorded. It helps us improve our service delivery for everyone at Makerere University.';
       showStep('step2');
       if (isElectron) {
-        setTimeout(function(){ window.location.href = 'student-token.html'; }, 3000);
+        setTimeout(function(){ window.location.href = '/student-token'; }, 3000);
       }
     } else {
       showStep('step1');
