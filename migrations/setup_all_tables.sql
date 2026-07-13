@@ -13,6 +13,9 @@ CREATE TABLE IF NOT EXISTS offices (
     location VARCHAR(100) DEFAULT NULL,
     is_active TINYINT(1) DEFAULT 1,
     display_order INT DEFAULT 0,
+    availability_status VARCHAR(20) DEFAULT 'available',
+    unavailability_notice TEXT DEFAULT NULL,
+    availability_updated_at TIMESTAMP NULL DEFAULT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -120,6 +123,38 @@ CREATE TABLE IF NOT EXISTS queue_counters (
     CONSTRAINT fk_counter_office FOREIGN KEY (office_id) REFERENCES offices(id) ON DELETE CASCADE
 );
 
+-- ── OFFICER SESSIONS ──
+CREATE TABLE IF NOT EXISTS officer_sessions (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    officer_id INT NOT NULL,
+    office_id INT NOT NULL,
+    session_date DATE NOT NULL,
+    login_time DATETIME NOT NULL,
+    logout_time DATETIME NULL,
+    login_ip VARCHAR(45) NULL,
+    login_location VARCHAR(255) DEFAULT NULL,
+    logout_ip VARCHAR(45) NULL,
+    device_info VARCHAR(255) NULL,
+    status VARCHAR(20) DEFAULT 'active',
+    tokens_served INT DEFAULT 0,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT fk_session_officer FOREIGN KEY (officer_id) REFERENCES officers(id) ON DELETE CASCADE,
+    CONSTRAINT fk_session_office FOREIGN KEY (office_id) REFERENCES offices(id) ON DELETE CASCADE
+);
+
+-- ── OFFICER STATUS LOG ──
+CREATE TABLE IF NOT EXISTS officer_status_log (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    session_id INT NOT NULL,
+    officer_id INT NOT NULL,
+    status VARCHAR(20) NOT NULL,
+    started_at DATETIME NOT NULL,
+    ended_at DATETIME NULL,
+    duration_minutes INT DEFAULT 0,
+    CONSTRAINT fk_statuslog_session FOREIGN KEY (session_id) REFERENCES officer_sessions(id) ON DELETE CASCADE,
+    CONSTRAINT fk_statuslog_officer FOREIGN KEY (officer_id) REFERENCES officers(id) ON DELETE CASCADE
+);
+
 -- =====================================================
 -- INDEXES
 -- =====================================================
@@ -141,6 +176,13 @@ CREATE INDEX IF NOT EXISTS idx_tokens_skipped ON university_tokens(skipped_at);
 CREATE INDEX IF NOT EXISTS idx_tokens_priority ON university_tokens(is_priority, office_id, status);
 CREATE INDEX IF NOT EXISTS idx_logs_token ON queue_logs(token_number);
 CREATE INDEX IF NOT EXISTS idx_logs_officer ON queue_logs(officer_id);
+CREATE INDEX IF NOT EXISTS idx_offices_availability ON offices(availability_status);
+CREATE INDEX IF NOT EXISTS idx_sessions_date ON officer_sessions(session_date);
+CREATE INDEX IF NOT EXISTS idx_sessions_officer_date ON officer_sessions(officer_id, session_date);
+CREATE INDEX IF NOT EXISTS idx_sessions_status ON officer_sessions(status);
+CREATE INDEX IF NOT EXISTS idx_statuslog_session ON officer_status_log(session_id);
+CREATE INDEX IF NOT EXISTS idx_statuslog_officer ON officer_status_log(officer_id);
+CREATE INDEX IF NOT EXISTS idx_statuslog_started ON officer_status_log(started_at);
 
 -- =====================================================
 -- SEED: OFFICES
