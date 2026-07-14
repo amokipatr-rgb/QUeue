@@ -58,6 +58,12 @@ body{font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--ink)
 .listen-btn:hover{background:var(--mak-gold-light);border-color:var(--mak-gold)}
 .listen-btn.speaking{background:#fff8e1;border-color:var(--mak-gold)}
 .listen-btn svg{width:14px;height:14px;flex-shrink:0}
+.listen-btn.loading .listen-pulse{display:inline-block}
+.listen-btn.loading .listen-text-wrap{display:inline-flex;align-items:center;gap:7px}
+.listen-pulse{display:none;width:8px;height:8px;border-radius:50%;background:var(--mak-gold-bright);animation:lpulse 1s ease-in-out infinite}
+@keyframes lpulse{0%,100%{opacity:.3;transform:scale(.8)}50%{opacity:1;transform:scale(1.2)}}
+.listen-fade{transition:opacity .3s ease}
+.listen-fade.fading{opacity:0}
 .footer{flex-shrink:0;border-top:1px solid var(--border);background:var(--white)}
 .footer-inner{max-width:var(--max-w);margin:0 auto;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 .footer-inner p{font-size:12px;color:var(--muted)}
@@ -81,7 +87,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--ink)
 <main class="main">
 <button class="listen-btn" id="listenBtn" onclick="toggleListen()" title="Read this page aloud">
 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
-<span id="listenText">Listen</span>
+<span class="listen-text-wrap"><span class="listen-pulse"></span><span id="listenText" class="listen-fade">Listen</span></span>
 </button>
 <a class="back-top" href="/"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>Back to Home</a>
 <h1 class="page-title">SMQSS Workflow &amp; System Guide</h1>
@@ -186,6 +192,33 @@ try { document.getElementById('footerYear').textContent = new Date().getFullYear
 try { liveClock(); setInterval(liveClock, 1000); } catch(e) {}
 
 var _listenAudio = null;
+var _loadInterval = null;
+var _loadMessages = ['SMQSS model starting', 'Generating speech', 'Preparing audio'];
+var _loadIdx = 0;
+
+function stopLoadAnim(text) {
+    if (_loadInterval) { clearInterval(_loadInterval); _loadInterval = null; }
+    var btn = document.getElementById('listenBtn');
+    if (btn) btn.classList.remove('loading');
+    var t = document.getElementById('listenText');
+    if (t) { t.classList.remove('fading'); t.textContent = text; }
+}
+
+function startLoadAnim() {
+    var btn = document.getElementById('listenBtn');
+    var t = document.getElementById('listenText');
+    btn.classList.add('loading');
+    _loadIdx = 0;
+    t.textContent = _loadMessages[0];
+    _loadInterval = setInterval(function() {
+        t.classList.add('fading');
+        setTimeout(function() {
+            _loadIdx = (_loadIdx + 1) % _loadMessages.length;
+            t.textContent = _loadMessages[_loadIdx];
+            t.classList.remove('fading');
+        }, 300);
+    }, 1200);
+}
 
 function toggleListen() {
     var btn = document.getElementById('listenBtn');
@@ -194,12 +227,12 @@ function toggleListen() {
         _listenAudio.pause();
         _listenAudio = null;
         btn.classList.remove('speaking');
-        text.textContent = 'Listen';
+        stopLoadAnim('Listen');
         return;
     }
     var content = buildPageSummary();
     if (!content) return;
-    text.textContent = 'Loading...';
+    startLoadAnim();
     fetch('/api/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -209,14 +242,14 @@ function toggleListen() {
         return r.blob();
     }).then(function(blob) {
         _listenAudio = new Audio(URL.createObjectURL(blob));
-        _listenAudio.onended = function() { _listenAudio = null; btn.classList.remove('speaking'); text.textContent = 'Listen'; };
-        _listenAudio.onerror = function() { _listenAudio = null; btn.classList.remove('speaking'); text.textContent = 'Listen'; };
-        _listenAudio.play().catch(function() { _listenAudio = null; btn.classList.remove('speaking'); text.textContent = 'Listen'; });
+        _listenAudio.onended = function() { _listenAudio = null; btn.classList.remove('speaking'); stopLoadAnim('Listen'); };
+        _listenAudio.onerror = function() { _listenAudio = null; btn.classList.remove('speaking'); stopLoadAnim('Listen'); };
+        _listenAudio.play().catch(function() { _listenAudio = null; btn.classList.remove('speaking'); stopLoadAnim('Listen'); });
         btn.classList.add('speaking');
-        text.textContent = 'Stop';
+        stopLoadAnim('Stop');
     }).catch(function() {
         btn.classList.remove('speaking');
-        text.textContent = 'Listen';
+        stopLoadAnim('Listen');
     });
 }
 function buildPageSummary() {
