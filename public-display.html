@@ -265,10 +265,9 @@
             text-shadow: 0 0 12px rgba(255,255,255,0.2);
         }
         .notices-upnext-grid {
-            display: flex;
-            flex-wrap: wrap;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
             gap: 10px;
-            justify-content: center;
             padding: 0 32px;
         }
         .notice-card {
@@ -279,13 +278,8 @@
             display: flex;
             flex-direction: column;
             gap: 4px;
-            flex: 0 1 auto;
-            min-width: 200px;
-            max-width: 360px;
         }
         .notice-card:only-child {
-            width: 80%;
-            max-width: 80%;
             align-items: center;
             text-align: center;
         }
