@@ -505,7 +505,7 @@
     </div>
     <div class="msg-modal-body">
       <div class="msg-input-row">
-        <input class="msg-input" type="text" id="newMessage" placeholder="Enter message for students…" maxlength="200" />
+        <input class="msg-input" type="text" id="newMessage" name="newMessage" autocomplete="off" placeholder="Enter message for students…" maxlength="200" />
         <button class="post-btn" onclick="postOfficeMessage()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Post</button>
       </div>
       <div id="messagesList"><div class="empty"><div class="empty-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="empty-text">Loading messages…</div></div></div>
@@ -939,11 +939,14 @@
 
   function renderMessages() {
     const container = document.getElementById('messagesList');
+    const inputRow = document.querySelector('.msg-input-row');
     const active = allMessages.filter(m => m.is_active === 1);
     if (!active.length) {
+      if (inputRow) inputRow.style.display = '';
       container.innerHTML = `<div class="empty"><div class="empty-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="empty-text">No messages posted yet</div></div>`;
       return;
     }
+    if (inputRow) inputRow.style.display = 'none';
     container.innerHTML = active.map(msg => `<div class="msg-item"><div style="flex:1;"><div class="msg-text">${escapeHtml(msg.message)}</div><div class="msg-time">${ic.clock} ${new Date(msg.created_at).toLocaleString()}</div><div class="msg-active">${ic.dot_live} Active on public display</div></div><button class="del-btn" onclick="deleteMessage(${msg.id})"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg> Delete</button></div>`).join('');
   }
 
@@ -970,7 +973,7 @@
     } finally { setLoading(btn, false); }
   }
 
-  function openMessageModal() { document.getElementById('messageOverlay').classList.add('open'); loadMessages(); }
+  function openMessageModal() { document.getElementById('messageOverlay').classList.add('open'); var inp = document.getElementById('newMessage'); if (inp) inp.value = ''; loadMessages(); }
   function closeMessageModal() { document.getElementById('messageOverlay').classList.remove('open'); }
 
   async function generateWelcomeVoice(officerName, officeName) {
