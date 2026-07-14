@@ -1920,7 +1920,7 @@ def officer_call_next():
         """, (officer_id, officer_number, token['id']))
 
         cursor.execute("""
-            UPDATE officers SET status='calling', current_token=%s, last_activity=NOW()
+            UPDATE officers SET status='called', current_token=%s, last_activity=NOW()
             WHERE id=%s
         """, (token['token_number'], officer_id))
 
@@ -1972,7 +1972,7 @@ def officer_call_specific():
         """, (officer_id, officer_number, token_number))
 
         cursor.execute("""
-            UPDATE officers SET status='calling', current_token=%s, last_activity=NOW()
+            UPDATE officers SET status='called', current_token=%s, last_activity=NOW()
             WHERE id=%s
         """, (token_number, officer_id))
 
@@ -2024,7 +2024,7 @@ def officer_serve():
         """, (token_number,))
         
         cursor.execute("""
-            UPDATE officers SET status='serving', last_activity=NOW() 
+            UPDATE officers SET status='busy', last_activity=NOW() 
             WHERE id=%s
         """, (officer_id,))
         
