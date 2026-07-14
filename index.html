@@ -36,6 +36,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--ink)
 .btn-outline-home{display:inline-flex;align-items:center;gap:8px;background:transparent;color:var(--mak-green);font-size:13px;font-weight:500;padding:10px 24px;border-radius:var(--r);text-decoration:none;cursor:pointer;border:1.5px solid var(--mak-green);transition:all .2s;font-family:'DM Sans',sans-serif}
 .btn-outline-home:hover{background:var(--mak-green-light);border-color:var(--mak-green-mid)}
 .btn-outline-home svg{width:16px;height:16px;fill:currentColor}
+.btn-download-home{display:inline-flex;align-items:center;gap:8px;background:var(--mak-gold-light);color:var(--mak-gold);font-size:13px;font-weight:500;padding:10px 24px;border-radius:var(--r);text-decoration:none;cursor:pointer;border:1.5px solid var(--mak-gold);transition:all .2s;font-family:'DM Sans',sans-serif}
+.btn-download-home:hover{background:var(--mak-gold);color:#fff}
+.btn-download-home svg{width:16px;height:16px;fill:currentColor}
 .footer{flex-shrink:0;border-top:1px solid var(--border);background:var(--white)}
 .footer-inner{max-width:var(--max-w);margin:0 auto;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 .footer-inner p{font-size:12px;color:var(--muted)}
@@ -58,7 +61,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--ink)
 #toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(14px);background:var(--mak-green);color:#fff;padding:11px 22px;border-radius:8px;font-size:14px;font-weight:600;z-index:999;opacity:0;pointer-events:none;transition:opacity .3s,transform .3s;box-shadow:var(--shadow-md);min-width:200px;text-align:center;max-width:90vw}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 @media(max-width:600px){.header{padding:10px 12px}.main{padding:32px 20px}.shield-large{width:64px;height:64px}.shield-large svg{width:30px;height:30px}.app-title{font-size:26px}.clock-loc{display:none}.footer-inner{padding:14px 20px}}
-@media(max-width:400px){.shield-large{width:56px;height:56px}.shield-large svg{width:26px;height:26px}.app-title{font-size:22px}.btn-login,.btn-outline-home{width:100%;justify-content:center}}
+@media(max-width:400px){.shield-large{width:56px;height:56px}.shield-large svg{width:26px;height:26px}.app-title{font-size:22px}.btn-login,.btn-outline-home,.btn-download-home{width:100%;justify-content:center}}
 </style>
 </head>
 <body>
@@ -80,7 +83,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--ink)
 <h1 class="app-title">Smart Queue Management System</h1>
 <p class="app-sub">SMQSS — Piloted at Makerere University. Log in to manage queues across all offices.</p>
 <div class="btn-row"><a class="btn-login" href="javascript:void(0)" onclick="goToLogin()"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>Staff Login</a>
-<a class="btn-outline-home" href="javascript:void(0)" onclick="goToWorkflow()"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>View Workflow</a></div>
+<a class="btn-outline-home" href="javascript:void(0)" onclick="goToWorkflow()"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>View Workflow</a>
+<a class="btn-download-home" href="/api/download/queue-kiosk-index-setup.exe" download><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download Desktop App</a></div>
 </div>
 </main>
 <footer class="footer">

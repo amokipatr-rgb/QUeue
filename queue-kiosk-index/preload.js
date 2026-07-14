@@ -14,6 +14,7 @@ document.addEventListener('DOMContentLoaded', () => {
     .ribbon-nav a:nth-child(5) { display: none !important; }
     .stats-row { display: none !important; }
     .header-clock { display: none !important; }
+    .btn-download-home { display: none !important; }
   `;
   document.head.appendChild(style);
 });
