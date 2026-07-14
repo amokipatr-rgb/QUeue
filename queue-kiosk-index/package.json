@@ -10,7 +10,7 @@
   },
   "build": {
     "appId": "com.makerere.queue-kiosk-index",
-    "productName": "SMQSS Home",
+    "productName": "SMQSS Staff Portal",
     "directories": {
       "output": "dist"
     },
@@ -30,7 +30,7 @@
       "runAfterFinish": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "SMQSS Home"
+      "shortcutName": "SMQSS Staff Portal"
     },
     "extraResources": []
   },
