@@ -41,33 +41,33 @@ CORS(app)
 # ============================================
 # DATABASE CONFIGURATION
 # ============================================
-_mysql_url = os.environ.get('MYSQL_URL') or os.environ.get('DATABASE_URL')
-if _mysql_url:
-    m = re.match(r'mysql://([^:]+):([^@]*)@([^:]+):(\d+)/(.+)', _mysql_url)
-    if m:
-        DB_CONFIG = {
-            'host': m.group(3),
-            'port': int(m.group(4)),
-            'user': m.group(1),
-            'password': m.group(2),
-            'database': m.group(5)
-        }
-        print(f"[OK] DB config from MYSQL_URL ({m.group(3)}:{m.group(4)})")
-    else:
-        print("[WARN] Could not parse MYSQL_URL, falling back to defaults")
-        DB_CONFIG = None
-else:
-    DB_CONFIG = None
+def _build_db_config():
+    _url = os.environ.get('MYSQL_URL') or os.environ.get('DATABASE_URL')
+    if _url:
+        m = re.match(r'mysql://([^:]+):([^@]*)@([^:]+):(\d+)/(.+)', _url)
+        if m:
+            return {
+                'host': m.group(3), 'port': int(m.group(4)),
+                'user': m.group(1), 'password': m.group(2),
+                'database': m.group(5)
+            }, f"MYSQL_URL ({m.group(3)}:{m.group(4)})"
+        print("[WARN] Could not parse MYSQL_URL, trying individual vars")
 
+    host = os.environ.get('MYSQLHOST') or os.environ.get('MYSQL_HOST')
+    if host:
+        return {
+            'host': host,
+            'port': int(os.environ.get('MYSQLPORT') or os.environ.get('MYSQL_PORT') or 3306),
+            'user': os.environ.get('MYSQLUSER') or os.environ.get('MYSQL_USER') or 'root',
+            'password': os.environ.get('MYSQLPASSWORD') or os.environ.get('MYSQL_PASSWORD') or '',
+            'database': os.environ.get('MYSQLDATABASE') or os.environ.get('MYSQL_DATABASE') or 'railway'
+        }, f"individual MYSQL_* vars ({host})"
+    return None, None
+
+DB_CONFIG, _src = _build_db_config()
 if not DB_CONFIG:
-    DB_CONFIG = {
-        'host': '127.0.0.1',
-        'port': 3306,
-        'user': 'root',
-        'password': '',
-        'database': 'db'
-    }
-    print(f"[OK] DB config from hardcoded localhost defaults")
+    raise RuntimeError("No database configuration found. Set MYSQL_URL or MYSQLHOST/MYSQL_PORT/etc.")
+print(f"[OK] DB config from {_src}")
 
 def _ensure_indexes(cursor, connection):
     required = [
