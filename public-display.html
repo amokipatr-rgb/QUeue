@@ -205,7 +205,7 @@
             display: flex;
             flex-direction: column;
             align-items: center;
-            justify-content: center;
+            justify-content: flex-end;
             gap: 0;
             text-align: center;
         }
@@ -282,9 +282,11 @@
         .notice-card:only-child {
             align-items: stretch;
             text-align: center;
+            justify-self: center;
+            max-width: 600px;
         }
         .notice-label {
-            font-size: 15px;
+            font-size: clamp(13px, 1.8vw, 18px);
             font-weight: 700;
             color: #e8c547;
             margin-bottom: 2px;
@@ -293,7 +295,7 @@
             color: #69ff9c;
         }
         .notice-text {
-            font-size: 17px;
+            font-size: clamp(15px, 2.2vw, 22px);
             font-weight: 500;
             color: rgba(255,255,255,0.92);
             line-height: 1.3;
