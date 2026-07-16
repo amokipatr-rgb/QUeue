@@ -267,7 +267,7 @@
         }
         .notices-upnext-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
             gap: 10px;
             padding: 0 32px;
         }
@@ -305,13 +305,19 @@
             background: rgba(255,255,255,0.04);
             border: 1px solid rgba(255,255,255,0.08);
             border-radius: 12px;
-            padding: 14px 16px;
-            text-align: center;
+            padding: 6px 16px;
+        }
+        .upnext-token-row {
+            padding: 7px 0;
             font-family: 'DM Mono', monospace;
-            font-size: 22px;
+            font-size: 20px;
             font-weight: 600;
             color: #e8c547;
             letter-spacing: 1px;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        .upnext-token-row:last-child {
+            border-bottom: none;
         }
 
         /* ── ON-DUTY OFFICES ── */
@@ -1141,10 +1147,11 @@
                 '</div>';
             }
 
-            for (var k = 0; k < currentUpNextItems.length; k++) {
-                var t = currentUpNextItems[k];
+            if (currentUpNextItems.length > 0) {
                 html += '<div class="upnext-token-card">' +
-                    escapeHtml(t.token) +
+                    currentUpNextItems.slice(0, 10).map(function(t) {
+                        return '<div class="upnext-token-row">' + escapeHtml(t.token) + '</div>';
+                    }).join('') +
                 '</div>';
             }
 
