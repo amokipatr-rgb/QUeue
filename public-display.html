@@ -324,9 +324,18 @@
             color: #e8c547;
             letter-spacing: 1px;
         }
+        .upnext-token-row:first-child {
+            border-left: 3px solid #e8c547;
+            padding-left: 13px;
+            animation: firstRowPulse 2.5s ease-in-out infinite;
+        }
+        @keyframes firstRowPulse {
+            0%, 100% { background: rgba(232,197,71,0.05); }
+            50% { background: rgba(232,197,71,0.13); }
+        }
         .upnext-row-name {
-            font-size: 13px;
-            color: rgba(255,255,255,0.7);
+            font-size: 15px;
+            color: #69ff9c;
             font-weight: 700;
             max-width: 140px;
             overflow: hidden;
