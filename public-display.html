@@ -267,7 +267,7 @@
         }
         .notices-upnext-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
             gap: 10px;
             padding: 0 32px;
         }
@@ -301,44 +301,17 @@
             color: rgba(255,255,255,0.92);
             line-height: 1.3;
         }
-        .upnext-card {
-            display: flex;
-            align-items: center;
-            gap: 12px;
+        .upnext-token-card {
             background: rgba(255,255,255,0.04);
             border: 1px solid rgba(255,255,255,0.08);
             border-radius: 12px;
-            padding: 10px 16px;
-            min-width: 0;
-            flex: 0 1 auto;
-            max-width: 260px;
-        }
-        .upnext-token {
+            padding: 14px 16px;
+            text-align: center;
             font-family: 'DM Mono', monospace;
-            font-size: 20px;
+            font-size: 22px;
             font-weight: 600;
             color: #e8c547;
-            flex-shrink: 0;
             letter-spacing: 1px;
-        }
-        .upnext-info {
-            min-width: 0;
-        }
-        .upnext-name {
-            font-size: 12px;
-            font-weight: 600;
-            color: rgba(255,255,255,0.85);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-        .upnext-service {
-            font-size: 10px;
-            color: rgba(255,255,255,0.35);
-            margin-top: 2px;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
         }
 
         /* ── ON-DUTY OFFICES ── */
@@ -1170,12 +1143,8 @@
 
             for (var k = 0; k < currentUpNextItems.length; k++) {
                 var t = currentUpNextItems[k];
-                html += '<div class="upnext-card">' +
-                    '<div class="upnext-token">' + escapeHtml(t.token) + '</div>' +
-                    '<div class="upnext-info">' +
-                        '<div class="upnext-name">' + escapeHtml(t.name || 'Student') + '</div>' +
-                        '<div class="upnext-service">' + escapeHtml(t.service) + '</div>' +
-                    '</div>' +
+                html += '<div class="upnext-token-card">' +
+                    escapeHtml(t.token) +
                 '</div>';
             }
 
