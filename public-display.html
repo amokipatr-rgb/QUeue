@@ -308,16 +308,30 @@
             padding: 6px 16px;
         }
         .upnext-token-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
             padding: 7px 0;
+            border-bottom: 1px solid rgba(255,255,255,0.04);
+        }
+        .upnext-token-row:last-child {
+            border-bottom: none;
+        }
+        .upnext-row-token {
             font-family: 'DM Mono', monospace;
             font-size: 20px;
             font-weight: 600;
             color: #e8c547;
             letter-spacing: 1px;
-            border-bottom: 1px solid rgba(255,255,255,0.04);
         }
-        .upnext-token-row:last-child {
-            border-bottom: none;
+        .upnext-row-name {
+            font-size: 13px;
+            color: rgba(255,255,255,0.6);
+            font-weight: 500;
+            max-width: 140px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         /* ── ON-DUTY OFFICES ── */
@@ -1150,7 +1164,10 @@
             if (currentUpNextItems.length > 0) {
                 html += '<div class="upnext-token-card">' +
                     currentUpNextItems.slice(0, 10).map(function(t) {
-                        return '<div class="upnext-token-row">' + escapeHtml(t.token) + '</div>';
+                        return '<div class="upnext-token-row">' +
+                            '<span class="upnext-row-token">' + escapeHtml(t.token) + '</span>' +
+                            (t.name ? '<span class="upnext-row-name">' + escapeHtml(t.name) + '</span>' : '') +
+                        '</div>';
                     }).join('') +
                 '</div>';
             }
