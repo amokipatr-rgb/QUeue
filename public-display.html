@@ -316,6 +316,12 @@
             border-left: 1px solid rgba(255,255,255,0.08);
             padding-left: 16px;
         }
+        .notices-upnext-grid.active-mode.upnext-only {
+            grid-template-columns: 1fr;
+        }
+        .notices-upnext-grid.active-mode .nu-col-full {
+            padding: 0;
+        }
         .nu-h-sep {
             margin: 0 10px;
             color: rgba(255,255,255,0.15);
@@ -1201,29 +1207,12 @@
             if (!isIdle) {
                 var hasNotices = currentMessages && currentMessages.length > 0;
                 var hasUpNext = currentUpNextItems.length > 0;
-                if (!hasNotices || !hasUpNext) {
+                if (!hasUpNext) {
                     container.style.display = 'none';
                     return;
                 }
 
                 var header = document.querySelector('.notices-upnext-header');
-                header.innerHTML =
-                    '<span class="notices-upnext-dot"></span>' +
-                    '<span class="notices-upnext-title" id="noticesUpNextTitle">NOTICE</span>' +
-                    '<span class="notices-upnext-dot"></span>' +
-                    '<span class="nu-h-sep">|</span>' +
-                    '<span class="notices-upnext-dot"></span>' +
-                    '<span class="notices-upnext-title" style="color:#e8c547">NEXT TO BE CALLED</span>' +
-                    '<span class="notices-upnext-dot"></span>';
-
-                var msg = currentMessages[idleMessageIndex % currentMessages.length];
-                var leftHtml = '<div class="notice-card notice-card-compact">' +
-                    '<div class="notice-label">From: <span class="notice-office-name">' +
-                        escapeHtml(msg.office_name || 'Office Notice') +
-                    '</span></div>' +
-                    '<div class="notice-text">' + escapeHtml(msg.message || '') + '</div>' +
-                '</div>';
-
                 var rightHtml = '<div class="upnext-list">' +
                     currentUpNextItems.slice(0, 6).map(function(t, i) {
                         return '<div class="upnext-list-item" style="animation-delay:' + (i*0.06) + 's">' +
@@ -1232,10 +1221,37 @@
                     }).join('') +
                 '</div>';
 
-                grid.className = 'notices-upnext-grid active-mode';
-                grid.innerHTML =
-                    '<div class="nu-col-left">' + leftHtml + '</div>' +
-                    '<div class="nu-col-right">' + rightHtml + '</div>';
+                if (hasNotices) {
+                    header.innerHTML =
+                        '<span class="notices-upnext-dot"></span>' +
+                        '<span class="notices-upnext-title" id="noticesUpNextTitle">NOTICE</span>' +
+                        '<span class="notices-upnext-dot"></span>' +
+                        '<span class="nu-h-sep">|</span>' +
+                        '<span class="notices-upnext-dot"></span>' +
+                        '<span class="notices-upnext-title" style="color:#e8c547">NEXT TO BE CALLED</span>' +
+                        '<span class="notices-upnext-dot"></span>';
+
+                    var msg = currentMessages[idleMessageIndex % currentMessages.length];
+                    var leftHtml = '<div class="notice-card notice-card-compact">' +
+                        '<div class="notice-label">From: <span class="notice-office-name">' +
+                            escapeHtml(msg.office_name || 'Office Notice') +
+                        '</span></div>' +
+                        '<div class="notice-text">' + escapeHtml(msg.message || '') + '</div>' +
+                    '</div>';
+
+                    grid.className = 'notices-upnext-grid active-mode';
+                    grid.innerHTML =
+                        '<div class="nu-col-left">' + leftHtml + '</div>' +
+                        '<div class="nu-col-right">' + rightHtml + '</div>';
+                } else {
+                    header.innerHTML =
+                        '<span class="notices-upnext-dot"></span>' +
+                        '<span class="notices-upnext-title" id="noticesUpNextTitle" style="color:#e8c547">NEXT TO BE CALLED</span>' +
+                        '<span class="notices-upnext-dot"></span>';
+
+                    grid.className = 'notices-upnext-grid active-mode upnext-only';
+                    grid.innerHTML = '<div class="nu-col-full">' + rightHtml + '</div>';
+                }
 
                 container.style.display = 'block';
                 return;
@@ -1339,7 +1355,7 @@
                 newsTicker.classList.remove('visible');
                 noActive.style.display = 'none';
                 activeGrid.style.display = 'grid';
-                if (!(currentMessages?.length && currentUpNextItems?.length)) {
+                if (!currentUpNextItems?.length) {
                     document.getElementById('noticesUpNext').style.display = 'none';
                 }
 
