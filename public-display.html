@@ -307,12 +307,34 @@
             border-radius: 12px;
             padding: 6px 16px;
         }
+        .upnext-token-card.animate-in {
+            animation: oldFade 0.15s ease;
+        }
+        @keyframes oldFade {
+            0%   { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
         .upnext-token-row {
             display: flex;
             align-items: center;
             justify-content: space-between;
             padding: 7px 0;
             border-bottom: 1px solid rgba(255,255,255,0.04);
+            animation: rowSlideIn 0.35s ease both;
+        }
+        @keyframes rowSlideIn {
+            0%   { opacity: 0; transform: translateY(-8px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+        .upnext-token-row:first-child {
+            animation:
+                rowSlideIn 0.35s ease both,
+                rowHighlight 3s ease 0.35s forwards;
+        }
+        @keyframes rowHighlight {
+            0%   { background: rgba(232,197,71,0.12); border-left: 3px solid #e8c547; padding-left: 13px; }
+            70%  { background: rgba(232,197,71,0.06); border-left: 3px solid #e8c547; padding-left: 13px; }
+            100% { background: transparent; border-left: none; padding-left: 0; }
         }
         .upnext-token-row:last-child {
             border-bottom: none;
@@ -326,8 +348,8 @@
         }
         .upnext-row-name {
             font-size: 13px;
-            color: rgba(255,255,255,0.6);
-            font-weight: 500;
+            color: rgba(255,255,255,0.7);
+            font-weight: 700;
             max-width: 140px;
             overflow: hidden;
             text-overflow: ellipsis;
@@ -860,6 +882,7 @@
         let idleMessageIndex = 0;
         let idleMessageRotationTimer = null;
         let currentUpNextItems = [];
+        let lastUpNextKey = '';
 
         // TV Display stability variables
         let failedFetches = 0;
@@ -1162,14 +1185,20 @@
             }
 
             if (currentUpNextItems.length > 0) {
-                html += '<div class="upnext-token-card">' +
-                    currentUpNextItems.slice(0, 10).map(function(t) {
-                        return '<div class="upnext-token-row">' +
-                            '<span class="upnext-row-token">' + escapeHtml(t.token) + '</span>' +
-                            (t.name ? '<span class="upnext-row-name">' + escapeHtml(t.name) + '</span>' : '') +
-                        '</div>';
-                    }).join('') +
-                '</div>';
+                var key = currentUpNextItems.slice(0, 10).map(function(t) { return t.token; }).join(',');
+                if (key === lastUpNextKey && container.style.display === 'block') {
+                    // no change — skip re-render to avoid unwanted animation
+                } else {
+                    lastUpNextKey = key;
+                    html += '<div class="upnext-token-card animate-in">' +
+                        currentUpNextItems.slice(0, 10).map(function(t, i) {
+                            return '<div class="upnext-token-row" style="animation-delay:' + (i*0.07) + 's">' +
+                                '<span class="upnext-row-token">' + escapeHtml(t.token) + '</span>' +
+                                (t.name ? '<span class="upnext-row-name">' + escapeHtml(t.name) + '</span>' : '') +
+                            '</div>';
+                        }).join('') +
+                    '</div>';
+                }
             }
 
             title.textContent = hasNotices && hasUpNext ? 'Notices & Up Next'
