@@ -1834,22 +1834,45 @@ def get_public_queues_next():
         """)
         offices = cursor.fetchall()
 
+        # Count how many available offices have waiting tokens
+        cursor.execute("""
+            SELECT COUNT(DISTINCT t.office_id) as cnt
+            FROM university_tokens t
+            JOIN offices o ON t.office_id = o.id
+            WHERE COALESCE(o.is_active, 1) = 1
+            AND COALESCE(NULLIF(TRIM(o.availability_status), ''), 'available') = 'available'
+            AND t.status = 'waiting'
+        """)
+        active_office_count = cursor.fetchone()['cnt']
+
+        if active_office_count >= 3:
+            per_office_limit = 1
+        elif active_office_count == 2:
+            per_office_limit = 2
+        elif active_office_count == 1:
+            per_office_limit = 3
+        else:
+            per_office_limit = 0
+
         result = []
         for office in offices:
             if office.get('availability_status', 'available').strip().lower() != 'available':
                 continue
-            cursor.execute("""
-                SELECT t.token_number, t.student_name, t.service_code,
-                       t.requested_at, t.is_priority,
-                       TIMESTAMPDIFF(MINUTE, t.requested_at, NOW()) as waiting_minutes,
-                       s.service_name
-                FROM university_tokens t
-                LEFT JOIN services s ON t.service_id = s.id
-                WHERE t.office_id = %s AND t.status = 'waiting'
-                ORDER BY t.is_priority DESC, t.requested_at ASC
-                LIMIT 3
-            """, (office['id'],))
-            next_tokens = cursor.fetchall()
+            if per_office_limit > 0:
+                cursor.execute("""
+                    SELECT t.token_number, t.student_name, t.service_code,
+                           t.requested_at, t.is_priority,
+                           TIMESTAMPDIFF(MINUTE, t.requested_at, NOW()) as waiting_minutes,
+                           s.service_name
+                    FROM university_tokens t
+                    LEFT JOIN services s ON t.service_id = s.id
+                    WHERE t.office_id = %s AND t.status = 'waiting'
+                    ORDER BY t.is_priority DESC, t.requested_at ASC
+                    LIMIT %s
+                """, (office['id'], per_office_limit))
+                next_tokens = cursor.fetchall()
+            else:
+                next_tokens = []
 
             result.append({
                 'office_id': office['id'],
