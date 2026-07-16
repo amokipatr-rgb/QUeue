@@ -888,7 +888,7 @@
         let announcedRecalls = new Set();
         let recentAnnouncements = {};
         let isIdle = true;
-        let currentMessages = [];
+        let currentMessages = [{ office_name: 'Makerere University', message: 'Makerere University maintains a strict zero-tolerance policy against sexual harassment. Any incidents or concerns should be reported promptly to the appropriate authority for investigation and necessary action.' }];
         let idleMessageIndex = 0;
         let idleMessageRotationTimer = null;
         let currentUpNextItems = [];
@@ -1114,7 +1114,7 @@
                 const sig = JSON.stringify(msgs.map(m => m.id + m.message));
                 if (sig !== fetchAndDisplayMessages._lastSig) {
                     fetchAndDisplayMessages._lastSig = sig;
-                    currentMessages = msgs;
+                    currentMessages = msgs.length ? msgs : [{ office_name: 'Makerere University', message: 'Makerere University maintains a strict zero-tolerance policy against sexual harassment. Any incidents or concerns should be reported promptly to the appropriate authority for investigation and necessary action.' }];
                     idleMessageIndex = 0;
                     buildTickerContent(msgs);
                     renderIdleState(currentMessages);
