@@ -1116,7 +1116,7 @@
                     fetchAndDisplayMessages._lastSig = sig;
                     currentMessages = msgs.length ? msgs : [{ office_name: 'Makerere University', message: 'Makerere University maintains a strict zero-tolerance policy against sexual harassment. Any incidents or concerns should be reported promptly to the appropriate authority for investigation and necessary action.' }];
                     idleMessageIndex = 0;
-                    buildTickerContent(msgs);
+                    buildTickerContent(currentMessages);
                     renderIdleState(currentMessages);
                 }
                 lastSuccessfulMessageFetch = Date.now();
