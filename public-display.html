@@ -450,6 +450,23 @@
         .icon-serving { background: rgba(0,230,118,0.12); }  .icon-serving svg { fill: #69ff9c; }
         .stat-val { font-family: 'DM Mono', monospace; font-size: 22px; font-weight: 500; color: rgba(255,255,255,0.85); line-height: 1; }
         .stat-lbl { font-size: 11px; color: rgba(255,255,255,0.35); margin-top: 2px; letter-spacing: 0.5px; }
+        .chip-tokens-mode {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            font-size: 0;
+        }
+        .chip-token {
+            font-family: 'DM Mono', monospace;
+            font-size: 12px;
+            font-weight: 600;
+            color: #e8c547;
+            background: rgba(232,197,71,0.1);
+            border-radius: 4px;
+            padding: 1px 6px;
+            white-space: nowrap;
+            line-height: 1.8;
+        }
 
         /* ── TV NEWS TICKER ── */
         .news-ticker-wrap {
@@ -1263,10 +1280,15 @@
                 `).join('');
                 var key = activeTokens.map(function(t){return t.type+':'+t.token}).join('|');
                 if (activeGrid.dataset.key !== key) { activeGrid.dataset.key = key; activeGrid.innerHTML = html; }
-                document.getElementById('totalCalled').textContent = currentUpNextItems.length;
+                var calledEl = document.getElementById('totalCalled');
+                calledEl.className = 'chip-tokens-mode';
+                calledEl.innerHTML = currentUpNextItems.slice(0, 8).map(function(t) {
+                    return '<span class="chip-token">' + escapeHtml(t.token) + '</span>';
+                }).join('');
                 document.getElementById('calledLabel').textContent = 'Up Next';
             } else {
                 isIdle = true;
+                document.getElementById('totalCalled').className = 'stat-val';
                 document.getElementById('totalCalled').textContent = totalCalled;
                 document.getElementById('calledLabel').textContent = 'Called';
                 activeGrid.style.display = 'none';
@@ -1394,7 +1416,11 @@
             }
             currentUpNextItems = allNext;
             if (!isIdle) {
-                document.getElementById('totalCalled').textContent = allNext.length;
+                var calledEl = document.getElementById('totalCalled');
+                calledEl.className = 'chip-tokens-mode';
+                calledEl.innerHTML = allNext.slice(0, 8).map(function(t) {
+                    return '<span class="chip-token">' + escapeHtml(t.token) + '</span>';
+                }).join('');
             }
             renderNoticesGrid();
         }
