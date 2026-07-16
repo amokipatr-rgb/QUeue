@@ -25,7 +25,7 @@
 
         /* ── HEADER ── */
         .header {
-            position: fixed; top: 0; left: 0; right: 0; z-index: 50;
+            position: fixed; top: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 1024px; z-index: 50;
             height: 72px;
             background: rgba(7,13,9,0.95);
             border-bottom: 1px solid rgba(201,162,39,0.3);
@@ -53,7 +53,7 @@
 
         /* ── MAIN SCREEN ── */
         .screen {
-            position: fixed; inset: 0;
+            position: fixed; top: 0; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 1024px;
             padding: 88px 32px 100px;
             display: flex; flex-direction: column; gap: 20px;
             overflow: hidden;
@@ -301,6 +301,55 @@
             color: rgba(255,255,255,0.92);
             line-height: 1.3;
         }
+
+        /* ── ACTIVE MODE: two-column notice + up-next ── */
+        .notices-upnext-grid.active-mode {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0;
+            padding: 0 32px;
+        }
+        .notices-upnext-grid.active-mode .nu-col-left {
+            padding-right: 16px;
+        }
+        .notices-upnext-grid.active-mode .nu-col-right {
+            border-left: 1px solid rgba(255,255,255,0.08);
+            padding-left: 16px;
+        }
+        .nu-h-sep {
+            margin: 0 10px;
+            color: rgba(255,255,255,0.15);
+            font-size: 13px;
+        }
+        .notice-card-compact {
+            padding: 10px 14px;
+            height: auto;
+        }
+        .upnext-list {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .upnext-list-item {
+            display: flex;
+            align-items: center;
+            padding: 6px 12px;
+            background: rgba(255,255,255,0.03);
+            border-radius: 8px;
+            animation: slideDownIn 0.3s ease both;
+        }
+        .upnext-list-token {
+            font-family: 'DM Mono', monospace;
+            font-size: 18px;
+            font-weight: 600;
+            color: #e8c547;
+            letter-spacing: 1px;
+        }
+        @keyframes slideDownIn {
+            0%   { opacity: 0; transform: translateY(-8px); max-height: 0; padding: 0 12px; }
+            100% { opacity: 1; transform: translateY(0); max-height: 32px; padding: 6px 12px; }
+        }
+
         .upnext-card {
             display: flex;
             align-items: center;
@@ -453,8 +502,7 @@
         .news-ticker-wrap {
             position: fixed;
             bottom: 40px;
-            left: 0;
-            right: 0;
+            left: 50%; transform: translateX(-50%); width: 100%; max-width: 1024px;
             z-index: 60;
             display: none;
             flex-direction: column;
@@ -1149,6 +1197,51 @@
             var container = document.getElementById('noticesUpNext');
             var title = document.getElementById('noticesUpNextTitle');
 
+            // ── ACTIVE MODE ──
+            if (!isIdle) {
+                var hasNotices = currentMessages && currentMessages.length > 0;
+                var hasUpNext = currentUpNextItems.length > 0;
+                if (!hasNotices || !hasUpNext) {
+                    container.style.display = 'none';
+                    return;
+                }
+
+                var header = document.querySelector('.notices-upnext-header');
+                header.innerHTML =
+                    '<span class="notices-upnext-dot"></span>' +
+                    '<span class="notices-upnext-title" id="noticesUpNextTitle">NOTICE</span>' +
+                    '<span class="notices-upnext-dot"></span>' +
+                    '<span class="nu-h-sep">|</span>' +
+                    '<span class="notices-upnext-dot"></span>' +
+                    '<span class="notices-upnext-title" style="color:#e8c547">NEXT TO BE CALLED</span>' +
+                    '<span class="notices-upnext-dot"></span>';
+
+                var msg = currentMessages[idleMessageIndex % currentMessages.length];
+                var leftHtml = '<div class="notice-card notice-card-compact">' +
+                    '<div class="notice-label">From: <span class="notice-office-name">' +
+                        escapeHtml(msg.office_name || 'Office Notice') +
+                    '</span></div>' +
+                    '<div class="notice-text">' + escapeHtml(msg.message || '') + '</div>' +
+                '</div>';
+
+                var rightHtml = '<div class="upnext-list">' +
+                    currentUpNextItems.slice(0, 6).map(function(t, i) {
+                        return '<div class="upnext-list-item" style="animation-delay:' + (i*0.06) + 's">' +
+                            '<span class="upnext-list-token">' + escapeHtml(t.token) + '</span>' +
+                        '</div>';
+                    }).join('') +
+                '</div>';
+
+                grid.className = 'notices-upnext-grid active-mode';
+                grid.innerHTML =
+                    '<div class="nu-col-left">' + leftHtml + '</div>' +
+                    '<div class="nu-col-right">' + rightHtml + '</div>';
+
+                container.style.display = 'block';
+                return;
+            }
+
+            // ── EXISTING IDLE CODE ──
             if (!isIdle) { container.style.display = 'none'; return; }
 
             var hasNotices = currentMessages && currentMessages.length > 0;
@@ -1246,7 +1339,9 @@
                 newsTicker.classList.remove('visible');
                 noActive.style.display = 'none';
                 activeGrid.style.display = 'grid';
-                document.getElementById('noticesUpNext').style.display = 'none';
+                if (!(currentMessages?.length && currentUpNextItems?.length)) {
+                    document.getElementById('noticesUpNext').style.display = 'none';
+                }
 
                 var html = activeTokens.map(t => `
                     <div class="${t.type}-card">
