@@ -86,7 +86,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--ink)
       <div class="brand-shield"><svg viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3z"/></svg></div>
       <div class="brand-name">SMQSS</div>
     </a>
-    <a id="backLink" class="btn-back" href="student-token.html" style="font-size:12px;font-weight:600;color:var(--muted);text-decoration:none;text-transform:uppercase;letter-spacing:.5px">&larr; Back</a>
+    <a id="backLink" class="btn-back" href="/student-token.html" style="font-size:12px;font-weight:600;color:var(--muted);text-decoration:none;text-transform:uppercase;letter-spacing:.5px">&larr; Back</a>
   </div>
 </header>
 
@@ -111,7 +111,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--ink)
       <div class="token-info" id="tokenInfo"></div>
       <div id="ratingSection"></div>
       <div class="btn-row">
-        <a class="btn-back" href="student-token.html">← Back</a>
+        <a class="btn-back" href="/student-token.html">← Back</a>
         <button class="btn" id="submitBtn" onclick="submitRating()" disabled>Submit Feedback</button>
       </div>
     </div>
@@ -121,7 +121,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--ink)
       <div class="confirm-title">Thank You!</div>
       <p class="confirm-desc" id="confirmText">Your feedback has been recorded. It helps us improve our service delivery for everyone at Makerere University.</p>
       <div class="btn-row" style="margin-top:20px;">
-        <a class="btn-back" href="student-token.html">← Back to Kiosk</a>
+        <a class="btn-back" href="/student-token.html">← Back to Kiosk</a>
       </div>
     </div>
 
@@ -143,7 +143,7 @@ if (!isElectron) {
 
 const backLink = document.getElementById('backLink');
 if (backLink) {
-  backLink.href = 'student-token.html';
+  backLink.href = '/student-token.html';
 }
 const API_BASE = window.location.origin;
 let currentToken = null;
