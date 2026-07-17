@@ -165,6 +165,7 @@ try { document.getElementById('adminSubmitBtn').disabled = false; document.getEl
 try { document.getElementById('footerYear').textContent = new Date().getFullYear(); } catch(e) {}
 try { liveClock(); setInterval(liveClock, 1000); } catch(e) {}
 try { document.getElementById('adminLoginForm').addEventListener('submit', submitAdminLogin); } catch(e) {}
+try { if (navigator.userAgent.toLowerCase().includes('electron')) { document.querySelector('.btn-download-home').style.display = 'none'; } } catch(e) {}
 </script>
 </body>
 </html>
