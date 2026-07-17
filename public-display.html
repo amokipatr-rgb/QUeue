@@ -391,18 +391,18 @@
             background: rgba(255,255,255,0.10);
         }
         .on-duty-code {
-            display: inline-block;
-            font-family: 'DM Mono', monospace;
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: 1.5px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
             color: #e8c547;
             background: rgba(201,162,39,0.12);
-            border: 1px solid rgba(201,162,39,0.2);
-            padding: 3px 14px;
-            border-radius: 6px;
+            border: 1.5px solid rgba(201,162,39,0.2);
+            border-radius: 10px;
             margin-bottom: 10px;
         }
+        .on-duty-code svg { width: 20px; height: 20px; }
         .on-duty-name {
             font-size: 18px;
             font-weight: 600;
@@ -424,7 +424,7 @@
             font-weight: 500;
         }
         .on-duty-card.unavailable { border-color: rgba(232,197,71,0.25); background: rgba(232,197,71,0.06); }
-        .on-duty-card.unavailable .on-duty-code { color: #e8c547; text-decoration: line-through; opacity: 0.6; }
+        .on-duty-card.unavailable .on-duty-code { color: #e8c547; opacity: 0.5; }
         .on-duty-card.unavailable .on-duty-name { color: rgba(255,255,255,0.5); }
         .on-duty-card.unavailable .on-duty-waiting { display: none; }
         .on-duty-card.unavailable .unavail-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: #e8c547; margin-top: 8px; }
@@ -1321,7 +1321,7 @@
                         const availClass = isAvail ? '' : 'unavailable';
                         if (isAvail) {
                             return `<div class="on-duty-card available">
-                                <div class="on-duty-code">${escapeHtml(o.office_code)}</div>
+                                <div class="on-duty-code"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M8 10h.01"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 14h.01"/><path d="M16 14h.01"/><path d="M12 14h.01"/></svg></div>
                                 <div class="on-duty-name">${escapeHtml(o.office_name)}</div>
                                 <div class="on-duty-location">${escapeHtml(o.location || 'Main Campus')}</div>
                                 <div class="on-duty-waiting"><strong>${o.waiting_count || 0}</strong> waiting</div>
@@ -1329,7 +1329,7 @@
                             </div>`;
                         } else {
                             return `<div class="on-duty-card unavailable">
-                                <div class="on-duty-code">${escapeHtml(o.office_code)}</div>
+                                <div class="on-duty-code"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M8 10h.01"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 14h.01"/><path d="M16 14h.01"/><path d="M12 14h.01"/></svg></div>
                                 <div class="on-duty-name">${escapeHtml(o.office_name)}</div>
                                 <div class="on-duty-location">${escapeHtml(o.location || 'Main Campus')}</div>
                                 <div class="on-duty-waiting"><strong>${o.waiting_count || 0}</strong> waiting</div>
