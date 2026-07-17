@@ -47,6 +47,11 @@ body.keyboard-open .btn-row{
 .header .header-clock{text-align:right;flex-shrink:0}
 .header .clock-time{font-family:'JetBrains Mono',monospace;font-size:clamp(10px,2vw,12px);font-weight:500;color:var(--mak-green);white-space:nowrap}
 body.keyboard-open .header,body.input-mode .header{display:none!important;}
+body.keyboard-open .header-ticker,body.input-mode .header-ticker{display:none!important;}
+
+.header-ticker{overflow:hidden;white-space:nowrap;padding:0;background:var(--mak-green);color:rgba(255,255,255,0.9);font-size:13px;font-weight:500;flex-shrink:0;line-height:34px}
+.header-ticker-inner{display:inline-flex;align-items:center;animation:headerTickerScroll 35s linear infinite;will-change:transform}
+@keyframes headerTickerScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
 
 .card{
   background:var(--white);
@@ -351,6 +356,7 @@ body.keyboard-open .header,body.input-mode .header{display:none!important;}
     <div class="header-clock">
       <div class="clock-time" id="liveDateTime">Loading&hellip;</div>
     </div>
+    <div class="header-ticker"><div class="header-ticker-inner" id="headerTickerInner"></div></div>
   </div>
 
   <div class="card">
@@ -542,6 +548,16 @@ function liveClock() {
 try { var d = new Date(); var t = d.toLocaleTimeString('en-UG', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/^0/, ''); document.getElementById('liveDateTime').textContent = t + ' EAT'; } catch(e) {}
 }
 try { liveClock(); setInterval(liveClock, 1000); } catch(e) {}
+
+function buildHeaderTicker(){
+ var inner=document.getElementById('headerTickerInner');
+ if(!inner)return;
+ var items=['👉 Select your preferred office and service to begin','◆','📱 Enter your name & student number to receive a token','◆','🖥️ Watch the public display for your turn','◆','🙏 Thank you for using SMQSS'];
+ var sep=' <span style="padding:0 14px;opacity:0.5">◆</span> ';
+ var content=items.join(sep);
+ inner.innerHTML=content+sep+content;
+}
+try{ buildHeaderTicker(); }catch(e){}
 
 /* ── TYPEWRITER ── */
 function typeMessage(bubbleId, text, onDone, delay){
