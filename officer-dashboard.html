@@ -505,7 +505,10 @@
     </div>
     <div class="msg-modal-body">
       <div class="msg-input-row">
-        <input class="msg-input" type="text" id="newMessage" name="newMessage" autocomplete="off" placeholder="Enter message for students…" maxlength="200" />
+        <div style="flex:1;position:relative;">
+          <input class="msg-input" type="text" id="newMessage" name="newMessage" autocomplete="off" placeholder="Enter message for students…" maxlength="172" oninput="updateCharCount()" />
+          <span id="charCount" style="position:absolute;right:8px;bottom:4px;font-size:10px;font-family:monospace;color:rgba(255,255,255,0.35);">0/172</span>
+        </div>
         <button class="post-btn" onclick="postOfficeMessage()"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg> Post</button>
       </div>
       <div id="messagesList"><div class="empty"><div class="empty-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="empty-text">Loading messages…</div></div></div>
@@ -950,10 +953,19 @@
     container.innerHTML = active.map(msg => `<div class="msg-item"><div style="flex:1;"><div class="msg-text">${escapeHtml(msg.message)}</div><div class="msg-time">${ic.clock} ${new Date(msg.created_at).toLocaleString()}</div><div class="msg-active">${ic.dot_live} Active on public display</div></div><button class="del-btn" onclick="deleteMessage(${msg.id})"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg> Delete</button></div>`).join('');
   }
 
+  function updateCharCount() {
+    var input = document.getElementById('newMessage');
+    var count = document.getElementById('charCount');
+    var len = input.value.length;
+    count.textContent = len + '/172';
+    count.style.color = len >= 172 ? '#ff4444' : len > 150 ? 'rgba(255,193,7,0.8)' : 'rgba(255,255,255,0.35)';
+  }
+
   async function postOfficeMessage() {
     const input = document.getElementById('newMessage');
     const message = input.value.trim();
     if (!message) { showToast('Please enter a message', 'warning'); return; }
+    if (message.length > 172) { showToast('Message exceeds 172 character limit', 'warning'); return; }
     const btn = document.querySelector('#messageOverlay .modal-btn');
     setLoading(btn, true);
     try {
