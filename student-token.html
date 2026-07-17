@@ -551,7 +551,7 @@ try { liveClock(); setInterval(liveClock, 1000); } catch(e) {}
 function buildHeaderTicker(){
  var inner=document.getElementById('headerTickerInner');
  if(!inner)return;
- var items=['👉 Select your preferred office and service to begin','◆','📱 Enter your name & student number to receive a token','◆','🖥️ Watch the public display for your turn','◆','🙏 Thank you for using SMQSS'];
+ var items=['👉 To get started, click "Get My Token"','◆ Select your preferred office and service','◆ Enter your name and student number','◆ 🖥️ Watch the public display for your turn','◆ 🙏 Thank you for using our service'];
  var sep=' <span style="padding:0 14px;opacity:0.5">◆</span> ';
  var content=items.join(sep);
  inner.innerHTML='<div>'+content+sep+content+'</div>';
