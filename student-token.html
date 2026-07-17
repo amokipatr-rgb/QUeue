@@ -412,10 +412,13 @@ body.keyboard-open .header,body.input-mode .header{display:none!important;}
           <div class="btn-desc" style="margin-top:6px;">Already visited an office? Share your experience</div>
         </div>
 
-        <button class="btn-launch" id="launchBtn" onclick="startFlow()" style="display:none;">
-          <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-          Select an Office
-        </button>
+        <div style="display:flex;gap:8px;">
+          <button class="btn-launch" id="launchBtn" onclick="startFlow()" style="display:none;">
+            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            Select an Office
+          </button>
+          <button class="btn-back" id="step0BackBtn" onclick="goToStep(0)" style="display:none;">← Back</button>
+        </div>
 
       </div>
     </div>
@@ -594,6 +597,7 @@ function showWelcome(){
     "Hello! 👋 Welcome to Makerere University's Queue System. I'll help you get your token quickly. Click the button below to get started it only takes about a minute.",
     function(){
       document.getElementById('launchBtn').style.display='inline-flex';
+      document.getElementById('step0BackBtn').style.display='inline-flex';
     },
     400
   );
@@ -724,7 +728,10 @@ function goToStep(step){
     document.getElementById('rateWelcomeWrap').style.display='';
     document.getElementById('welcomePanel').style.display='none';
     document.getElementById('launchBtn').style.display='none';
+    document.getElementById('step0BackBtn').style.display='none';
     document.getElementById('stepIndicator').style.display='none';
+    var b=document.getElementById('aiBubble0');
+    if(b) b.innerHTML='<div class="ai-typing"><span></span><span></span><span></span></div>';
   }
   if(step===2 && !selectedOffice){ showError('Please select an office first.'); return; }
   if(step===3 && !selectedService){ showError('Please select a service first.'); return; }
