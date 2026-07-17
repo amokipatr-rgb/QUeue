@@ -719,6 +719,13 @@ function renderServices(){
 /* ── STEP NAVIGATION ── */
 function goToStep(step){
   document.body.classList.remove('input-mode');
+  if(step===0){
+    document.getElementById('getStartedBtn').style.display='';
+    document.getElementById('rateWelcomeWrap').style.display='';
+    document.getElementById('welcomePanel').style.display='none';
+    document.getElementById('launchBtn').style.display='none';
+    document.getElementById('stepIndicator').style.display='none';
+  }
   if(step===2 && !selectedOffice){ showError('Please select an office first.'); return; }
   if(step===3 && !selectedService){ showError('Please select a service first.'); return; }
 
