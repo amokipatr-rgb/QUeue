@@ -47,10 +47,9 @@ body.keyboard-open .btn-row{
 .header .header-clock{text-align:right;flex-shrink:0}
 .header .clock-time{font-family:'JetBrains Mono',monospace;font-size:clamp(10px,2vw,12px);font-weight:500;color:var(--mak-green);white-space:nowrap}
 body.keyboard-open .header,body.input-mode .header{display:none!important;}
-body.keyboard-open .header-ticker,body.input-mode .header-ticker{display:none!important;}
 
-.header-ticker{overflow:hidden;white-space:nowrap;padding:0;background:var(--mak-green);color:rgba(255,255,255,0.9);font-size:13px;font-weight:500;flex-shrink:0;line-height:34px}
-.header-ticker-inner{display:inline-flex;align-items:center;animation:headerTickerScroll 35s linear infinite;will-change:transform}
+.header .header-ticker-inner{flex:1;overflow:hidden;white-space:nowrap;min-width:0;font-size:13px;font-weight:500;color:var(--mak-green)}
+.header .header-ticker-inner>div{display:inline-flex;align-items:center;animation:headerTickerScroll 35s linear infinite;will-change:transform}
 @keyframes headerTickerScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
 
 .card{
@@ -353,10 +352,10 @@ body.keyboard-open .header-ticker,body.input-mode .header-ticker{display:none!im
       <div class="brand-shield" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg></div>
       <div class="brand-name">SMQSS</div>
     </a>
+    <div class="header-ticker-inner" id="headerTickerInner"></div>
     <div class="header-clock">
       <div class="clock-time" id="liveDateTime">Loading&hellip;</div>
     </div>
-    <div class="header-ticker"><div class="header-ticker-inner" id="headerTickerInner"></div></div>
   </div>
 
   <div class="card">
@@ -555,7 +554,7 @@ function buildHeaderTicker(){
  var items=['👉 Select your preferred office and service to begin','◆','📱 Enter your name & student number to receive a token','◆','🖥️ Watch the public display for your turn','◆','🙏 Thank you for using SMQSS'];
  var sep=' <span style="padding:0 14px;opacity:0.5">◆</span> ';
  var content=items.join(sep);
- inner.innerHTML=content+sep+content;
+ inner.innerHTML='<div>'+content+sep+content+'</div>';
 }
 try{ buildHeaderTicker(); }catch(e){}
 
