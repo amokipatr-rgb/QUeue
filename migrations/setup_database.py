@@ -228,6 +228,7 @@ if not table_exists('officer_sessions'):
             login_time DATETIME NOT NULL,
             logout_time DATETIME NULL,
             login_ip VARCHAR(45) NULL,
+            login_location VARCHAR(255) DEFAULT NULL,
             logout_ip VARCHAR(45) NULL,
             device_info VARCHAR(255) NULL,
             status VARCHAR(20) DEFAULT 'active',
@@ -294,6 +295,18 @@ for name, table, col in [
 if not index_exists('university_tokens', 'idx_tokens_student_unrated'):
     cursor.execute("CREATE INDEX idx_tokens_student_unrated ON university_tokens(student_id, status, feedback_submitted_at)")
     print("  [OK] Created index idx_tokens_student_unrated")
+
+# ── FIX MISSING COLUMNS ON EXISTING TABLES ──
+for table, col, definition in [
+    ('officer_sessions', 'login_location', "ADD COLUMN login_location VARCHAR(255) DEFAULT NULL AFTER login_ip"),
+    ('officer_sessions', 'logout_ip', "ADD COLUMN logout_ip VARCHAR(45) AFTER login_location"),
+]:
+    cursor.execute(f"SHOW COLUMNS FROM {table} LIKE '{col}'")
+    if not cursor.fetchone():
+        print(f"[WARN] {table} missing {col}! Adding...")
+        cursor.execute(f"ALTER TABLE {table} {definition}")
+        conn.commit()
+        print(f"[OK] {col} added to {table}")
 
 conn.commit()
 

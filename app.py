@@ -346,6 +346,20 @@ try:
             connection.commit()
             print("[OK] pin_code column added to officers")
 
+        cursor.execute("SHOW COLUMNS FROM officer_sessions LIKE 'login_location'")
+        if not cursor.fetchone():
+            print("[WARN] officer_sessions table missing login_location column! Adding...")
+            cursor.execute("ALTER TABLE officer_sessions ADD COLUMN login_location VARCHAR(255) DEFAULT NULL AFTER login_ip")
+            connection.commit()
+            print("[OK] login_location column added to officer_sessions")
+
+        cursor.execute("SHOW COLUMNS FROM officer_sessions LIKE 'logout_ip'")
+        if not cursor.fetchone():
+            print("[WARN] officer_sessions table missing logout_ip column! Adding...")
+            cursor.execute("ALTER TABLE officer_sessions ADD COLUMN logout_ip VARCHAR(45) AFTER login_location")
+            connection.commit()
+            print("[OK] logout_ip column added to officer_sessions")
+
         # ── SEED DATA ──
         cursor.execute("SELECT COUNT(*) FROM offices")
         if cursor.fetchone()[0] == 0:
