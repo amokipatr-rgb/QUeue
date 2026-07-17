@@ -1092,9 +1092,6 @@
                     <span class="ticker-sep">&#9656;</span>`;
             }
             inner.innerHTML = html + html;
-            const totalLen = messages.reduce((a, m) => a + m.message.length, 0);
-            const speed = Math.max(20, Math.min(60, totalLen * 0.4));
-            inner.style.animationDuration = speed + 's';
         }
 
         async function fetchAndDisplayMessages() {
