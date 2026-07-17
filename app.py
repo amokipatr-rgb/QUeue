@@ -407,7 +407,17 @@ except ImportError:
 LOGIN_TOKEN = secrets.token_hex(16)
 WORKFLOW_TOKEN = secrets.token_hex(16)
 ADMIN_TOKEN = secrets.token_hex(16)
-OFFICER_TOKEN = secrets.token_hex(16)
+def _get_persistent_token(path=".officer_token"):
+    try:
+        with open(path) as f:
+            return f.read().strip()
+    except (FileNotFoundError, PermissionError):
+        t = secrets.token_hex(16)
+        with open(path, "w") as f:
+            f.write(t)
+        return t
+
+OFFICER_TOKEN = _get_persistent_token()
 FEEDBACK_TOKEN = secrets.token_hex(16)
 
 @app.route('/')

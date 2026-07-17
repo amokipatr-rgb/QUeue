@@ -1,6 +1,9 @@
 # Python
 __pycache__/
 *.pyc
+
+# Auto-generated tokens (survive server restarts)
+.officer_token
 *.pyo
 piper/
 
