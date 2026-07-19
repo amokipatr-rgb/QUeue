@@ -576,7 +576,11 @@ try { liveClock(); setInterval(liveClock, 1000); } catch(e) {}
 function buildHeaderTicker(){
  var inner=document.getElementById('headerTickerInner');
  if(!inner)return;
- var items=['👉 To get started, click "Get My Token"','◆ Select your preferred office and service','◆ Enter your name and student number and click get my token','◆ 🖥️ Watch the public display for your turn','◆ 🙏 Thank you for using our service'];
+ var h=new Date().getHours();
+ var open=h>=8&&h<17;
+ var items=open
+  ? ['👉 To get started, click "Get My Token"','◆ Select your preferred office and service','◆ Enter your name and student number and click get my token','◆ 🖥️ Watch the public display for your turn','◆ 🙏 Thank you for using our service']
+  : ['🕒 Offices are currently closed','◆ Operating hours: 8:00 AM – 5:00 PM','◆ 🙏 Please come back during office hours','◆ Thank you for your understanding'];
  var sep=' <span style="padding:0 14px;opacity:0.5">◆</span> ';
  var content=items.join(sep);
  inner.innerHTML='<div>'+content+sep+content+'</div>';
@@ -747,7 +751,7 @@ function goToStep(step){
   document.body.classList.remove('input-mode');
   if(step===0){
 checkOfficeHours();
-setInterval(checkOfficeHours, 30000);
+setInterval(function(){ checkOfficeHours(); buildHeaderTicker(); }, 30000);
     document.getElementById('rateWelcomeWrap').style.display='';
     document.getElementById('welcomePanel').style.display='none';
     document.getElementById('launchBtn').style.display='none';
