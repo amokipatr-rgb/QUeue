@@ -143,6 +143,11 @@ body.keyboard-open .header,body.input-mode .header{display:none!important;}
   display:flex;flex-direction:column;align-items:center;
   text-align:center;gap:10px;width:100%;max-width:300px;
 }
+.closed-banner{display:none;flex-direction:column;align-items:center;gap:6px;padding:24px 16px;color:var(--muted)}
+.closed-banner .closed-icon{width:48px;height:48px;background:var(--mak-gold-light);border-radius:50%;display:flex;align-items:center;justify-content:center;margin-bottom:4px}
+.closed-banner .closed-icon svg{width:26px;height:26px;fill:var(--mak-gold-bright)}
+.closed-banner .closed-title{font-size:18px;font-weight:700;color:var(--ink)}
+.closed-banner .closed-desc{font-size:13px;line-height:1.5}
 .launch-icon{
   width:56px;height:56px;border-radius:16px;
   background:var(--mak-green);
@@ -395,6 +400,11 @@ body.keyboard-open .header,body.input-mode .header{display:none!important;}
         </div>
       </div>
       <div class="launch-center">
+        <div class="closed-banner" id="closedBanner">
+          <div class="closed-icon"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></div>
+          <div class="closed-title">Offices are Closed</div>
+          <div class="closed-desc">Operating hours are <strong>8:00 AM – 5:00 PM</strong>.<br>Please come back during office hours.</div>
+        </div>
         <div class="section-title" style="margin-bottom:4px;font-size:14px;">What would you like to do?</div>
         <button class="btn-launch" id="getStartedBtn" onclick="showWelcome()">
           <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
@@ -545,6 +555,18 @@ const API_BASE_URL = window.location.origin;
 let offices=[], services=[];
 let selectedOffice=null, selectedService=null;
 let currentStep=0;
+
+function checkOfficeHours(){
+ var h=new Date().getHours();
+ var open=h>=8&&h<17;
+ var banner=document.getElementById('closedBanner');
+ var btn=document.getElementById('getStartedBtn');
+ var desc=btn?btn.nextElementSibling:null;
+ if(banner)banner.style.display=open?'none':'flex';
+ if(btn)btn.style.display=open?'':'none';
+ if(desc&&desc.classList.contains('btn-desc'))desc.style.display=open?'':'none';
+}
+checkOfficeHours();
 
 function liveClock() {
 try { var d = new Date(); var t = d.toLocaleTimeString('en-UG', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/^0/, ''); document.getElementById('liveDateTime').textContent = t + ' EAT'; } catch(e) {}
@@ -724,7 +746,7 @@ function renderServices(){
 function goToStep(step){
   document.body.classList.remove('input-mode');
   if(step===0){
-    document.getElementById('getStartedBtn').style.display='';
+    checkOfficeHours();
     document.getElementById('rateWelcomeWrap').style.display='';
     document.getElementById('welcomePanel').style.display='none';
     document.getElementById('launchBtn').style.display='none';
