@@ -403,7 +403,7 @@ body.keyboard-open .header,body.input-mode .header{display:none!important;}
         <div class="closed-banner" id="closedBanner">
           <div class="closed-icon"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg></div>
           <div class="closed-title">Offices are Closed</div>
-          <div class="closed-desc">Operating hours are <strong>8:00 AM – 5:00 PM</strong>.<br>Please come back during office hours.</div>
+          <div class="closed-desc">Operating hours are <strong>8:00 AM – 5:00 PM</strong>.<br>Please come back during office hours.<br>You can only rate service for now.</div>
         </div>
         <div class="section-title" style="margin-bottom:4px;font-size:14px;">What would you like to do?</div>
         <button class="btn-launch" id="getStartedBtn" onclick="showWelcome()">
@@ -580,7 +580,7 @@ function buildHeaderTicker(){
  var open=h>=8&&h<17;
  var items=open
   ? ['👉 To get started, click "Get My Token"','◆ Select your preferred office and service','◆ Enter your name and student number and click get my token','◆ 🖥️ Watch the public display for your turn','◆ 🙏 Thank you for using our service']
-  : ['🕒 Offices are currently closed','◆ Operating hours: 8:00 AM – 5:00 PM','◆ 🙏 Please come back during office hours','◆ Thank you for your understanding'];
+  : ['🕒 Offices are currently closed','◆ Operating hours: 8:00 AM – 5:00 PM','◆ You can only rate service for now','◆ 🙏 Thank you for your understanding'];
  var sep=' <span style="padding:0 14px;opacity:0.5">◆</span> ';
  var content=items.join(sep);
  inner.innerHTML='<div>'+content+sep+content+'</div>';
