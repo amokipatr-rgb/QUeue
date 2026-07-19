@@ -746,7 +746,8 @@ function renderServices(){
 function goToStep(step){
   document.body.classList.remove('input-mode');
   if(step===0){
-    checkOfficeHours();
+checkOfficeHours();
+setInterval(checkOfficeHours, 30000);
     document.getElementById('rateWelcomeWrap').style.display='';
     document.getElementById('welcomePanel').style.display='none';
     document.getElementById('launchBtn').style.display='none';
