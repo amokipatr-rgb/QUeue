@@ -1752,6 +1752,23 @@ def resolve_general_complaint(complaint_id):
         conn.close()
 
 
+@app.route('/api/admin/general-complaints/<int:complaint_id>', methods=['DELETE'])
+def delete_general_complaint(complaint_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("DELETE FROM general_complaints WHERE id = %s", (complaint_id,))
+        conn.commit()
+        return jsonify({'success': True, 'message': 'Complaint deleted'})
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Delete complaint error: {e}")
+        return jsonify({'success': False, 'message': 'Internal server error'}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
 def send_resolved_email(complaint):
     email_to = complaint.get('email')
     if not email_to or not SMTP_USER or not SMTP_PASS:

@@ -2895,17 +2895,22 @@
                 else if (c.category === 'Other') identifier = escapeHtml(c.contact || '—');
 
                 var actionBtn;
+                var delBtn = '<button class="btn-sm" onclick="deleteComplaint(' + c.id + ')" style="color:var(--red);border-color:var(--red);font-size:11px">Delete</button>';
                 if (c.status === 'pending') {
                     if (c.email) {
                         actionBtn = '<div style="display:flex;gap:6px">' +
                             '<button class="btn-sm" onclick="notifyComplaint(' + c.id + ')" style="color:var(--blue);border-color:var(--blue);font-size:11px">Notify</button>' +
                             '<button class="btn-sm" onclick="resolveComplaint(' + c.id + ')" style="color:var(--success);border-color:var(--success);font-size:11px">Resolve</button>' +
+                            delBtn +
                         '</div>';
                     } else {
-                        actionBtn = '<button class="btn-sm" onclick="resolveComplaint(' + c.id + ')" style="color:var(--success);border-color:var(--success);font-size:11px">Resolve</button>';
+                        actionBtn = '<div style="display:flex;gap:6px">' +
+                            '<button class="btn-sm" onclick="resolveComplaint(' + c.id + ')" style="color:var(--success);border-color:var(--success);font-size:11px">Resolve</button>' +
+                            delBtn +
+                        '</div>';
                     }
                 } else {
-                    actionBtn = '<span style="font-size:11px;color:var(--text-muted)">—</span>';
+                    actionBtn = '<div style="display:flex;gap:6px;justify-content:center">' + delBtn + '</div>';
                 }
 
                 return '<tr>' +
@@ -2947,6 +2952,22 @@
                     loadGeneralComplaints();
                 } else {
                     showToast(data.message || 'Failed to send notification.', 'error');
+                }
+            } catch (e) {
+                showToast('Network error.', 'error');
+            }
+        }
+
+        async function deleteComplaint(id) {
+            if (!confirm('Are you sure you want to delete complaint #' + id + '? This cannot be undone.')) return;
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/admin/general-complaints/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) {
+                    showToast('Complaint #' + id + ' deleted.', 'success');
+                    loadGeneralComplaints();
+                } else {
+                    showToast(data.message || 'Failed to delete.', 'error');
                 }
             } catch (e) {
                 showToast('Network error.', 'error');
