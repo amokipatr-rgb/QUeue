@@ -1788,8 +1788,39 @@
         </div>
     </div>
 
+    <!-- REPLY MODAL -->
+    <div class="modal-overlay" id="replyModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    <polyline points="17 9 13 5 9 9"/><line x1="13" y1="5" x2="13" y2="13"/>
+                </svg>
+                Reply to Complaint <span id="replyModalId">#—</span>
+            </div>
+            <div class="form-group">
+                <label>To</label>
+                <div id="replyModalTo" style="font-size:14px;font-weight:600;color:var(--text-primary);padding:4px 0">—</div>
+            </div>
+            <div class="form-group">
+                <label>Original Complaint</label>
+                <div id="replyModalComplaint" style="background:var(--bg);border-radius:var(--radius-sm);padding:12px;font-size:13px;color:var(--text-secondary);line-height:1.5;max-height:100px;overflow-y:auto">—</div>
+            </div>
+            <div class="form-group">
+                <label for="replyModalText">Your Reply *</label>
+                <textarea id="replyModalText" rows="6" placeholder="Type your response to the complainant..."></textarea>
+            </div>
+            <div id="replyModalError" style="display:none;background:#fef2f2;border:1px solid #fecaca;color:var(--red);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px"></div>
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel-modal" onclick="closeModal('replyModal')">Cancel</button>
+                <button type="button" class="btn-save" id="replyModalSend" onclick="sendReply()">Send Reply →</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         const API_BASE_URL = typeof window !== 'undefined' ? window.location.origin : '';
+        var _gcData = null;
         const LOADING_TEXT = 'Saving...';
 
         function setLoading(btn, loading) {
@@ -2852,6 +2883,7 @@
                 const res = await fetch(`${API_BASE_URL}/api/admin/general-complaints`);
                 const data = await res.json();
                 if (data.success) {
+                    _gcData = data.data;
                     renderGeneralComplaints(data.data);
                     document.getElementById('sidebarGCBadge').textContent = data.data.filter(function(c){ return c.status === 'pending'; }).length;
                 } else {
@@ -2899,8 +2931,7 @@
                 if (c.status === 'pending') {
                     if (c.email) {
                         actionBtn = '<div style="display:flex;gap:6px">' +
-                            '<button class="btn-sm" onclick="notifyComplaint(' + c.id + ')" style="color:var(--blue);border-color:var(--blue);font-size:11px">Notify</button>' +
-                            '<button class="btn-sm" onclick="resolveComplaint(' + c.id + ')" style="color:var(--success);border-color:var(--success);font-size:11px">Resolve</button>' +
+                            '<button class="btn-sm" onclick="openReplyModal(' + c.id + ')" style="color:var(--blue);border-color:var(--blue);font-size:11px">Reply</button>' +
                             delBtn +
                         '</div>';
                     } else {
@@ -2943,18 +2974,54 @@
             }
         }
 
-        async function notifyComplaint(id) {
+        function openReplyModal(id) {
+            var c = _gcData ? _gcData.find(function(x){ return x.id === id; }) : null;
+            if (!c) { showToast('Complaint data not found.', 'error'); return; }
+            document.getElementById('replyModalId').textContent = '#' + c.id;
+            document.getElementById('replyModalTo').textContent = c.email || '—';
+            document.getElementById('replyModalComplaint').textContent = c.complaint_text;
+            document.getElementById('replyModalText').value = '';
+            document.getElementById('replyModalError').style.display = 'none';
+            openModal('replyModal');
+            document.getElementById('replyModalSend').dataset.id = id;
+            document.getElementById('replyModalSend').disabled = false;
+            document.getElementById('replyModalSend').textContent = 'Send Reply →';
+        }
+
+        async function sendReply() {
+            var btn = document.getElementById('replyModalSend');
+            var id = parseInt(btn.dataset.id);
+            var message = document.getElementById('replyModalText').value.trim();
+            if (!message) {
+                document.getElementById('replyModalError').textContent = 'Please write a reply message.';
+                document.getElementById('replyModalError').style.display = 'block';
+                return;
+            }
+            btn.disabled = true;
+            btn.textContent = 'Sending...';
+            document.getElementById('replyModalError').style.display = 'none';
             try {
-                const res = await fetch(`${API_BASE_URL}/api/admin/general-complaints/${id}/notify`, { method: 'POST' });
+                const res = await fetch(`${API_BASE_URL}/api/admin/general-complaints/${id}/reply`, {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ message: message })
+                });
                 const data = await res.json();
                 if (data.success) {
                     showToast(data.message, 'success');
+                    closeModal('replyModal');
                     loadGeneralComplaints();
                 } else {
-                    showToast(data.message || 'Failed to send notification.', 'error');
+                    document.getElementById('replyModalError').textContent = data.message || 'Failed to send.';
+                    document.getElementById('replyModalError').style.display = 'block';
+                    btn.disabled = false;
+                    btn.textContent = 'Send Reply →';
                 }
             } catch (e) {
-                showToast('Network error.', 'error');
+                document.getElementById('replyModalError').textContent = 'Network error.';
+                document.getElementById('replyModalError').style.display = 'block';
+                btn.disabled = false;
+                btn.textContent = 'Send Reply →';
             }
         }
 

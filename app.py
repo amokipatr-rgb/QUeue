@@ -1769,25 +1769,26 @@ def delete_general_complaint(complaint_id):
         conn.close()
 
 
-def send_resolved_email(complaint):
+def send_reply_email(complaint, reply_message):
     email_to = complaint.get('email')
     if not email_to or not SMTP_USER or not SMTP_PASS:
         return False
     try:
         msg = EmailMessage()
-        msg['Subject'] = f"Your Complaint #{complaint['id']} has been Resolved — SMQSS"
+        msg['Subject'] = f"Re: Your Complaint #{complaint['id']} — SMQSS"
         msg['From'] = SMTP_FROM
         msg['To'] = email_to
         msg.set_content(f"""Dear {complaint.get('full_name') or 'Valued Customer'},
 
 Thank you for reaching out to us regarding your concern at Makerere University.
 
-We are pleased to inform you that your complaint (ID: #{complaint['id']}) has been reviewed and resolved.
-
-Complaint Summary:
+--- Original Complaint ---
 {complaint.get('complaint_text', '')}
 
-If you have any further concerns, please don't hesitate to reach out. We appreciate your patience and understanding.
+--- Our Response ---
+{reply_message}
+
+If you have any further concerns, please don't hesitate to reach out.
 
 Best regards,
 Makerere University Queue Management System (SMQSS)
@@ -1796,15 +1797,20 @@ Makerere University Queue Management System (SMQSS)
             s.starttls()
             s.login(SMTP_USER, SMTP_PASS)
             s.send_message(msg)
-        logger.info(f"Resolved email sent to {email_to} for complaint #{complaint['id']}")
+        logger.info(f"Reply email sent to {email_to} for complaint #{complaint['id']}")
         return True
     except Exception as e:
-        logger.error(f"Failed to send resolved email for complaint #{complaint['id']}: {e}")
+        logger.error(f"Failed to send reply email for complaint #{complaint['id']}: {e}")
         return False
 
 
-@app.route('/api/admin/general-complaints/<int:complaint_id>/notify', methods=['POST'])
-def notify_general_complaint(complaint_id):
+@app.route('/api/admin/general-complaints/<int:complaint_id>/reply', methods=['POST'])
+def reply_general_complaint(complaint_id):
+    data = request.get_json()
+    reply_message = (data.get('message') or '').strip()
+    if not reply_message:
+        return jsonify({'success': False, 'message': 'Reply message is required'}), 400
+
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
     try:
@@ -1816,13 +1822,16 @@ def notify_general_complaint(complaint_id):
         if not complaint:
             return jsonify({'success': False, 'message': 'Complaint not found'}), 404
 
-        sent = send_resolved_email(complaint)
-        if sent:
-            return jsonify({'success': True, 'message': f'Notification email sent to {complaint["email"]}'})
-        else:
+        sent = send_reply_email(complaint, reply_message)
+        if not sent:
             return jsonify({'success': False, 'message': 'Failed to send email. Check SMTP config or recipient address.'}), 500
+
+        cursor.execute("UPDATE general_complaints SET status = 'resolved' WHERE id = %s", (complaint_id,))
+        conn.commit()
+        return jsonify({'success': True, 'message': f'Reply sent to {complaint["email"]} and marked as resolved'})
     except Exception as e:
-        logger.error(f"Notify complaint error: {e}")
+        conn.rollback()
+        logger.error(f"Reply complaint error: {e}")
         return jsonify({'success': False, 'message': 'Internal server error'}), 500
     finally:
         cursor.close()
