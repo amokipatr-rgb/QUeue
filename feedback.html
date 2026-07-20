@@ -206,6 +206,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--ink)
         <input type="text" id="gcContact" placeholder="Email or phone number">
       </div>
       <div class="field">
+        <label for="gcEmail">Email Address *</label>
+        <input type="email" id="gcEmail" placeholder="e.g. you@example.com">
+      </div>
+      <div class="field">
         <label for="gcText">Your Complaint</label>
         <textarea id="gcText" rows="4" placeholder="Describe your complaint in detail..."></textarea>
       </div>
@@ -461,6 +465,7 @@ function goToStep(id, reset){
     document.getElementById('gcEmpId').value = '';
     document.getElementById('gcDept').value = '';
     document.getElementById('gcContact').value = '';
+    document.getElementById('gcEmail').value = '';
     document.getElementById('gcText').value = '';
   }
 }
@@ -489,13 +494,16 @@ function showGcError(msg){
 async function submitGeneralComplaint(){
   var category = document.getElementById('gcCategory').value;
   var complaintText = document.getElementById('gcText').value.trim();
+  var email = document.getElementById('gcEmail').value.trim();
 
   if(!category){ showGcError('Please select a category.'); return; }
   if(!complaintText){ showGcError('Please describe your complaint.'); return; }
+  if(!email){ showGcError('Please enter your email address for follow-up.'); return; }
 
   var payload = {
     category: category,
     full_name: document.getElementById('gcName').value.trim() || null,
+    email: email,
     complaint_text: complaintText
   };
 

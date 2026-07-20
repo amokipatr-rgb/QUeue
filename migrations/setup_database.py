@@ -273,6 +273,7 @@ if not table_exists('general_complaints'):
             employee_id VARCHAR(50) DEFAULT NULL,
             department VARCHAR(100) DEFAULT NULL,
             contact VARCHAR(100) DEFAULT NULL,
+            email VARCHAR(100) DEFAULT NULL,
             complaint_text TEXT NOT NULL,
             status VARCHAR(20) DEFAULT 'pending',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -281,6 +282,11 @@ if not table_exists('general_complaints'):
     print("[OK] Created general_complaints table")
 else:
     print("[OK] general_complaints table exists")
+    if not column_exists('general_complaints', 'email'):
+        cursor.execute("ALTER TABLE general_complaints ADD COLUMN email VARCHAR(100) DEFAULT NULL AFTER contact")
+        conn.commit()
+        print("  [OK] Added column email to general_complaints")
+
 
 
 # ── INDEXES ──

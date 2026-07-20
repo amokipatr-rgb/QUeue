@@ -8,6 +8,8 @@ import logging
 import secrets
 import os
 import re
+import smtplib
+from email.message import EmailMessage
 import traceback
 import asyncio
 import time
@@ -16,6 +18,13 @@ import json
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# ── SMTP (set via env so never in git) ──
+SMTP_HOST = 'smtp.gmail.com'
+SMTP_PORT = 587
+SMTP_USER = os.environ.get('MAIL_USERNAME', '')
+SMTP_PASS = os.environ.get('MAIL_PASSWORD', '')
+SMTP_FROM = SMTP_USER  # same as username for Gmail
 
 def geoip(ip):
     """Resolve an IP address to a location string using ip-api.com (free, no key)."""
@@ -244,6 +253,7 @@ _CREATE_GENERAL_COMPLAINTS_SQL = """
         employee_id VARCHAR(50) DEFAULT NULL,
         department VARCHAR(100) DEFAULT NULL,
         contact VARCHAR(100) DEFAULT NULL,
+        email VARCHAR(100) DEFAULT NULL,
         complaint_text TEXT NOT NULL,
         status VARCHAR(20) DEFAULT 'pending',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
@@ -373,6 +383,13 @@ try:
             cursor.execute("ALTER TABLE officer_sessions ADD COLUMN logout_ip VARCHAR(45) AFTER login_location")
             connection.commit()
             print("[OK] logout_ip column added to officer_sessions")
+
+        cursor.execute("SHOW COLUMNS FROM general_complaints LIKE 'email'")
+        if not cursor.fetchone():
+            print("[WARN] general_complaints table missing email column! Adding...")
+            cursor.execute("ALTER TABLE general_complaints ADD COLUMN email VARCHAR(100) DEFAULT NULL AFTER contact")
+            connection.commit()
+            print("[OK] email column added to general_complaints")
 
         # ── SEED DATA ──
         cursor.execute("SELECT COUNT(*) FROM offices")
@@ -1658,19 +1675,22 @@ def submit_general_complaint():
     data = request.get_json()
     category = data.get('category')
     complaint_text = data.get('complaint_text', '').strip()
+    email = (data.get('email') or '').strip()
 
     if not category or category not in ('Student', 'Staff', 'Other'):
         return jsonify({'success': False, 'message': 'Valid category is required'}), 400
     if not complaint_text:
         return jsonify({'success': False, 'message': 'Please describe your complaint'}), 400
+    if not email:
+        return jsonify({'success': False, 'message': 'Email address is required for follow-up'}), 400
 
     conn = get_db_connection()
     cursor = conn.cursor()
     try:
         cursor.execute("""
             INSERT INTO general_complaints
-                (category, full_name, student_number, employee_id, department, contact, complaint_text)
-            VALUES (%s, %s, %s, %s, %s, %s, %s)
+                (category, full_name, student_number, employee_id, department, contact, email, complaint_text)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
         """, (
             category,
             data.get('full_name'),
@@ -1678,6 +1698,7 @@ def submit_general_complaint():
             data.get('employee_id') if category == 'Staff' else None,
             data.get('department'),
             data.get('contact') if category == 'Other' else None,
+            email,
             complaint_text
         ))
         conn.commit()
@@ -1698,7 +1719,7 @@ def admin_get_general_complaints():
     try:
         cursor.execute("""
             SELECT id, category, full_name, student_number, employee_id,
-                   department, contact, complaint_text, status, created_at
+                   department, contact, email, complaint_text, status, created_at
             FROM general_complaints
             ORDER BY created_at DESC
         """)
@@ -1725,6 +1746,66 @@ def resolve_general_complaint(complaint_id):
     except Exception as e:
         conn.rollback()
         logger.error(f"Resolve complaint error: {e}")
+        return jsonify({'success': False, 'message': 'Internal server error'}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+def send_resolved_email(complaint):
+    email_to = complaint.get('email')
+    if not email_to or not SMTP_USER or not SMTP_PASS:
+        return False
+    try:
+        msg = EmailMessage()
+        msg['Subject'] = f"Your Complaint #{complaint['id']} has been Resolved — SMQSS"
+        msg['From'] = SMTP_FROM
+        msg['To'] = email_to
+        msg.set_content(f"""Dear {complaint.get('full_name') or 'Valued Customer'},
+
+Thank you for reaching out to us regarding your concern at Makerere University.
+
+We are pleased to inform you that your complaint (ID: #{complaint['id']}) has been reviewed and resolved.
+
+Complaint Summary:
+{complaint.get('complaint_text', '')}
+
+If you have any further concerns, please don't hesitate to reach out. We appreciate your patience and understanding.
+
+Best regards,
+Makerere University Queue Management System (SMQSS)
+""")
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as s:
+            s.starttls()
+            s.login(SMTP_USER, SMTP_PASS)
+            s.send_message(msg)
+        logger.info(f"Resolved email sent to {email_to} for complaint #{complaint['id']}")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to send resolved email for complaint #{complaint['id']}: {e}")
+        return False
+
+
+@app.route('/api/admin/general-complaints/<int:complaint_id>/notify', methods=['POST'])
+def notify_general_complaint(complaint_id):
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute("""
+            SELECT id, category, full_name, email, complaint_text, status
+            FROM general_complaints WHERE id = %s
+        """, (complaint_id,))
+        complaint = cursor.fetchone()
+        if not complaint:
+            return jsonify({'success': False, 'message': 'Complaint not found'}), 404
+
+        sent = send_resolved_email(complaint)
+        if sent:
+            return jsonify({'success': True, 'message': f'Notification email sent to {complaint["email"]}'})
+        else:
+            return jsonify({'success': False, 'message': 'Failed to send email. Check SMTP config or recipient address.'}), 500
+    except Exception as e:
+        logger.error(f"Notify complaint error: {e}")
         return jsonify({'success': False, 'message': 'Internal server error'}), 500
     finally:
         cursor.close()

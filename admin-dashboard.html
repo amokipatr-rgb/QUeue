@@ -1524,13 +1524,14 @@
                                 <th>Name</th>
                                 <th>Identifier</th>
                                 <th>Department</th>
+                                <th>Email</th>
                                 <th>Complaint</th>
                                 <th>Status</th>
                                 <th>Action</th>
                             </tr>
                         </thead>
                         <tbody id="gcTableBody">
-                            <tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:40px 0">Loading complaints...</td></tr>
+                            <tr><td colspan="10" style="text-align:center;color:var(--text-muted);padding:40px 0">Loading complaints...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -2859,7 +2860,7 @@
             const count = document.getElementById('gcCount');
 
             if (!list.length) {
-                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:40px 0">No general complaints yet.</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text-muted);padding:40px 0">No general complaints yet.</td></tr>';
                 count.textContent = '0 complaints';
                 return;
             }
@@ -2877,9 +2878,19 @@
                 else if (c.category === 'Staff') identifier = escapeHtml(c.employee_id || '—');
                 else if (c.category === 'Other') identifier = escapeHtml(c.contact || '—');
 
-                var actionBtn = c.status === 'pending'
-                    ? '<button class="btn-sm" onclick="resolveComplaint(' + c.id + ')" style="color:var(--success);border-color:var(--success);font-size:11px">Resolve</button>'
-                    : '<span style="font-size:11px;color:var(--text-muted)">—</span>';
+                var actionBtn;
+                if (c.status === 'pending') {
+                    if (c.email) {
+                        actionBtn = '<div style="display:flex;gap:6px">' +
+                            '<button class="btn-sm" onclick="notifyComplaint(' + c.id + ')" style="color:var(--blue);border-color:var(--blue);font-size:11px">Notify</button>' +
+                            '<button class="btn-sm" onclick="resolveComplaint(' + c.id + ')" style="color:var(--success);border-color:var(--success);font-size:11px">Resolve</button>' +
+                        '</div>';
+                    } else {
+                        actionBtn = '<button class="btn-sm" onclick="resolveComplaint(' + c.id + ')" style="color:var(--success);border-color:var(--success);font-size:11px">Resolve</button>';
+                    }
+                } else {
+                    actionBtn = '<span style="font-size:11px;color:var(--text-muted)">—</span>';
+                }
 
                 return '<tr>' +
                     '<td style="font-weight:600;font-size:13px">#' + c.id + '</td>' +
@@ -2888,7 +2899,8 @@
                     '<td>' + escapeHtml(c.full_name || '—') + '</td>' +
                     '<td style="font-size:12px;color:var(--text-muted)">' + identifier + '</td>' +
                     '<td>' + escapeHtml(c.department || '—') + '</td>' +
-                    '<td style="max-width:280px;font-size:13px;color:var(--text-secondary)">' + escapeHtml(c.complaint_text) + '</td>' +
+                    '<td style="font-size:13px;color:var(--text-secondary)">' + escapeHtml(c.email || '—') + '</td>' +
+                    '<td style="max-width:240px;font-size:13px;color:var(--text-secondary)">' + escapeHtml(c.complaint_text) + '</td>' +
                     '<td>' + statusBadge + '</td>' +
                     '<td>' + actionBtn + '</td>' +
                 '</tr>';
@@ -2904,6 +2916,21 @@
                     loadGeneralComplaints();
                 } else {
                     showToast(data.message || 'Failed to resolve.', 'error');
+                }
+            } catch (e) {
+                showToast('Network error.', 'error');
+            }
+        }
+
+        async function notifyComplaint(id) {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/admin/general-complaints/${id}/notify`, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    loadGeneralComplaints();
+                } else {
+                    showToast(data.message || 'Failed to send notification.', 'error');
                 }
             } catch (e) {
                 showToast('Network error.', 'error');
