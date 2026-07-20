@@ -2977,8 +2977,8 @@
                 var rows = '';
                 sessions.forEach(function(s) {
                     var date = s.session_date ? s.session_date.slice(5) : '—';
-                    var login = s.login_time ? s.login_time.slice(11, 16) : '—';
-                    var logout = s.logout_time ? s.logout_time.slice(11, 16) : '—';
+                    var login = s.login_time ? toEAT(s.login_time) : '—';
+                    var logout = s.logout_time ? toEAT(s.logout_time) : '—';
                     var dur = s.duration_minutes || 0;
                     totalMin += dur;
                     rows += '<tr>' +
@@ -3021,10 +3021,11 @@
                 return;
             }
 
-            function timeOnly(dtStr) {
+            function toEAT(dtStr) {
                 if (!dtStr) return '—';
-                var parts = dtStr.split(' ');
-                return parts.length > 1 ? parts[1].slice(0, 5) : dtStr;
+                var d = new Date(dtStr + ' UTC');
+                d.setHours(d.getHours() + 3);
+                return d.toLocaleTimeString('en-UG',{hour:'2-digit',minute:'2-digit',hour12:false});
             }
 
             var dayLabels = ['Mon','Tue','Wed','Thu','Fri'];
@@ -3038,8 +3039,8 @@
                     if (dd.present) {
                         var sessions = dd.sessions || [];
                         var s = sessions[0] || {};
-                        var login = timeOnly(s.login_time);
-                        var logout = timeOnly(s.logout_time);
+                        var login = toEAT(s.login_time);
+                        var logout = toEAT(s.logout_time);
                         dayCells += '<td>' +
                             '<div class="att-cell-times">' + login + '→' + logout + '</div>' +
                             '<div class="att-cell-dur">' + formatMinutes(s.duration_minutes || 0) + '</div>' +
