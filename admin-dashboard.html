@@ -2874,7 +2874,17 @@
                 opt.textContent = w.label;
                 weekSel.appendChild(opt);
             });
-            weekSel.selectedIndex = 0;
+            var today = new Date();
+            var todayStr = today.getFullYear() + '-' + String(today.getMonth()+1).padStart(2,'0') + '-' + String(today.getDate()).padStart(2,'0');
+            var found = -1;
+            weeks.forEach(function(w, i) {
+                var mon = w.value;
+                var end = new Date(mon + 'T00:00:00');
+                end.setDate(end.getDate() + 4);
+                var endStr = end.getFullYear() + '-' + String(end.getMonth()+1).padStart(2,'0') + '-' + String(end.getDate()).padStart(2,'0');
+                if (todayStr >= mon && todayStr <= endStr) found = i;
+            });
+            weekSel.selectedIndex = found >= 0 ? found : 0;
             loadAttendance(true);
         }
 
