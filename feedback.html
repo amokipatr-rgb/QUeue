@@ -135,7 +135,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--ink)
 
     <div class="step-content" id="step3">
       <div id="gcErrorBar" class="error-bar"></div>
-      <div class="chat-bubble" id="gcBubble" style="font-size:15px;line-height:1.7">We're sorry to hear you had a poor experience. Please tell us more and we'll look into it.</div>
+      <div class="chat-bubble typing" id="gcBubble" style="font-size:15px;line-height:1.7">We value your feedback. Please share your concern and we'll look into it.</div>
       <div class="field">
         <label for="gcCategory">Category</label>
         <select id="gcCategory" onchange="onCategoryChange()" style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--ink);background:var(--surface)">
@@ -426,9 +426,12 @@ function goToStep(id, reset){
 }
 
 function openGeneralComplaint(){
-  document.getElementById('gcBubble').innerHTML = "We're sorry to hear you had a poor experience. Please tell us more and we'll look into it.";
+  var bubble = document.getElementById('gcBubble');
+  bubble.innerHTML = '';
+  bubble.classList.add('typing');
   document.getElementById('gcErrorBar').style.display = 'none';
   goToStep('step3', true);
+  typeWriter(bubble, 'We value your feedback. Please share your concern and we\'ll look into it.', 30);
 }
 
 function onCategoryChange(){
