@@ -473,14 +473,18 @@ def index():
 def index_html_redirect():
     return redirect('/')
 
+@app.errorhandler(404)
+def not_found(e):
+    return redirect('/')
+
 @app.route('/login')
 def login_decoy():
-    return send_from_directory('.', '404.html'), 404
+    return redirect('/')
 
 @app.route('/login/<token>')
 def login_page(token):
     if token != LOGIN_TOKEN:
-        return send_from_directory('.', '404.html'), 404
+        return redirect('/')
     return send_from_directory('.', 'login.html')
 
 @app.route('/api/admin/login-token')
@@ -489,12 +493,12 @@ def admin_login_token():
 
 @app.route('/workflow')
 def workflow_decoy():
-    return send_from_directory('.', '404.html'), 404
+    return redirect('/')
 
 @app.route('/workflow/<token>')
 def workflow_page(token):
     if token != WORKFLOW_TOKEN:
-        return send_from_directory('.', '404.html'), 404
+        return redirect('/')
     return send_from_directory('.', 'workflow.html')
 
 @app.route('/api/admin/workflow-token')
@@ -528,22 +532,22 @@ def download_page():
 
 @app.route('/admin')
 def admin_decoy():
-    return send_from_directory('.', '404.html'), 404
+    return redirect('/')
 
 @app.route('/admin/<token>')
 def admin_dashboard(token):
     if token != ADMIN_TOKEN:
-        return send_from_directory('.', '404.html'), 404
+        return redirect('/')
     return send_from_directory('.', 'admin-dashboard.html')
 
 @app.route('/officer')
 def officer_decoy():
-    return send_from_directory('.', '404.html'), 404
+    return redirect('/')
 
 @app.route('/officer/<token>')
 def officer_dashboard(token):
     if token != OFFICER_TOKEN:
-        return send_from_directory('.', '404.html'), 404
+        return redirect('/')
     return send_from_directory('.', 'officer-dashboard.html')
 
 @app.route('/api/download/queue-kiosk-setup.exe')
