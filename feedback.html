@@ -427,11 +427,10 @@ function goToStep(id, reset){
 
 function openGeneralComplaint(){
   var bubble = document.getElementById('gcBubble');
-  bubble.innerHTML = '';
-  bubble.classList.add('typing');
+  bubble.innerHTML = "We value your feedback. Please share your concern and we'll look into it.";
+  bubble.classList.remove('typing');
   document.getElementById('gcErrorBar').style.display = 'none';
   goToStep('step3', true);
-  typeWriter(bubble, 'We value your feedback. Please share your concern and we\'ll look into it.', 30);
 }
 
 function onCategoryChange(){
