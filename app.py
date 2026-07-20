@@ -19,12 +19,12 @@ import json
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# ── SMTP (set via env so never in git) ──
+# ── SMTP ──
 SMTP_HOST = 'smtp.gmail.com'
 SMTP_PORT = 587
-SMTP_USER = os.environ.get('MAIL_USERNAME', '')
-SMTP_PASS = os.environ.get('MAIL_PASSWORD', '')
-SMTP_FROM = SMTP_USER  # same as username for Gmail
+SMTP_USER = 'aldarafoundation.org@gmail.com'
+SMTP_PASS = 'wxjbrikffkpuzrqw'
+SMTP_FROM = SMTP_USER
 
 def geoip(ip):
     """Resolve an IP address to a location string using ip-api.com (free, no key)."""
@@ -1776,7 +1776,7 @@ def delete_general_complaint(complaint_id):
 def send_reply_email(complaint, reply_message):
     email_to = complaint.get('email')
     if not email_to or not SMTP_USER or not SMTP_PASS:
-        return False
+        return False, 'SMTP not configured — set MAIL_USERNAME and MAIL_PASSWORD env vars'
     try:
         msg = EmailMessage()
         msg['Subject'] = f"Re: Your Complaint #{complaint['id']} — SMQSS"
@@ -1802,10 +1802,11 @@ Makerere University Queue Management System (SMQSS)
             s.login(SMTP_USER, SMTP_PASS)
             s.send_message(msg)
         logger.info(f"Reply email sent to {email_to} for complaint #{complaint['id']}")
-        return True
+        return True, None
     except Exception as e:
-        logger.error(f"Failed to send reply email for complaint #{complaint['id']}: {e}")
-        return False
+        err = str(e)
+        logger.error(f"Failed to send reply email for complaint #{complaint['id']}: {err}")
+        return False, err
 
 
 @app.route('/api/admin/general-complaints/<int:complaint_id>/reply', methods=['POST'])
@@ -1827,8 +1828,9 @@ def reply_general_complaint(complaint_id):
             return jsonify({'success': False, 'message': 'Complaint not found'}), 404
 
         sent = send_reply_email(complaint, reply_message)
+        sent, err = send_reply_email(complaint, reply_message)
         if not sent:
-            return jsonify({'success': False, 'message': 'Failed to send email. Check SMTP config or recipient address.'}), 500
+            return jsonify({'success': False, 'message': err or 'Failed to send email'}), 500
 
         cursor.execute("UPDATE general_complaints SET status = 'resolved' WHERE id = %s", (complaint_id,))
         conn.commit()
