@@ -105,6 +105,14 @@ body{font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--ink)
       <div class="btn-row">
         <button class="btn" id="lookupBtn" onclick="lookupToken()">Look Up My Token →</button>
       </div>
+      <div style="display:flex;align-items:center;gap:12px;margin:18px 0 14px">
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+        <span style="font-size:11px;color:var(--muted);font-weight:500;letter-spacing:1px;text-transform:uppercase">or</span>
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn" onclick="openGeneralComplaint()" style="background:var(--white);color:var(--mak-green);border:2px solid var(--mak-green);box-shadow:none;font-weight:600">Submit a General Complaint</button>
+      </div>
     </div>
 
     <div class="step-content" id="step1">
@@ -122,6 +130,57 @@ body{font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--ink)
       <p class="confirm-desc" id="confirmText">Your feedback has been recorded. It helps us improve our service delivery for everyone at Makerere University.</p>
       <div class="btn-row" style="margin-top:20px;">
         <a class="btn-back" href="/student-token.html">← Back to Kiosk</a>
+      </div>
+    </div>
+
+    <div class="step-content" id="step3">
+      <div id="gcErrorBar" class="error-bar"></div>
+      <div class="chat-bubble" id="gcBubble" style="font-size:15px;line-height:1.7">We're sorry to hear you had a poor experience. Please tell us more and we'll look into it.</div>
+      <div class="field">
+        <label for="gcCategory">Category</label>
+        <select id="gcCategory" onchange="onCategoryChange()" style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:14px;font-family:'DM Sans',sans-serif;color:var(--ink);background:var(--surface)">
+          <option value="">— Select —</option>
+          <option value="Student">Student</option>
+          <option value="Staff">Staff</option>
+          <option value="Other">Other</option>
+        </select>
+      </div>
+      <div class="field" id="gcFieldName" style="display:none">
+        <label for="gcName">Full Name</label>
+        <input type="text" id="gcName" placeholder="Your full name">
+      </div>
+      <div class="field" id="gcFieldStudentNo" style="display:none">
+        <label for="gcStudentNo">Student Number</label>
+        <input type="text" id="gcStudentNo" placeholder="e.g. 2024/HD/12345/CS">
+      </div>
+      <div class="field" id="gcFieldEmpId" style="display:none">
+        <label for="gcEmpId">Employee ID</label>
+        <input type="text" id="gcEmpId" placeholder="e.g. MU/EMP/01234">
+      </div>
+      <div class="field" id="gcFieldDept" style="display:none">
+        <label for="gcDept">Department</label>
+        <input type="text" id="gcDept" placeholder="Your department">
+      </div>
+      <div class="field" id="gcFieldContact" style="display:none">
+        <label for="gcContact">Contact</label>
+        <input type="text" id="gcContact" placeholder="Email or phone number">
+      </div>
+      <div class="field">
+        <label for="gcText">Your Complaint</label>
+        <textarea id="gcText" rows="4" placeholder="Describe your complaint in detail..."></textarea>
+      </div>
+      <div class="btn-row" style="display:flex;gap:10px;justify-content:center">
+        <button class="btn-back" onclick="goToStep('step0', true)">← Back</button>
+        <button class="btn" onclick="submitGeneralComplaint()">Submit Complaint</button>
+      </div>
+    </div>
+
+    <div class="step-content" id="step4">
+      <div class="confirm-icon"><svg viewBox="0 0 24 24"><polyline points="2,12 8,18 22,4" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+      <div class="confirm-title">Complaint Received</div>
+      <p class="confirm-desc">Your complaint has been submitted. Our team will review it and follow up. Thank you for helping us improve.</p>
+      <div class="btn-row">
+        <button class="btn-back" onclick="goToStep('step0', true)">← Back to Home</button>
       </div>
     </div>
 
@@ -348,6 +407,84 @@ function escapeHtml(text){
   var d = document.createElement('div');
   d.textContent = text;
   return d.innerHTML;
+}
+
+function goToStep(id, reset){
+  document.querySelectorAll('.step-content').forEach(function(el){ el.classList.remove('active'); });
+  document.getElementById(id).classList.add('active');
+  if(reset){
+    document.getElementById('gcErrorBar').style.display = 'none';
+    document.getElementById('gcCategory').value = '';
+    onCategoryChange();
+    document.getElementById('gcName').value = '';
+    document.getElementById('gcStudentNo').value = '';
+    document.getElementById('gcEmpId').value = '';
+    document.getElementById('gcDept').value = '';
+    document.getElementById('gcContact').value = '';
+    document.getElementById('gcText').value = '';
+  }
+}
+
+function openGeneralComplaint(){
+  document.getElementById('gcBubble').innerHTML = "We're sorry to hear you had a poor experience. Please tell us more and we'll look into it.";
+  document.getElementById('gcErrorBar').style.display = 'none';
+  goToStep('step3', true);
+}
+
+function onCategoryChange(){
+  var cat = document.getElementById('gcCategory').value;
+  document.getElementById('gcFieldName').style.display = cat ? 'block' : 'none';
+  document.getElementById('gcFieldStudentNo').style.display = cat === 'Student' ? 'block' : 'none';
+  document.getElementById('gcFieldEmpId').style.display = cat === 'Staff' ? 'block' : 'none';
+  document.getElementById('gcFieldDept').style.display = cat === 'Staff' ? 'block' : 'none';
+  document.getElementById('gcFieldContact').style.display = cat === 'Other' ? 'block' : 'none';
+}
+
+function showGcError(msg){
+  var bar = document.getElementById('gcErrorBar');
+  bar.textContent = msg;
+  bar.style.display = 'block';
+}
+
+async function submitGeneralComplaint(){
+  var category = document.getElementById('gcCategory').value;
+  var complaintText = document.getElementById('gcText').value.trim();
+
+  if(!category){ showGcError('Please select a category.'); return; }
+  if(!complaintText){ showGcError('Please describe your complaint.'); return; }
+
+  var payload = {
+    category: category,
+    full_name: document.getElementById('gcName').value.trim() || null,
+    complaint_text: complaintText
+  };
+
+  if(category === 'Student'){
+    payload.student_number = document.getElementById('gcStudentNo').value.trim() || null;
+  } else if(category === 'Staff'){
+    payload.employee_id = document.getElementById('gcEmpId').value.trim() || null;
+    payload.department = document.getElementById('gcDept').value.trim() || null;
+  } else if(category === 'Other'){
+    payload.contact = document.getElementById('gcContact').value.trim() || null;
+  }
+
+  document.getElementById('gcErrorBar').style.display = 'none';
+
+  try{
+    var res = await fetch(API_BASE + '/api/student/general-complaint', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify(payload)
+    });
+    var data = await res.json();
+    if(data.success){
+      goToStep('step4', true);
+    } else {
+      showGcError(data.message || 'Failed to submit complaint.');
+    }
+  } catch(err){
+    showGcError('Network error. Please try again.');
+  }
 }
 </script>
 </body>

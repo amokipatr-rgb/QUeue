@@ -235,6 +235,19 @@ _CREATE_OFFICER_STATUS_LOG_SQL = """
         CONSTRAINT fk_statuslog_session FOREIGN KEY (session_id) REFERENCES officer_sessions(id) ON DELETE CASCADE,
         CONSTRAINT fk_statuslog_officer FOREIGN KEY (officer_id) REFERENCES officers(id) ON DELETE CASCADE
     )"""
+_CREATE_GENERAL_COMPLAINTS_SQL = """
+    CREATE TABLE IF NOT EXISTS general_complaints (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        category VARCHAR(20) NOT NULL,
+        full_name VARCHAR(100) DEFAULT NULL,
+        student_number VARCHAR(50) DEFAULT NULL,
+        employee_id VARCHAR(50) DEFAULT NULL,
+        department VARCHAR(100) DEFAULT NULL,
+        contact VARCHAR(100) DEFAULT NULL,
+        complaint_text TEXT NOT NULL,
+        status VARCHAR(20) DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )"""
 
 _ALL_TABLES = [
     ('offices', _CREATE_OFFICES_SQL),
@@ -246,6 +259,7 @@ _ALL_TABLES = [
     ('queue_counters', _CREATE_QUEUE_COUNTERS_SQL),
     ('officer_sessions', _CREATE_OFFICER_SESSIONS_SQL),
     ('officer_status_log', _CREATE_OFFICER_STATUS_LOG_SQL),
+    ('general_complaints', _CREATE_GENERAL_COMPLAINTS_SQL),
 ]
 
 _SEED_OFFICES_SQL = """
@@ -1631,6 +1645,87 @@ def submit_feedback():
         logger.error(traceback.format_exc())
         return jsonify({'success': False, 'message': 'Internal server error'}), 500
 
+    finally:
+        cursor.close()
+        conn.close()
+
+
+# ============================================
+# GENERAL COMPLAINT (non-token)
+# ============================================
+@app.route('/api/student/general-complaint', methods=['POST'])
+def submit_general_complaint():
+    data = request.get_json()
+    category = data.get('category')
+    complaint_text = data.get('complaint_text', '').strip()
+
+    if not category or category not in ('Student', 'Staff', 'Other'):
+        return jsonify({'success': False, 'message': 'Valid category is required'}), 400
+    if not complaint_text:
+        return jsonify({'success': False, 'message': 'Please describe your complaint'}), 400
+
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("""
+            INSERT INTO general_complaints
+                (category, full_name, student_number, employee_id, department, contact, complaint_text)
+            VALUES (%s, %s, %s, %s, %s, %s, %s)
+        """, (
+            category,
+            data.get('full_name'),
+            data.get('student_number') if category == 'Student' else None,
+            data.get('employee_id') if category == 'Staff' else None,
+            data.get('department'),
+            data.get('contact') if category == 'Other' else None,
+            complaint_text
+        ))
+        conn.commit()
+        return jsonify({'success': True, 'message': 'Your complaint has been received. We will look into it.'})
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"General complaint error: {e}")
+        return jsonify({'success': False, 'message': 'Internal server error'}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.route('/api/admin/general-complaints')
+def admin_get_general_complaints():
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute("""
+            SELECT id, category, full_name, student_number, employee_id,
+                   department, contact, complaint_text, status, created_at
+            FROM general_complaints
+            ORDER BY created_at DESC
+        """)
+        complaints = cursor.fetchall()
+        for c in complaints:
+            c['created_at'] = c['created_at'].isoformat() if c['created_at'] else None
+        return jsonify({'success': True, 'data': complaints})
+    except Exception as e:
+        logger.error(f"Fetch general complaints error: {e}")
+        return jsonify({'success': False, 'message': 'Internal server error'}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.route('/api/admin/general-complaints/<int:complaint_id>/resolve', methods=['POST'])
+def resolve_general_complaint(complaint_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("UPDATE general_complaints SET status = 'resolved' WHERE id = %s", (complaint_id,))
+        conn.commit()
+        return jsonify({'success': True, 'message': 'Complaint marked as resolved'})
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Resolve complaint error: {e}")
+        return jsonify({'success': False, 'message': 'Internal server error'}), 500
     finally:
         cursor.close()
         conn.close()

@@ -1001,6 +1001,16 @@
             <span>Feedback</span>
             <span class="nav-badge" id="sidebarFeedbackBadge">0</span>
         </div>
+        <div class="nav-item" onclick="showPage('general-complaints', this)">
+            <div class="nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    <line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+                </svg>
+            </div>
+            <span>General Complaints</span>
+            <span class="nav-badge" id="sidebarGCBadge">0</span>
+        </div>
 
         <div class="nav-section-label">Queue</div>
         <div class="nav-item" onclick="showPage('queue', this)">
@@ -1494,6 +1504,38 @@
                 </div>
             </div>
 
+            <!-- GENERAL COMPLAINTS PAGE -->
+            <div class="page" id="page-general-complaints">
+                <div class="toolbar-row" style="justify-content:space-between">
+                    <span style="font-size:13px;color:var(--text-secondary)" id="gcCount">Loading...</span>
+                    <button type="button" class="btn-sm" onclick="loadGeneralComplaints()" style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--white);cursor:pointer;font-size:12px;font-weight:600;color:var(--text-secondary);font-family:inherit">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:14px;height:14px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                        Refresh
+                    </button>
+                </div>
+
+                <div class="table-wrap">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Date</th>
+                                <th>Category</th>
+                                <th>Name</th>
+                                <th>Identifier</th>
+                                <th>Department</th>
+                                <th>Complaint</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="gcTableBody">
+                            <tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:40px 0">Loading complaints...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
             <!-- CHANGE PIN PAGE -->
             <div class="page" id="page-changepin">
                 <div class="pin-form-wrap">
@@ -1891,6 +1933,7 @@
                 performance: { title: 'Working Status', sub: 'Users served per officer and desk activity for the selected day' },
                 queue: { title: 'Live Queue', sub: 'Real-time queue monitoring' },
                 feedback: { title: 'Feedback & Complaints', sub: 'Student ratings and complaints from completed and non-completed tokens' },
+                'general-complaints': { title: 'General Complaints', sub: 'Non-token complaints from students, staff, and others' },
                 changepin: { title: 'Change PIN', sub: 'Update your login PIN code' }
             };
             const t = titles[id] || { title: 'Management', sub: '' };
@@ -1919,6 +1962,9 @@
             } else if (id === 'feedback') {
                 document.getElementById('topbarActions').innerHTML = '';
                 loadFeedback();
+            } else if (id === 'general-complaints') {
+                document.getElementById('topbarActions').innerHTML = '';
+                loadGeneralComplaints();
             } else if (id === 'performance') {
                 document.getElementById('topbarActions').innerHTML = '';
             } else {
@@ -2648,6 +2694,16 @@
             } catch (e) { /* silent */ }
         }
 
+        async function updateGCBadge() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/admin/general-complaints`);
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('sidebarGCBadge').textContent = data.data.filter(function(c){ return c.status === 'pending'; }).length;
+                }
+            } catch (e) { /* silent */ }
+        }
+
         async function loadFeedback() {
             try {
                 const [feedbackRes, statsRes] = await Promise.all([
@@ -2780,6 +2836,78 @@
                     '<td style="font-size:12px;color:var(--text-muted);white-space:nowrap">' + submitted + '</td>' +
                 '</tr>';
             }).join('');
+        }
+
+        // ── GENERAL COMPLAINTS ──
+        async function loadGeneralComplaints() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/admin/general-complaints`);
+                const data = await res.json();
+                if (data.success) {
+                    renderGeneralComplaints(data.data);
+                    document.getElementById('sidebarGCBadge').textContent = data.data.filter(function(c){ return c.status === 'pending'; }).length;
+                } else {
+                    document.getElementById('gcTableBody').innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--red);padding:40px 0">Failed to load complaints.</td></tr>';
+                }
+            } catch (e) {
+                document.getElementById('gcTableBody').innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--red);padding:40px 0">Network error.</td></tr>';
+            }
+        }
+
+        function renderGeneralComplaints(list) {
+            const tbody = document.getElementById('gcTableBody');
+            const count = document.getElementById('gcCount');
+
+            if (!list.length) {
+                tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--text-muted);padding:40px 0">No general complaints yet.</td></tr>';
+                count.textContent = '0 complaints';
+                return;
+            }
+
+            count.textContent = list.length + ' complaint' + (list.length !== 1 ? 's' : '');
+
+            tbody.innerHTML = list.map(function(c){
+                var dateStr = c.created_at ? new Date(c.created_at).toLocaleString() : '—';
+                var statusBadge = c.status === 'resolved'
+                    ? '<span style="display:inline-block;background:var(--success-light);color:var(--success);font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:capitalize">Resolved</span>'
+                    : '<span style="display:inline-block;background:var(--orange-light);color:var(--orange);font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;text-transform:capitalize">Pending</span>';
+
+                var identifier = '—';
+                if (c.category === 'Student') identifier = escapeHtml(c.student_number || '—');
+                else if (c.category === 'Staff') identifier = escapeHtml(c.employee_id || '—');
+                else if (c.category === 'Other') identifier = escapeHtml(c.contact || '—');
+
+                var actionBtn = c.status === 'pending'
+                    ? '<button class="btn-sm" onclick="resolveComplaint(' + c.id + ')" style="color:var(--success);border-color:var(--success);font-size:11px">Resolve</button>'
+                    : '<span style="font-size:11px;color:var(--text-muted)">—</span>';
+
+                return '<tr>' +
+                    '<td style="font-weight:600;font-size:13px">#' + c.id + '</td>' +
+                    '<td style="font-size:12px;color:var(--text-muted);white-space:nowrap">' + dateStr + '</td>' +
+                    '<td><span style="font-weight:600">' + escapeHtml(c.category) + '</span></td>' +
+                    '<td>' + escapeHtml(c.full_name || '—') + '</td>' +
+                    '<td style="font-size:12px;color:var(--text-muted)">' + identifier + '</td>' +
+                    '<td>' + escapeHtml(c.department || '—') + '</td>' +
+                    '<td style="max-width:280px;font-size:13px;color:var(--text-secondary)">' + escapeHtml(c.complaint_text) + '</td>' +
+                    '<td>' + statusBadge + '</td>' +
+                    '<td>' + actionBtn + '</td>' +
+                '</tr>';
+            }).join('');
+        }
+
+        async function resolveComplaint(id) {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/admin/general-complaints/${id}/resolve`, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    showToast('Complaint #' + id + ' marked as resolved.', 'success');
+                    loadGeneralComplaints();
+                } else {
+                    showToast(data.message || 'Failed to resolve.', 'error');
+                }
+            } catch (e) {
+                showToast('Network error.', 'error');
+            }
         }
 
         // ── ATTENDANCE ──
@@ -3425,12 +3553,14 @@
         var navEl = document.querySelector('[onclick*="' + savedTab + '"]');
         showPage(savedTab, navEl || document.querySelector('.nav-item.active'));
         loadAllData();
+        updateGCBadge();
         updateFeedbackBadge();
         setInterval(() => {
             loadStats();
             loadQueueData();
             loadPerformanceData();
             updateFeedbackBadge();
+            updateGCBadge();
             for (const office of officesData) loadOfficeStats(office.id);
         }, 10000);
     </script>

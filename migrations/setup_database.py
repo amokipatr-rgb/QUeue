@@ -261,6 +261,28 @@ if not table_exists('officer_status_log'):
 else:
     print("[OK] officer_status_log table exists")
 
+
+# ── GENERAL COMPLAINTS ──
+if not table_exists('general_complaints'):
+    cursor.execute("""
+        CREATE TABLE general_complaints (
+            id INT AUTO_INCREMENT PRIMARY KEY,
+            category VARCHAR(20) NOT NULL,
+            full_name VARCHAR(100) DEFAULT NULL,
+            student_number VARCHAR(50) DEFAULT NULL,
+            employee_id VARCHAR(50) DEFAULT NULL,
+            department VARCHAR(100) DEFAULT NULL,
+            contact VARCHAR(100) DEFAULT NULL,
+            complaint_text TEXT NOT NULL,
+            status VARCHAR(20) DEFAULT 'pending',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    print("[OK] Created general_complaints table")
+else:
+    print("[OK] general_complaints table exists")
+
+
 # ── INDEXES ──
 print("\n[INDEXES]")
 for name, table, col in [
