@@ -1514,7 +1514,14 @@
                     </button>
                 </div>
 
-                <div class="table-wrap">
+                <div id="gcEmpty" style="display:none;text-align:center;padding:60px 20px">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;color:var(--text-muted);margin-bottom:12px">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/>
+                    </svg>
+                    <p style="font-size:15px;color:var(--text-muted);font-weight:600">No complaint data available yet</p>
+                </div>
+
+                <div class="table-wrap" id="gcTableWrap">
                     <table class="data-table">
                         <thead>
                             <tr>
@@ -2848,23 +2855,32 @@
                     renderGeneralComplaints(data.data);
                     document.getElementById('sidebarGCBadge').textContent = data.data.filter(function(c){ return c.status === 'pending'; }).length;
                 } else {
-                    document.getElementById('gcTableBody').innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--red);padding:40px 0">Failed to load complaints.</td></tr>';
+                    document.getElementById('gcTableBody').innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--red);padding:40px 0">Failed to load complaints.</td></tr>';
+                    document.getElementById('gcTableWrap').style.display = 'block';
+                    document.getElementById('gcEmpty').style.display = 'none';
                 }
             } catch (e) {
-                document.getElementById('gcTableBody').innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--red);padding:40px 0">Network error.</td></tr>';
+                document.getElementById('gcTableBody').innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--red);padding:40px 0">Network error.</td></tr>';
+                document.getElementById('gcTableWrap').style.display = 'block';
+                document.getElementById('gcEmpty').style.display = 'none';
             }
         }
 
         function renderGeneralComplaints(list) {
             const tbody = document.getElementById('gcTableBody');
             const count = document.getElementById('gcCount');
+            const tableWrap = document.getElementById('gcTableWrap');
+            const empty = document.getElementById('gcEmpty');
 
             if (!list.length) {
-                tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:var(--text-muted);padding:40px 0">No general complaints yet.</td></tr>';
+                tableWrap.style.display = 'none';
+                empty.style.display = 'block';
                 count.textContent = '0 complaints';
                 return;
             }
 
+            tableWrap.style.display = 'block';
+            empty.style.display = 'none';
             count.textContent = list.length + ' complaint' + (list.length !== 1 ? 's' : '');
 
             tbody.innerHTML = list.map(function(c){
