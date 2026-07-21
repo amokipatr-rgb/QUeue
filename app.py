@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 # ── SMTP ──
 SMTP_HOST = 'smtp.gmail.com'
-SMTP_PORT = 465
+SMTP_PORT = 587
 SMTP_USER = 'aldarafoundation.org@gmail.com'
 SMTP_PASS = 'wxjbrikffkpuzrqw'
 SMTP_FROM = SMTP_USER
@@ -1797,7 +1797,8 @@ If you have any further concerns, please don't hesitate to reach out.
 Best regards,
 Makerere University Queue Management System (SMQSS)
 """)
-        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=15) as s:
+        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as s:
+            s.starttls()
             s.login(SMTP_USER, SMTP_PASS)
             s.send_message(msg)
         logger.info(f"Reply email sent to {email_to} for complaint #{complaint['id']}")
