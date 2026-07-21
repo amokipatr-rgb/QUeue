@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 # ── SMTP ──
 SMTP_HOST = 'smtp.gmail.com'
-SMTP_PORT = 587
+SMTP_PORT = 465
 SMTP_USER = 'aldarafoundation.org@gmail.com'
 SMTP_PASS = 'wxjbrikffkpuzrqw'
 SMTP_FROM = SMTP_USER
@@ -1776,7 +1776,7 @@ def delete_general_complaint(complaint_id):
 def send_reply_email(complaint, reply_message):
     email_to = complaint.get('email')
     if not email_to or not SMTP_USER or not SMTP_PASS:
-        return False, 'SMTP not configured — set MAIL_USERNAME and MAIL_PASSWORD env vars'
+        return False, 'SMTP not configured'
     try:
         msg = EmailMessage()
         msg['Subject'] = f"Re: Your Complaint #{complaint['id']} — SMQSS"
@@ -1797,8 +1797,7 @@ If you have any further concerns, please don't hesitate to reach out.
 Best regards,
 Makerere University Queue Management System (SMQSS)
 """)
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as s:
-            s.starttls()
+        with smtplib.SMTP_SSL(SMTP_HOST, SMTP_PORT, timeout=15) as s:
             s.login(SMTP_USER, SMTP_PASS)
             s.send_message(msg)
         logger.info(f"Reply email sent to {email_to} for complaint #{complaint['id']}")
