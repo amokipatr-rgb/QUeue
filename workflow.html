@@ -186,7 +186,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--ink)
 </footer>
 <script>
 function liveClock() {
-try { var d = new Date(); var t = d.toLocaleTimeString('en-UG', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/^0/, ''); var dt = d.toLocaleDateString('en-UG', { year: 'numeric', month: 'long', day: 'numeric' }); document.getElementById('liveDateTime').textContent = dt + ' | ' + t + ' EAT'; } catch(e) {}
+try { var d = new Date(); var t = d.toLocaleTimeString('en-UG', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }).replace(/^0/, ''); var dt = d.toLocaleDateString('en-UG', { year: 'numeric', month: 'long', day: 'numeric' }); document.getElementById('liveDateTime').textContent = dt + ' | ' + t + ' EAT'; } catch(e) {}
 }
 try { document.getElementById('footerYear').textContent = new Date().getFullYear(); } catch(e) {}
 try { liveClock(); setInterval(liveClock, 1000); } catch(e) {}

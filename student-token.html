@@ -570,7 +570,7 @@ checkOfficeHours();
 setInterval(function(){ checkOfficeHours(); buildHeaderTicker(); }, 30000);
 
 function liveClock() {
-try { var d = new Date(); var t = d.toLocaleTimeString('en-UG', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/^0/, ''); document.getElementById('liveDateTime').textContent = t + ' EAT'; } catch(e) {}
+try { var d = new Date(); var t = d.toLocaleTimeString('en-UG', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }).replace(/^0/, ''); document.getElementById('liveDateTime').textContent = t + ' EAT'; } catch(e) {}
 }
 try { liveClock(); setInterval(liveClock, 1000); } catch(e) {}
 
@@ -927,7 +927,7 @@ async function doApiCall(name, studentNumber, parentPhone){
 
     if(data.success){
       const now=new Date();
-      const timeStr=now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+      const timeStr=now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:true});
       const dateStr=now.toLocaleDateString('en-UG',{day:'2-digit',month:'short',year:'numeric'});
       const feedbackUrl = window.location.origin + '/r/' + data.token_number;
 

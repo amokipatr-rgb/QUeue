@@ -216,7 +216,7 @@ loginBtn.disabled = false;
 function liveClock() {
 try {
 var d = new Date();
-var t = d.toLocaleTimeString('en-UG', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/^0/, '');
+var t = d.toLocaleTimeString('en-UG', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }).replace(/^0/, '');
 var dt = d.toLocaleDateString('en-UG', { year: 'numeric', month: 'long', day: 'numeric' });
 document.getElementById('liveDateTime').textContent = dt + ' | ' + t + ' EAT';
 } catch (e) {}

@@ -949,9 +949,9 @@
         // ── DATETIME ──
         function updateDateTime() {
             const now = new Date();
-            document.getElementById('dtTime').textContent = now.toLocaleTimeString('en-UG', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+            document.getElementById('dtTime').textContent = now.toLocaleTimeString('en-UG', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
             document.getElementById('dtDate').textContent = now.toLocaleDateString('en-UG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-            document.getElementById('tickerTime').textContent = now.toLocaleTimeString('en-UG', { hour: '2-digit', minute: '2-digit' });
+            document.getElementById('tickerTime').textContent = now.toLocaleTimeString('en-UG', { hour: '2-digit', minute: '2-digit', hour12: true });
         }
         updateDateTime();
         setInterval(updateDateTime, 1000);

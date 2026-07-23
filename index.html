@@ -129,7 +129,7 @@ function showToast(msg) {
 try { var t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(function(){ t.classList.remove('show'); }, 4000); } catch(e) {}
 }
 function liveClock() {
-try { var d = new Date(); var t = d.toLocaleTimeString('en-UG', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/^0/, ''); var dt = d.toLocaleDateString('en-UG', { year: 'numeric', month: 'long', day: 'numeric' }); document.getElementById('liveDateTime').textContent = dt + ' | ' + t + ' EAT'; } catch(e) {}
+try { var d = new Date(); var t = d.toLocaleTimeString('en-UG', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }).replace(/^0/, ''); var dt = d.toLocaleDateString('en-UG', { year: 'numeric', month: 'long', day: 'numeric' }); document.getElementById('liveDateTime').textContent = dt + ' | ' + t + ' EAT'; } catch(e) {}
 }
 function goToLogin() {
 fetch('/api/admin/login-token').then(function(r){return r.json()}).then(function(d){window.location.href=d.url}).catch(function(){window.location.href='/'});
