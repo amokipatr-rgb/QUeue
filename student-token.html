@@ -568,6 +568,7 @@ function checkOfficeHours(){
 }
 checkOfficeHours();
 setInterval(function(){ checkOfficeHours(); buildHeaderTicker(); }, 30000);
+document.addEventListener('visibilitychange',function(){if(!document.hidden){checkOfficeHours();buildHeaderTicker();}});
 
 function liveClock() {
 try { var d = new Date(); var t = d.toLocaleTimeString('en-UG', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }).replace(/^0/, ''); document.getElementById('liveDateTime').textContent = t + ' EAT'; } catch(e) {}
