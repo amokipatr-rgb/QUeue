@@ -567,6 +567,7 @@ function checkOfficeHours(){
  if(desc&&desc.classList.contains('btn-desc'))desc.style.display=open?'':'none';
 }
 checkOfficeHours();
+setInterval(function(){ checkOfficeHours(); buildHeaderTicker(); }, 30000);
 
 function liveClock() {
 try { var d = new Date(); var t = d.toLocaleTimeString('en-UG', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).replace(/^0/, ''); document.getElementById('liveDateTime').textContent = t + ' EAT'; } catch(e) {}
@@ -750,8 +751,7 @@ function renderServices(){
 function goToStep(step){
   document.body.classList.remove('input-mode');
   if(step===0){
-checkOfficeHours();
-setInterval(function(){ checkOfficeHours(); buildHeaderTicker(); }, 30000);
+    checkOfficeHours();
     document.getElementById('rateWelcomeWrap').style.display='';
     document.getElementById('welcomePanel').style.display='none';
     document.getElementById('launchBtn').style.display='none';
