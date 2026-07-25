@@ -39,6 +39,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--ink)
 .btn-download-home{display:inline-flex;align-items:center;gap:8px;background:var(--mak-gold-light);color:var(--mak-gold);font-size:13px;font-weight:500;padding:10px 24px;border-radius:var(--r);text-decoration:none;cursor:pointer;border:1.5px solid var(--mak-gold);transition:all .2s;font-family:'DM Sans',sans-serif}
 .btn-download-home:hover{background:var(--mak-gold);color:#fff}
 .btn-download-home svg{width:16px;height:16px;fill:currentColor}
+.btn-electron-web{display:none;align-items:center;gap:8px;background:var(--blue-light);color:var(--blue);font-size:13px;font-weight:500;padding:10px 24px;border-radius:var(--r);text-decoration:none;cursor:pointer;border:1.5px solid var(--blue);transition:all .2s;font-family:'DM Sans',sans-serif}
+.btn-electron-web:hover{background:var(--blue);color:#fff}
+.btn-electron-web svg{width:16px;height:16px;fill:currentColor}
 .footer{flex-shrink:0;border-top:1px solid var(--border);background:var(--white)}
 .footer-inner{max-width:var(--max-w);margin:0 auto;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
 .footer-inner p{font-size:12px;color:var(--muted)}
@@ -84,7 +87,8 @@ body{font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--ink)
 <p class="app-sub">SMQSS — Enhancing Student Service Experience and Service Delivery Log in to manage queues across all offices.</p>
 <div class="btn-row"><a class="btn-login" href="javascript:void(0)" onclick="goToLogin()"><svg viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>Staff Login</a>
 <a class="btn-outline-home" href="javascript:void(0)" onclick="goToWorkflow()"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>View Workflow</a>
-<a class="btn-download-home" href="/api/download/queue-kiosk-index-setup.exe" download><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download Desktop App</a></div>
+<a class="btn-download-home" href="/api/download/queue-kiosk-index-setup.exe" download><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download Desktop App</a>
+<a class="btn-electron-web" id="webBtn" href="https://queue-production-2a11.up.railway.app/" target="_blank"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 15l-5-5 1.41-1.41L11 14.17l7.59-7.59L20 8l-9 9z"/></svg>Use Web Interface</a></div>
 </div>
 </main>
 <footer class="footer">
@@ -165,7 +169,7 @@ try { document.getElementById('adminSubmitBtn').disabled = false; document.getEl
 try { document.getElementById('footerYear').textContent = new Date().getFullYear(); } catch(e) {}
 try { liveClock(); setInterval(liveClock, 1000); } catch(e) {}
 try { document.getElementById('adminLoginForm').addEventListener('submit', submitAdminLogin); } catch(e) {}
-try { if (navigator.userAgent.toLowerCase().includes('electron')) { document.querySelector('.btn-download-home').style.display = 'none'; } } catch(e) {}
+try { if (navigator.userAgent.toLowerCase().includes('electron')) { document.querySelector('.btn-download-home').style.display = 'none'; document.getElementById('webBtn').style.display = 'inline-flex'; } } catch(e) {}
 </script>
 </body>
 </html>
