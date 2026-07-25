@@ -1788,7 +1788,7 @@
         </div>
     </div>
 
-    <!-- REPLY MODAL -->
+    <!-- REPLY MODAL (hidden - not in use)
     <div class="modal-overlay" id="replyModal">
         <div class="modal-box">
             <div class="modal-header">
@@ -1808,7 +1808,7 @@
             </div>
             <div class="form-group">
                 <label for="replyModalText">Your Reply *</label>
-                <textarea id="replyModalText" rows="6" placeholder="Type your response to the complainant..."></textarea>
+                <textarea id="replyModalText" rows="6" placeholder="Type your response to the complainants..."></textarea>
             </div>
             <div id="replyModalError" style="display:none;background:#fef2f2;border:1px solid #fecaca;color:var(--red);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px"></div>
             <div class="modal-actions">
@@ -1817,6 +1817,7 @@
             </div>
         </div>
     </div>
+    -->
 
     <script>
         const API_BASE_URL = typeof window !== 'undefined' ? window.location.origin : '';
@@ -2929,19 +2930,15 @@
                 var actionBtn;
                 var delBtn = '<button class="btn-sm" onclick="deleteComplaint(' + c.id + ')" style="color:var(--red);border-color:var(--red);font-size:11px">Delete</button>';
                 if (c.status === 'pending') {
-                    if (c.email) {
-                        actionBtn = '<div style="display:flex;gap:6px">' +
-                            '<button class="btn-sm" onclick="openReplyModal(' + c.id + ')" style="color:var(--blue);border-color:var(--blue);font-size:11px">Reply</button>' +
-                            delBtn +
-                        '</div>';
-                    } else {
-                        actionBtn = '<div style="display:flex;gap:6px">' +
-                            '<button class="btn-sm" onclick="resolveComplaint(' + c.id + ')" style="color:var(--success);border-color:var(--success);font-size:11px">Resolve</button>' +
-                            delBtn +
-                        '</div>';
-                    }
+                    actionBtn = '<div style="display:flex;gap:6px">' +
+                        '<button class="btn-sm" onclick="resolveComplaint(' + c.id + ')" style="color:var(--success);border-color:var(--success);font-size:11px">Resolve</button>' +
+                        delBtn +
+                    '</div>';
                 } else {
-                    actionBtn = '<div style="display:flex;gap:6px;justify-content:center">' + delBtn + '</div>';
+                    actionBtn = '<div style="display:flex;gap:6px">' +
+                        '<button class="btn-sm" onclick="reopenComplaint(' + c.id + ')" style="color:var(--orange);border-color:var(--orange);font-size:11px">Reopen</button>' +
+                        delBtn +
+                    '</div>';
                 }
 
                 return '<tr>' +
@@ -2974,54 +2971,18 @@
             }
         }
 
-        function openReplyModal(id) {
-            var c = _gcData ? _gcData.find(function(x){ return x.id === id; }) : null;
-            if (!c) { showToast('Complaint data not found.', 'error'); return; }
-            document.getElementById('replyModalId').textContent = '#' + c.id;
-            document.getElementById('replyModalTo').textContent = c.email || '—';
-            document.getElementById('replyModalComplaint').textContent = c.complaint_text;
-            document.getElementById('replyModalText').value = '';
-            document.getElementById('replyModalError').style.display = 'none';
-            openModal('replyModal');
-            document.getElementById('replyModalSend').dataset.id = id;
-            document.getElementById('replyModalSend').disabled = false;
-            document.getElementById('replyModalSend').textContent = 'Send Reply →';
-        }
-
-        async function sendReply() {
-            var btn = document.getElementById('replyModalSend');
-            var id = parseInt(btn.dataset.id);
-            var message = document.getElementById('replyModalText').value.trim();
-            if (!message) {
-                document.getElementById('replyModalError').textContent = 'Please write a reply message.';
-                document.getElementById('replyModalError').style.display = 'block';
-                return;
-            }
-            btn.disabled = true;
-            btn.textContent = 'Sending...';
-            document.getElementById('replyModalError').style.display = 'none';
+        async function reopenComplaint(id) {
             try {
-                const res = await fetch(`${API_BASE_URL}/api/admin/general-complaints/${id}/reply`, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ message: message })
-                });
+                const res = await fetch(`${API_BASE_URL}/api/admin/general-complaints/${id}/reopen`, { method: 'POST' });
                 const data = await res.json();
                 if (data.success) {
-                    showToast(data.message, 'success');
-                    closeModal('replyModal');
+                    showToast('Complaint #' + id + ' reopened.', 'success');
                     loadGeneralComplaints();
                 } else {
-                    document.getElementById('replyModalError').textContent = data.message || 'Failed to send.';
-                    document.getElementById('replyModalError').style.display = 'block';
-                    btn.disabled = false;
-                    btn.textContent = 'Send Reply →';
+                    showToast(data.message || 'Failed to reopen.', 'error');
                 }
             } catch (e) {
-                document.getElementById('replyModalError').textContent = 'Network error.';
-                document.getElementById('replyModalError').style.display = 'block';
-                btn.disabled = false;
-                btn.textContent = 'Send Reply →';
+                showToast('Network error.', 'error');
             }
         }
 

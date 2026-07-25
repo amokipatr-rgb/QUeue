@@ -1756,6 +1756,23 @@ def resolve_general_complaint(complaint_id):
         conn.close()
 
 
+@app.route('/api/admin/general-complaints/<int:complaint_id>/reopen', methods=['POST'])
+def reopen_general_complaint(complaint_id):
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("UPDATE general_complaints SET status = 'pending' WHERE id = %s", (complaint_id,))
+        conn.commit()
+        return jsonify({'success': True, 'message': 'Complaint reopened'})
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Reopen complaint error: {e}")
+        return jsonify({'success': False, 'message': 'Internal server error'}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
 @app.route('/api/admin/general-complaints/<int:complaint_id>', methods=['DELETE'])
 def delete_general_complaint(complaint_id):
     conn = get_db_connection()
