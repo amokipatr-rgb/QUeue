@@ -1224,6 +1224,10 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:14px;height:14px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                         Export CSV
                     </button>
+                    <button type="button" class="btn-sm" onclick="clearAttendance()" style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border:1px solid var(--red);border-radius:var(--radius-sm);background:var(--white);cursor:pointer;font-size:12px;font-weight:600;color:var(--red);font-family:inherit">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:14px;height:14px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                        Clear Data
+                    </button>
                 </div>
                 <div style="font-size:13px;color:var(--text-secondary);margin-bottom:16px" id="attWeekLabel">Loading...</div>
 
@@ -3337,6 +3341,23 @@
             a.href = URL.createObjectURL(blob);
             a.download = 'attendance_' + (_attData.week_start || 'week') + '.csv';
             a.click();
+        }
+
+        async function clearAttendance() {
+            if (!confirm('Delete ALL attendance data? This cannot be undone.')) return;
+            try {
+                var res = await fetch(API_BASE_URL + '/api/admin/attendance/clear', { method: 'POST' });
+                var data = await res.json();
+                if (data.success) {
+                    showToast('All attendance data cleared', 'success');
+                    _attData = null;
+                    renderAttendance({success: true, attendance: []});
+                } else {
+                    showToast(data.message || 'Failed to clear', 'error');
+                }
+            } catch(e) {
+                showToast('Network error', 'error');
+            }
         }
 
         // ── ATTENDANCE TABS ──

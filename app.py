@@ -3640,6 +3640,23 @@ def admin_attendance_log():
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
+@app.route('/api/admin/attendance/clear', methods=['POST'])
+def clear_attendance_data():
+    """Delete all officer sessions and status logs."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM officer_status_log")
+        cursor.execute("DELETE FROM officer_sessions")
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'message': 'All attendance data cleared'})
+    except Exception as e:
+        logger.error(f"Error clearing attendance: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
 # ============================================
 # TEXT-TO-SPEECH (edge-tts)
 # ============================================
