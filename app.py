@@ -384,6 +384,13 @@ try:
             connection.commit()
             print("[OK] logout_ip column added to officer_sessions")
 
+        cursor.execute("SHOW COLUMNS FROM officer_sessions LIKE 'device_info'")
+        if not cursor.fetchone():
+            print("[WARN] officer_sessions table missing device_info column! Adding...")
+            cursor.execute("ALTER TABLE officer_sessions ADD COLUMN device_info VARCHAR(255) NULL AFTER logout_ip")
+            connection.commit()
+            print("[OK] device_info column added to officer_sessions")
+
         cursor.execute("SHOW COLUMNS FROM general_complaints LIKE 'email'")
         if not cursor.fetchone():
             print("[WARN] general_complaints table missing email column! Adding...")
