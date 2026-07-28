@@ -3231,6 +3231,13 @@
             if (e.target === this) closeOfficerModal();
         });
 
+        function toEAT(dtStr) {
+            if (!dtStr) return '—';
+            var d = new Date(dtStr + ' UTC');
+            d.setHours(d.getHours() + 3);
+            return d.toLocaleTimeString('en-UG',{hour:'2-digit',minute:'2-digit',hour12:true});
+        }
+
         function renderAttendance(data) {
             var tbody = document.getElementById('attendanceTableBody');
             var cards = document.getElementById('attMobileCards');
@@ -3239,13 +3246,6 @@
                 tbody.innerHTML = '<tr><td colspan="13" style="text-align:center;color:var(--text-muted);padding:30px;">No attendance data for this week</td></tr>';
                 if (cards) cards.innerHTML = '<div class="empty-state">No attendance data for this week</div>';
                 return;
-            }
-
-            function toEAT(dtStr) {
-                if (!dtStr) return '—';
-                var d = new Date(dtStr + ' UTC');
-                d.setHours(d.getHours() + 3);
-                return d.toLocaleTimeString('en-UG',{hour:'2-digit',minute:'2-digit',hour12:true});
             }
 
             var dayLabels = ['Mon','Tue','Wed','Thu','Fri'];
