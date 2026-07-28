@@ -3223,7 +3223,7 @@
                 summary.textContent = 'Monthly Attendance: ' + pct + '% (' + formatMinutes(totalMin) + ' of ' + (dailyTarget * workingDays / 60).toFixed(0) + 'h target)';
 
             } catch(e) {
-                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--red)">Error loading data</td></tr>';
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--red)">Error: ' + escapeHtml(e.message || e) + '</td></tr>';
             }
         }
         // Close modal on overlay click
