@@ -3721,4 +3721,4 @@ if __name__ == '__main__':
     print(f"  >>> Officer URL: http://127.0.0.1:{PORT}/officer/{OFFICER_TOKEN}")
     print(f"  >>> Feedback URL: http://127.0.0.1:{PORT}/feedback.html/{FEEDBACK_TOKEN}/TOKEN")
     print("=" * 55)
-    app.run(host='0.0.0.0', port=PORT, debug=os.environ.get('FLASK_ENV') == 'development')
+    app.run(host='0.0.0.0', port=PORT, debug=True)

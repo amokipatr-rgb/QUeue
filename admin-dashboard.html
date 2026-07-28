@@ -3131,7 +3131,7 @@
             try {
                 var res = await fetch(API_BASE_URL + '/api/admin/officer-attendance?week=' + encodeURIComponent(weekVal));
                 var data = await res.json();
-                if (!data.success) { if (!silent) { showToast('Failed to load attendance', 'error'); btn.disabled = false; btn.innerHTML = origHTML; } return; }
+                if (!data.success) { if (!silent) { showToast(data.message || 'Failed to load attendance', 'error'); btn.disabled = false; btn.innerHTML = origHTML; } return; }
                 _attData = data;
                 renderAttendance(data);
                 if (!silent) showToast('Attendance refreshed', 'success');
@@ -3182,7 +3182,7 @@
             try {
                 var res = await fetch(API_BASE_URL + '/api/admin/officer-attendance/' + officerId + '?from=' + fromDate + '&to=' + toDate);
                 var data = await res.json();
-                if (!data.success) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--red)">Failed to load data</td></tr>'; return; }
+                if (!data.success) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--red)">' + escapeHtml(data.message || 'Failed to load data') + '</td></tr>'; return; }
 
                 var sessions = data.sessions || [];
                 meta.innerHTML = '<strong>' + escapeHtml(officeName || '') + '</strong> &middot; ' + monthNames[month - 1] + ' ' + year + ' &middot; ' + sessions.length + ' session(s)';
