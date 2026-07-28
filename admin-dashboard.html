@@ -1307,7 +1307,7 @@
             </div>
 
             <!-- OFFICER DETAIL MODAL -->
-            <div class="modal-overlay-officer" id="officerModal">
+            <div class="modal-overlay-officer" id="officerDetailModal">
                 <div class="modal-box-officer">
                     <div class="modal-header">
                         <h2 id="officerModalTitle">Officer Details</h2>
@@ -3157,10 +3157,10 @@
 
         // ── OFFICER DETAIL MODAL ──
         function closeOfficerModal() {
-            document.getElementById('officerModal').classList.remove('open');
+            document.getElementById('officerDetailModal').classList.remove('open');
         }
         async function viewOfficerDetail(officerId, officerName, officerNumber, officeName) {
-            var modal = document.getElementById('officerModal');
+            var modal = document.getElementById('officerDetailModal');
             var tbody = document.getElementById('officerModalBody');
             var meta = document.getElementById('officerModalMeta');
             var title = document.getElementById('officerModalTitle');
@@ -3227,7 +3227,7 @@
             }
         }
         // Close modal on overlay click
-        document.getElementById('officerModal').addEventListener('click', function(e) {
+        document.getElementById('officerDetailModal').addEventListener('click', function(e) {
             if (e.target === this) closeOfficerModal();
         });
 
