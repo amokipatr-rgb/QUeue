@@ -1160,7 +1160,7 @@
                     <table class="data-table">
                         <thead>
                             <tr>
-                                <th>#</th><th>Name</th><th>Office</th>
+                                <th>Office Code</th><th>Officer</th><th>Office</th>
                                 <th>Email</th><th>PIN</th><th>Actions</th>
                             </tr>
                         </thead>
@@ -2610,8 +2610,8 @@
 
                 document.getElementById('officersTableBody').innerHTML = officers.length ? officers.map(o => `
                     <tr>
-                        <td><strong style="color:var(--text-muted);font-size:12px;">#${o.officer_number}</strong></td>
-                        <td><strong>${escapeHtml(o.officer_name)}</strong></td>
+                        <td><strong style="color:var(--text-muted);font-size:12px;letter-spacing:1px">${escapeHtml(o.office_code || '—')}</strong></td>
+                        <td><strong>${escapeHtml(o.officer_name)}</strong><br><span style="font-size:11px;color:var(--text-muted)">#${o.officer_number}</span></td>
                         <td>${escapeHtml(o.office_name)}</td>
                         <td>${escapeHtml(o.email || '—')}</td>
                         <td style="font-family:JetBrains Mono,monospace;font-weight:600;font-size:14px;letter-spacing:2px">${escapeHtml(o.pin_code || '—')}</td>
