@@ -3238,8 +3238,7 @@
         function toEAT(dtStr) {
             if (!dtStr) return '—';
             var d = new Date(dtStr + ' UTC');
-            d.setHours(d.getHours() + 3);
-            return d.toLocaleTimeString('en-UG',{hour:'2-digit',minute:'2-digit',hour12:true});
+            return d.toLocaleTimeString('en-UG',{hour:'2-digit',minute:'2-digit',hour12:true,timeZone:'Africa/Kampala'});
         }
 
         function renderAttendance(data) {
