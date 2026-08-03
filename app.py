@@ -2710,7 +2710,7 @@ def admin_get_stats():
 
         cursor.execute("""
             SELECT o.id, o.officer_number, o.officer_name, o.status, o.current_token,
-                   o.status_reason, o.email, o.phone, o.office_id,
+                   o.status_reason, o.email, o.phone, o.office_id, o.pin_code,
                    off.office_name, off.office_code
             FROM officers o
             JOIN offices off ON o.office_id = off.id

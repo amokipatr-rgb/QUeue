@@ -1161,7 +1161,7 @@
                         <thead>
                             <tr>
                                 <th>#</th><th>Name</th><th>Office</th>
-                                <th>Email</th><th>Status</th><th>Reason</th><th>Actions</th>
+                                <th>Email</th><th>PIN</th><th>Actions</th>
                             </tr>
                         </thead>
                         <tbody id="officersTableBody"></tbody>
@@ -2614,8 +2614,7 @@
                         <td><strong>${escapeHtml(o.officer_name)}</strong></td>
                         <td>${escapeHtml(o.office_name)}</td>
                         <td>${escapeHtml(o.email || '—')}</td>
-                        <td><span class="status-pill ${getStatusPillClass(o.status)}"><span class="status-dot"></span>${escapeHtml(o.status || '—')}</span></td>
-                        <td style="max-width:220px;">${o.status === 'offline' && o.status_reason ? `<span title="${escapeAttr(o.status_reason)}" style="color:var(--text-secondary);font-size:12px;cursor:help;">${escapeHtml(o.status_reason.length > 50 ? o.status_reason.slice(0, 50) + '…' : o.status_reason)}</span>` : '<span style="color:var(--text-muted);font-size:12px;">—</span>'}</td>
+                        <td style="font-family:JetBrains Mono,monospace;font-weight:600;font-size:14px;letter-spacing:2px">${escapeHtml(o.pin_code || '—')}</td>
                         <td><div style="display:flex;gap:8px;flex-wrap:wrap;">
                             <button type="button" class="btn-sm btn-edit-sm" onclick="editOfficerById(${o.id})">
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
@@ -2626,7 +2625,7 @@
                                 Delete
                             </button>
                         </div></td>
-                    </tr>`).join('') : '<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:30px;">No officers found</td></tr>';
+                    </tr>`).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:30px;">No officers found</td></tr>';
 
             } catch (error) { console.error('Error loading stats:', error); }
         }
