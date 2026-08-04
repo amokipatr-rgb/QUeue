@@ -559,15 +559,15 @@ def officer_dashboard(token):
 
 @app.route('/api/download/queue-kiosk-setup.exe')
 def download_kiosk_installer():
-    return redirect('https://github.com/amokipatr-rgb/QUeue/releases/download/v2.0.0/QueueKiosk-Setup-2.0.0.exe')
+    return redirect('https://github.com/amokipatr-rgb/QUeue/releases/download/v2.1.0/QueueKiosk-Setup-2.1.0.exe')
 
 @app.route('/api/download/queue-kiosk-student-setup.exe')
 def download_student_kiosk_installer():
-    return redirect('https://github.com/amokipatr-rgb/QUeue/releases/download/v2.0.1/QueueKiosk-Student-Setup-2.0.1.exe')
+    return redirect('https://github.com/amokipatr-rgb/QUeue/releases/download/v2.1.0/QueueKiosk-Student-Setup-2.1.0.exe')
 
 @app.route('/api/download/queue-kiosk-index-setup.exe')
 def download_index_kiosk_installer():
-    return redirect('https://github.com/amokipatr-rgb/QUeue/releases/download/v2.0.0/QueueKiosk-Index-Setup-2.0.0.exe')
+    return redirect('https://github.com/amokipatr-rgb/QUeue/releases/download/v2.1.0/QueueKiosk-Index-Setup-2.1.0.exe')
 
 @app.route('/feedback.html')
 def feedback_decoy():

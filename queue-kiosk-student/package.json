@@ -1,6 +1,6 @@
 {
   "name": "queue-kiosk-student",
-  "version": "2.0.1",
+  "version": "2.1.0",
   "description": "SMQSS — Student Token Kiosk",
   "main": "main.js",
   "scripts": {
@@ -20,9 +20,10 @@
       "build/**/*"
     ],
     "win": {
-      "target": "portable",
+      "target": "nsis",
       "icon": "build/icon.png",
-      "sign": false
+      "sign": false,
+      "artifactName": "QueueKiosk-Student-Setup-${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,

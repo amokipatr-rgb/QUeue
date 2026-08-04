@@ -1,6 +1,6 @@
 {
   "name": "queue-kiosk",
-  "version": "1.0.0",
+  "version": "2.1.0",
   "description": "SMQSS — Smart Queue Management System",
   "main": "main.js",
   "scripts": {
@@ -20,9 +20,10 @@
       "build/**/*"
     ],
     "win": {
-      "target": "portable",
+      "target": "nsis",
       "icon": "build/icon.png",
-      "sign": false
+      "sign": false,
+      "artifactName": "QueueKiosk-Setup-${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,
