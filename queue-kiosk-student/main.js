@@ -1,4 +1,4 @@
-const { app, BrowserWindow, screen, powerSaveBlocker } = require('electron');
+const { app, BrowserWindow, screen, powerSaveBlocker, ipcMain } = require('electron');
 const path = require('path');
 
 const DISPLAY_URL = process.env.KIOSK_STUDENT_URL
@@ -166,6 +166,18 @@ app.whenReady().then(() => {
   createKioskWindow();
   startWatchdog();
   console.log(`[StudentKiosk] Started — URL: ${DISPLAY_URL}`);
+});
+
+// ── Silent receipt printing ──
+ipcMain.on('print-receipt', (event) => {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  mainWindow.webContents.print({
+    silent: true,
+    printBackground: true,
+    deviceName: process.env.RECEIPT_PRINTER || 'POSPrinter POSPrinter-80C'
+  }, (ok, err) => {
+    if (!ok) console.warn('[StudentKiosk] Silent print failed:', err);
+  });
 });
 
 app.on('activate', () => {
