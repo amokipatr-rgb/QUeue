@@ -1,4 +1,4 @@
-const { app, BrowserWindow, screen, powerSaveBlocker, ipcMain } = require('electron');
+const { app, BrowserWindow, screen, powerSaveBlocker, ipcMain, session } = require('electron');
 const path = require('path');
 
 const DISPLAY_URL = process.env.KIOSK_STUDENT_URL
@@ -163,18 +163,39 @@ app.on('will-quit', (event) => {
 });
 
 app.whenReady().then(() => {
+  session.defaultSession.clearCache()
+    .then(() => console.log('[StudentKiosk] HTTP cache cleared'))
+    .catch((e) => console.warn('[StudentKiosk] Cache clear failed:', e));
   createKioskWindow();
   startWatchdog();
   console.log(`[StudentKiosk] Started — URL: ${DISPLAY_URL}`);
 });
 
 // ── Silent receipt printing ──
-ipcMain.on('print-receipt', (event) => {
+async function findReceiptPrinter(contents) {
+  try {
+    const printers = await contents.getPrintersAsync();
+    const match = printers.find(p =>
+      /POSPrinter|80C/i.test(p.name) || /POSPrinter|80C/i.test(p.displayName)
+    );
+    if (match) {
+      console.log(`[StudentKiosk] Receipt printer detected: ${match.name} (${match.displayName})`);
+      return match.name;
+    }
+    console.warn(`[StudentKiosk] No POSPrinter found. Available: ${printers.map(p => p.name).join(' | ')}`);
+  } catch (e) {
+    console.warn('[StudentKiosk] Printer detection failed:', e);
+  }
+  return process.env.RECEIPT_PRINTER || '';
+}
+
+ipcMain.on('print-receipt', async (event) => {
   if (!mainWindow || mainWindow.isDestroyed()) return;
+  const deviceName = await findReceiptPrinter(mainWindow.webContents);
   mainWindow.webContents.print({
     silent: true,
     printBackground: true,
-    deviceName: process.env.RECEIPT_PRINTER || 'POSPrinter POSPrinter-80C'
+    deviceName: deviceName || undefined
   }, (ok, err) => {
     if (!ok) console.warn('[StudentKiosk] Silent print failed:', err);
   });
