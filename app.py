@@ -997,7 +997,7 @@ def admin_delete_service(service_id):
         if not cursor.fetchone():
             return jsonify({'success': False, 'message': 'Service not found'}), 404
         
-        cursor.execute("UPDATE university_tokens SET service_id = NULL WHERE service_id = %s", (service_id,))
+        cursor.execute("DELETE FROM university_tokens WHERE service_id = %s", (service_id,))
         cursor.execute("DELETE FROM services WHERE id = %s", (service_id,))
         conn.commit()
         
