@@ -708,6 +708,7 @@ async function loadServicesForOffice(officeId){
     if(data.success){ services=data.services; }
     else{ services=[]; }
   } catch(e){ services=[]; }
+  if(currentStep===2){ renderServices(); }
 }
 
 function renderServices(){
