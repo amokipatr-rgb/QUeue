@@ -889,6 +889,7 @@
         let recentAnnouncements = {};
         let isIdle = true;
         let currentMessages = [];
+        let currentUnavailNotices = [];
         let idleMessageIndex = 0;
         let idleMessageRotationTimer = null;
         let currentUpNextItems = [];
@@ -1113,7 +1114,7 @@
                     fetchAndDisplayMessages._lastSig = sig;
                     currentMessages = msgs;
                     idleMessageIndex = 0;
-                    buildTickerContent(msgs);
+                    buildTickerContent(currentUnavailNotices.concat(msgs));
                     renderIdleState(currentMessages);
                 }
                 lastSuccessfulMessageFetch = Date.now();
@@ -1173,7 +1174,8 @@
 
             if (!isIdle) { container.style.display = 'none'; return; }
 
-            var hasNotices = currentMessages && currentMessages.length > 0;
+            var noticesList = currentUnavailNotices.concat(currentMessages);
+            var hasNotices = noticesList && noticesList.length > 0;
             var hasUpNext = currentUpNextItems.length > 0;
 
             if (!hasNotices && !hasUpNext) {
@@ -1183,7 +1185,7 @@
 
             var html = '';
             if (hasNotices) {
-                var msg = currentMessages[idleMessageIndex % currentMessages.length];
+                var msg = noticesList[idleMessageIndex % noticesList.length];
                 html += '<div class="notice-card">' +
                     '<div class="notice-label">Notice From: <span class="notice-office-name">' + escapeHtml(msg.office_name || 'Office Notice') + '</span></div>' +
                     '<div class="notice-text">' + escapeHtml(msg.message || '') + '</div>' +
@@ -1221,6 +1223,10 @@
         function updateDisplay(queues) {
             // Mark that we received an update (for frozen screen detection)
             lastDisplayUpdate = Date.now();
+
+            currentUnavailNotices = (queues || [])
+                .filter(o => (o.availability_status || '').toLowerCase() === 'unavailable' && (o.unavailability_notice || '').trim())
+                .map(o => ({ office_name: o.office_name, office_code: o.office_code, message: '⚠️ ' + o.office_name + ' is currently closed: ' + o.unavailability_notice, is_unavailability: true }));
             
             const activeGrid = document.getElementById('activeGrid');
             const noActive = document.getElementById('noActive');
@@ -1297,6 +1303,11 @@
                 activeGrid.style.display = 'none';
                 noActive.style.display = 'flex';
                 newsTicker.classList.add('visible');
+                var unavailSig = currentUnavailNotices.map(n => n.office_code + '|' + n.message).join('~~');
+                if (unavailSig !== updateDisplay._unavailSig) {
+                    updateDisplay._unavailSig = unavailSig;
+                    buildTickerContent(currentUnavailNotices.concat(currentMessages));
+                }
                 renderIdleState(currentMessages);
                 fetchAndDisplayMessages();
 
