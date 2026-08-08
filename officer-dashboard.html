@@ -883,7 +883,7 @@
   document.getElementById('officeName').textContent = currentOfficer.office_name;
   document.getElementById('officeLocation').textContent = currentOfficer.location || 'Main Campus';
 
-  function logout() { sessionStorage.removeItem('loggedInUser'); window.location.href = '/'; }
+  function logout() { cancelOfficeLogoutCountdown(); sessionStorage.removeItem('loggedInUser'); window.location.href = '/'; }
 
   async function apiCall(endpoint, method = 'GET', data = null) {
     try {
@@ -1234,6 +1234,7 @@
   let pendingAvailChange = null;
 
   async function toggleOfficeAvailability() {
+    cancelOfficeLogoutCountdown();
     const result = await apiCall(`/api/offices`);
     if (!result.success || !result.offices) return;
     const office = result.offices.find(o => o.id === currentOfficer.office_id);
@@ -1312,6 +1313,11 @@
         addLog(`Office availability changed to ${newStatus}${reason ? ': ' + reason : ''}`, newStatus === 'available' ? 'success' : 'warning');
         await loadOfficeStatus();
         syncDrawer();
+        if (newStatus === 'unavailable') {
+          startOfficeLogoutCountdown();
+        } else {
+          cancelOfficeLogoutCountdown();
+        }
       } else {
         showToast(updateResult.message || 'Failed to update office status', 'error');
       }
@@ -1327,6 +1333,40 @@
   function closeAvailReasonModal() {
     document.getElementById('availReasonOverlay').classList.remove('open');
     pendingAvailChange = null;
+  }
+
+  // ── OFFICE-CLOSED LOGOUT COUNTDOWN (cancelable) ──
+  window._officeLockTimer = null;
+  let officeLockToastEl = null;
+
+  function startOfficeLogoutCountdown() {
+    cancelOfficeLogoutCountdown();
+    let remaining = 5;
+    const container = document.getElementById('toastContainer');
+    officeLockToastEl = document.createElement('div');
+    officeLockToastEl.className = 'toast toast-warning';
+    officeLockToastEl.id = 'officeLockToast';
+    const svg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
+    officeLockToastEl.innerHTML = `${svg} Office is unavailable — logging out in <b id="officeLockCount">${remaining}</b>s`;
+    container.appendChild(officeLockToastEl);
+    window._officeLockTimer = setInterval(function() {
+      remaining--;
+      const el = document.getElementById('officeLockCount');
+      if (el) el.textContent = remaining;
+      if (remaining <= 0) {
+        cancelOfficeLogoutCountdown();
+        logout();
+      }
+    }, 1000);
+  }
+
+  function cancelOfficeLogoutCountdown() {
+    if (window._officeLockTimer) { clearInterval(window._officeLockTimer); window._officeLockTimer = null; }
+    if (officeLockToastEl && officeLockToastEl.parentNode) {
+      officeLockToastEl.classList.add('hiding');
+      setTimeout(() => officeLockToastEl.remove(), 280);
+      officeLockToastEl = null;
+    }
   }
 
   // ============================================
