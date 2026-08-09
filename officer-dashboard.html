@@ -1234,15 +1234,9 @@
   }
 
   let pendingAvailChange = null;
+  let cachedOfficeData = null;
 
-  async function toggleOfficeAvailability() {
-    cancelOfficeLogoutCountdown();
-    const result = await apiCall(`/api/offices`);
-    if (!result.success || !result.offices) return;
-    const office = result.offices.find(o => o.id === currentOfficer.office_id);
-    if (!office) return;
-    const currentStatus = office.availability_status || 'available';
-    const newStatus = currentStatus === 'available' ? 'unavailable' : 'available';
+  function openAvailReasonModal(office, newStatus) {
     pendingAvailChange = { office, newStatus };
     const overlay = document.getElementById('availReasonOverlay');
     const icon = document.getElementById('availReasonIcon');
@@ -1275,6 +1269,26 @@
       input.focus();
     }
     overlay.classList.add('open');
+  }
+
+  async function toggleOfficeAvailability() {
+    cancelOfficeLogoutCountdown();
+    const result = await apiCall(`/api/offices`);
+    if (!result.success || !result.offices) return;
+    const office = result.offices.find(o => o.id === (currentOfficer && currentOfficer.office_id));
+    if (!office) return;
+    const currentStatus = office.availability_status || 'available';
+    const newStatus = currentStatus === 'available' ? 'unavailable' : 'available';
+    openAvailReasonModal(office, newStatus);
+  }
+
+  function reopenOfficeFromToast() {
+    cancelOfficeLogoutCountdown();
+    if (cachedOfficeData) {
+      openAvailReasonModal(cachedOfficeData, 'available');
+    } else {
+      toggleOfficeAvailability();
+    }
   }
 
   async function confirmAvailabilityChange() {
@@ -1316,8 +1330,10 @@
         await loadOfficeStatus();
         syncDrawer();
         if (newStatus === 'unavailable') {
+          cachedOfficeData = office;
           startOfficeLogoutCountdown();
         } else {
+          cachedOfficeData = null;
           cancelOfficeLogoutCountdown();
         }
       } else {
@@ -1352,7 +1368,7 @@
     officeLockToastEl.innerHTML = `${svg} Office is unavailable — logging out in <b id="officeLockCount">${remaining}</b>s <button class="toast-cancel-btn" id="officeLockCancelBtn">Cancel — Reopen</button>`;
     container.appendChild(officeLockToastEl);
     const cancelBtn = document.getElementById('officeLockCancelBtn');
-    if (cancelBtn) cancelBtn.onclick = function() { toggleOfficeAvailability(); };
+    if (cancelBtn) cancelBtn.onclick = function() { reopenOfficeFromToast(); };
     window._officeLockTimer = setInterval(function() {
       remaining--;
       const el = document.getElementById('officeLockCount');
