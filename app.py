@@ -545,7 +545,11 @@ def admin_decoy():
 def admin_dashboard(token):
     if token != ADMIN_TOKEN:
         return redirect('/')
-    return send_from_directory('.', 'admin-dashboard.html')
+    resp = send_from_directory('.', 'admin-dashboard.html')
+    resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    resp.headers['Pragma'] = 'no-cache'
+    resp.headers['Expires'] = '0'
+    return resp
 
 @app.route('/officer')
 def officer_decoy():
@@ -555,7 +559,11 @@ def officer_decoy():
 def officer_dashboard(token):
     if token != OFFICER_TOKEN:
         return redirect('/')
-    return send_from_directory('.', 'officer-dashboard.html')
+    resp = send_from_directory('.', 'officer-dashboard.html')
+    resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    resp.headers['Pragma'] = 'no-cache'
+    resp.headers['Expires'] = '0'
+    return resp
 
 @app.route('/api/download/queue-kiosk-setup.exe')
 def download_kiosk_installer():
