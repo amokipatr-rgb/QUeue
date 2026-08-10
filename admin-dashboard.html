@@ -2601,7 +2601,7 @@
                             <div class="stats-mini">
                                 <div class="mini-stat"><div class="mini-stat-label">Waiting</div><div class="mini-stat-val">${o.waiting || 0}</div></div>
                                 <div class="mini-stat"><div class="mini-stat-label">Serving</div><div class="mini-stat-val">${o.serving || 0}</div></div>
-                                <div class="mini-stat"><div class="mini-stat-label">Done</div><div class="mini-stat-val">${o.completed || 0}</div></div>
+                                <div class="mini-stat"><div class="mini-stat-label">Served Today</div><div class="mini-stat-val">${o.completed || 0}</div></div>
                             </div>
                         </div>`).join('');
                 } else {
@@ -2667,7 +2667,7 @@
                     <div class="stats-mini">
                         <div class="mini-stat"><div class="mini-stat-label">Waiting</div><div class="mini-stat-val" id="waiting-${office.id}">0</div></div>
                         <div class="mini-stat"><div class="mini-stat-label">Serving</div><div class="mini-stat-val" id="serving-${office.id}">0</div></div>
-                        <div class="mini-stat"><div class="mini-stat-label">Done</div><div class="mini-stat-val" id="completed-${office.id}">0</div></div>
+                        <div class="mini-stat"><div class="mini-stat-label">Served Today</div><div class="mini-stat-val" id="completed-${office.id}">0</div></div>
                     </div>
                     <div class="card-actions">
                         <button class="btn-sm btn-edit-sm" onclick="editOffice(${office.id})">

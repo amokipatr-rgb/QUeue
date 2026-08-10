@@ -2712,11 +2712,14 @@ def admin_get_stats():
                 COUNT(CASE WHEN t.status = 'waiting' THEN 1 END) as waiting,
                 COUNT(CASE WHEN t.status = 'called' THEN 1 END) as called,
                 COUNT(CASE WHEN t.status = 'serving' THEN 1 END) as serving,
-                COUNT(CASE WHEN t.status = 'completed' AND t.requested_at >= CURDATE() THEN 1 END) as completed,
-                COUNT(CASE WHEN t.status = 'skipped' AND t.requested_at >= CURDATE() THEN 1 END) as skipped
+                COUNT(CASE WHEN t.status = 'completed' AND DATE(t.completed_at) = CURDATE() THEN 1 END) as completed,
+                COUNT(CASE WHEN t.status = 'skipped' AND DATE(t.skipped_at) = CURDATE() THEN 1 END) as skipped
             FROM offices off
             LEFT JOIN university_tokens t ON off.id = t.office_id
-                AND (t.requested_at >= CURDATE() OR t.status IN ('waiting','called','serving'))
+                AND (t.requested_at >= CURDATE()
+                     OR t.status IN ('waiting','called','serving')
+                     OR DATE(t.completed_at) = CURDATE()
+                     OR DATE(t.skipped_at) = CURDATE())
             GROUP BY off.id
             ORDER BY off.display_order
         """)
