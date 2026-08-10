@@ -55,8 +55,6 @@
     .toast-success { background: #ECFDF5; color: #065F46; border-color: rgba(16,185,129,0.25); }
     .toast-error   { background: #FEF2F2; color: #991B1B; border-color: rgba(239,68,68,0.2); }
     .toast-warning { background: #FFFBEB; color: #92400E; border-color: rgba(245,158,11,0.25); }
-    .toast .toast-cancel-btn { margin-left: 6px; padding: 5px 14px; border: none; border-radius: 100px; background: var(--green-accent, #22C55E); color: #fff; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; transition: opacity 0.15s ease, transform 0.15s ease; }
-    .toast .toast-cancel-btn:hover { opacity: 0.88; transform: translateY(-1px); }
     .toast-info    { background: #EFF6FF; color: #1E40AF; border-color: rgba(59,130,246,0.2); }
     @keyframes toast-in  { from { opacity:0; transform:translateY(-12px) scale(0.95); } to { opacity:1; transform:translateY(0) scale(1); } }
     @keyframes toast-out { from { opacity:1; transform:translateY(0) scale(1); } to { opacity:0; transform:translateY(-8px) scale(0.96); } }
@@ -1028,6 +1026,8 @@
     if (!result.success) return;
     const waiting = result.waiting || [];
     document.getElementById('waitingCount').textContent = waiting.length;
+    const completedEl = document.getElementById('completedToday');
+    if (completedEl) completedEl.textContent = result.completed_today || 0;
     checkAndNotifyNewTokens(waiting);
     const qEl = document.getElementById('queueContainer');
     if (!waiting.length) {
@@ -1234,7 +1234,6 @@
   }
 
   let pendingAvailChange = null;
-  let cachedOfficeData = null;
 
   function openAvailReasonModal(office, newStatus) {
     pendingAvailChange = { office, newStatus };
@@ -1282,15 +1281,6 @@
     openAvailReasonModal(office, newStatus);
   }
 
-  function reopenOfficeFromToast() {
-    cancelOfficeLogoutCountdown();
-    if (cachedOfficeData) {
-      openAvailReasonModal(cachedOfficeData, 'available');
-    } else {
-      toggleOfficeAvailability();
-    }
-  }
-
   async function confirmAvailabilityChange() {
     if (!pendingAvailChange) return;
     const btn = document.getElementById('availReasonConfirmBtn');
@@ -1330,10 +1320,8 @@
         await loadOfficeStatus();
         syncDrawer();
         if (newStatus === 'unavailable') {
-          cachedOfficeData = office;
           startOfficeLogoutCountdown();
         } else {
-          cachedOfficeData = null;
           cancelOfficeLogoutCountdown();
         }
       } else {
@@ -1353,7 +1341,7 @@
     pendingAvailChange = null;
   }
 
-  // ── OFFICE-CLOSED LOGOUT COUNTDOWN (cancelable) ──
+  // ── OFFICE-CLOSED LOGOUT COUNTDOWN ──
   window._officeLockTimer = null;
   let officeLockToastEl = null;
 
@@ -1365,10 +1353,8 @@
     officeLockToastEl.className = 'toast toast-warning';
     officeLockToastEl.id = 'officeLockToast';
     const svg = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>`;
-    officeLockToastEl.innerHTML = `${svg} Office is unavailable — logging out in <b id="officeLockCount">${remaining}</b>s <button class="toast-cancel-btn" id="officeLockCancelBtn">Cancel — Reopen</button>`;
+    officeLockToastEl.innerHTML = `${svg} Office is unavailable — logging out in <b id="officeLockCount">${remaining}</b>s`;
     container.appendChild(officeLockToastEl);
-    const cancelBtn = document.getElementById('officeLockCancelBtn');
-    if (cancelBtn) cancelBtn.onclick = function() { reopenOfficeFromToast(); };
     window._officeLockTimer = setInterval(function() {
       remaining--;
       const el = document.getElementById('officeLockCount');

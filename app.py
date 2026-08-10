@@ -612,6 +612,12 @@ def get_db_connection():
             conn = mysql.connector.connect(**DB_CONFIG)
             # test the connection is alive
             conn.ping(reconnect=True, attempts=2, delay=2)
+            try:
+                _cur = conn.cursor()
+                _cur.execute("SET time_zone = '+03:00'")
+                _cur.close()
+            except Exception as tze:
+                logger.warning(f"[DB] Could not set session time_zone: {tze}")
             return conn
         except Exception as e:
             last_error = e
