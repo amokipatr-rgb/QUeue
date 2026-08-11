@@ -1035,6 +1035,16 @@
             <span>Change PIN</span>
         </div>
 
+        <div class="nav-section-label">System</div>
+        <div class="nav-item" onclick="showPage('system-rating', this)">
+            <div class="nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                </svg>
+            </div>
+            <span>System Rating</span>
+        </div>
+
         <div class="sidebar-spacer"></div>
     </div>
 
@@ -1592,6 +1602,102 @@
                     <div class="pin-toast" id="pinToast"></div>
                 </div>
             </div>
+
+            <!-- SYSTEM RATING PAGE -->
+            <div class="page" id="page-system-rating">
+                <div class="section" style="margin-bottom:24px">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                                <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                            </svg>
+                            Officer System Rating
+                        </div>
+                    </div>
+                    <div style="background:var(--white);border:1px solid var(--border);border-radius:var(--radius);padding:20px;box-shadow:var(--shadow-sm)">
+                        <div style="display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">
+                            <div>
+                                <div style="font-size:15px;font-weight:700;color:var(--text-primary)">Enable officer system rating</div>
+                                <div style="font-size:13px;color:var(--text-secondary);margin-top:4px;max-width:520px">When enabled, officers can rate the queue system once from their dashboard.</div>
+                            </div>
+                            <label style="display:flex;align-items:center;cursor:pointer;gap:10px;user-select:none">
+                                <span id="srStatusLabel" style="font-size:13px;font-weight:700;color:var(--text-secondary)">Loading...</span>
+                                <input type="checkbox" id="srToggle" style="display:none" onchange="setRatingEnabled(this.checked)">
+                                <span id="srToggleTrack" style="width:44px;height:24px;border-radius:12px;background:var(--border);position:relative;transition:background .2s">
+                                    <span id="srToggleKnob" style="position:absolute;top:2px;left:2px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:left .2s"></span>
+                                </span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section" style="margin-bottom:24px">
+                    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:16px">
+                        <div class="stat-card green">
+                            <div class="stat-header">
+                                <div class="stat-icon-wrap">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                </div>
+                            </div>
+                            <div class="stat-number" id="srTotal">0</div>
+                            <div class="stat-label">Total Ratings</div>
+                        </div>
+                        <div class="stat-card blue">
+                            <div class="stat-header">
+                                <div class="stat-icon-wrap">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                </div>
+                            </div>
+                            <div class="stat-number" id="srFive">0</div>
+                            <div class="stat-label">5-Star Ratings</div>
+                        </div>
+                        <div class="stat-card orange">
+                            <div class="stat-header">
+                                <div class="stat-icon-wrap">
+                                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                </div>
+                            </div>
+                            <div class="stat-number" id="srLow">0</div>
+                            <div class="stat-label">1-2 Star Ratings</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="toolbar-row" style="justify-content:space-between">
+                        <span style="font-size:13px;color:var(--text-secondary)" id="srCount">Loading...</span>
+                        <button type="button" class="btn-sm" onclick="loadSystemRating()" style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--white);cursor:pointer;font-size:12px;font-weight:600;color:var(--text-secondary);font-family:inherit">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:14px;height:14px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                            Refresh
+                        </button>
+                    </div>
+
+                    <div id="srEmpty" style="display:none;text-align:center;padding:60px 20px">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:48px;height:48px;color:var(--text-muted);margin-bottom:12px">
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                        </svg>
+                        <p style="font-size:15px;color:var(--text-muted);font-weight:600">No officer ratings submitted yet</p>
+                    </div>
+
+                    <div class="table-wrap" id="srTableWrap">
+                        <table class="data-table">
+                            <thead>
+                                <tr>
+                                    <th>#</th>
+                                    <th>Date</th>
+                                    <th>Officer</th>
+                                    <th>Office</th>
+                                    <th>Rating</th>
+                                    <th>Comment</th>
+                                </tr>
+                            </thead>
+                            <tbody id="srTableBody">
+                                <tr><td colspan="6" style="text-align:center;color:var(--text-muted);padding:40px 0">Loading ratings...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
         <footer style="border-top:1px solid var(--border);padding:12px 28px;font-size:12px;color:var(--text-muted);display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
             <span>&copy; 2026 Makerere University &mdash; SMQSS</span>
@@ -1978,6 +2084,7 @@
                 queue: { title: 'Live Queue', sub: 'Real-time queue monitoring' },
                 feedback: { title: 'Feedback & Complaints', sub: 'Student ratings and complaints from completed and non-completed tokens' },
                 'general-complaints': { title: 'General Complaints', sub: 'Non-token complaints from students, staff, and others' },
+                'system-rating': { title: 'System Rating', sub: 'Enable officer system rating and view submitted ratings' },
                 changepin: { title: 'Change PIN', sub: 'Update your login PIN code' }
             };
             const t = titles[id] || { title: 'Management', sub: '' };
@@ -2009,6 +2116,9 @@
             } else if (id === 'general-complaints') {
                 document.getElementById('topbarActions').innerHTML = '';
                 loadGeneralComplaints();
+            } else if (id === 'system-rating') {
+                document.getElementById('topbarActions').innerHTML = '';
+                loadSystemRating();
             } else if (id === 'performance') {
                 document.getElementById('topbarActions').innerHTML = '';
             } else {
@@ -2957,6 +3067,106 @@
                     '<td>' + actionBtn + '</td>' +
                 '</tr>';
             }).join('');
+        }
+
+        async function loadSystemRating() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/admin/system-rating`);
+                const data = await res.json();
+                if (data.success) {
+                    renderSystemRating(data);
+                } else {
+                    document.getElementById('srTableBody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--red);padding:40px 0">Failed to load ratings.</td></tr>';
+                    document.getElementById('srTableWrap').style.display = 'block';
+                    document.getElementById('srEmpty').style.display = 'none';
+                }
+            } catch (e) {
+                document.getElementById('srTableBody').innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--red);padding:40px 0">Network error.</td></tr>';
+                document.getElementById('srTableWrap').style.display = 'block';
+                document.getElementById('srEmpty').style.display = 'none';
+            }
+        }
+
+        function renderSystemRating(data) {
+            const toggle = document.getElementById('srToggle');
+            const track = document.getElementById('srToggleTrack');
+            const knob = document.getElementById('srToggleKnob');
+            const statusLabel = document.getElementById('srStatusLabel');
+
+            toggle.checked = data.enabled;
+            if (data.enabled) {
+                track.style.background = 'var(--success)';
+                knob.style.left = '22px';
+                statusLabel.textContent = 'Enabled';
+                statusLabel.style.color = 'var(--success)';
+            } else {
+                track.style.background = 'var(--border)';
+                knob.style.left = '2px';
+                statusLabel.textContent = 'Disabled';
+                statusLabel.style.color = 'var(--text-secondary)';
+            }
+
+            document.getElementById('srTotal').textContent = data.total || 0;
+            const five = (data.ratings || []).filter(function(r){ return r.rating === 5; }).length;
+            const low = (data.ratings || []).filter(function(r){ return r.rating <= 2; }).length;
+            document.getElementById('srFive').textContent = five;
+            document.getElementById('srLow').textContent = low;
+
+            const tbody = document.getElementById('srTableBody');
+            const count = document.getElementById('srCount');
+            const tableWrap = document.getElementById('srTableWrap');
+            const empty = document.getElementById('srEmpty');
+
+            if (!data.total) {
+                tableWrap.style.display = 'none';
+                empty.style.display = 'block';
+                count.textContent = '0 ratings';
+                return;
+            }
+
+            tableWrap.style.display = 'block';
+            empty.style.display = 'none';
+            count.textContent = data.total + ' rating' + (data.total !== 1 ? 's' : '');
+
+            tbody.innerHTML = data.ratings.map(function(r){
+                const dateStr = r.created_at ? new Date(r.created_at).toLocaleString([],{hour12:true}) : '—';
+                let stars = '';
+                for (let i = 1; i <= 5; i++) {
+                    const fill = i <= r.rating
+                        ? 'var(--amber, #f59e0b)'
+                        : 'var(--border)';
+                    stars += '<svg viewBox="0 0 24 24" width="14" height="14" fill="' + fill + '" stroke="' + fill + '" style="flex-shrink:0"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+                }
+                return '<tr>' +
+                    '<td style="font-weight:600;font-size:13px">#' + r.id + '</td>' +
+                    '<td style="font-size:12px;color:var(--text-muted);white-space:nowrap">' + dateStr + '</td>' +
+                    '<td><span style="font-weight:600">' + escapeHtml(r.officer_name || '—') + '</span> <span style="font-size:11px;color:var(--text-muted)">(' + (r.officer_number || '') + ')</span></td>' +
+                    '<td style="font-size:13px;color:var(--text-secondary)">' + escapeHtml(r.office_name || '—') + '</td>' +
+                    '<td><div style="display:flex;gap:2px">' + stars + '</div></td>' +
+                    '<td style="max-width:280px;font-size:13px;color:var(--text-secondary)">' + (r.comment ? escapeHtml(r.comment) : '<span style="color:var(--text-muted)">—</span>') + '</td>' +
+                '</tr>';
+            }).join('');
+        }
+
+        async function setRatingEnabled(enabled) {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/admin/system-rating/settings`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ enabled: enabled })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    showToast(data.message, 'success');
+                    loadSystemRating();
+                } else {
+                    showToast(data.message || 'Failed to update setting', 'error');
+                    loadSystemRating();
+                }
+            } catch (e) {
+                showToast('Network error', 'error');
+                loadSystemRating();
+            }
         }
 
         async function resolveComplaint(id) {

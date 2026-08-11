@@ -41,6 +41,11 @@ body{font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--ink)
 .form-label{display:block;font-size:12px;font-weight:600;color:var(--ink);margin-bottom:6px}
 .form-input{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:15px;font-family:'DM Sans',sans-serif;color:var(--ink);background:var(--surface);-webkit-appearance:none;appearance:none;transition:border-color .2s,box-shadow .2s}
 .form-input:focus{outline:none;border-color:var(--mak-green);box-shadow:0 0 0 3px rgba(21,92,48,.12);background:var(--white)}
+.pin-input-wrap{position:relative}
+.pin-input-wrap .form-input{padding-right:44px}
+.pin-toggle-eye{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;padding:6px;display:flex;align-items:center;justify-content:center;color:var(--muted);transition:color .2s}
+.pin-toggle-eye:hover{color:var(--mak-green)}
+.pin-toggle-eye svg{width:18px;height:18px}
 .login-btn{width:100%;padding:14px;background:var(--mak-green);color:#fff;border:none;border-radius:8px;font-size:16px;font-weight:600;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .2s}
 .login-btn:hover{background:var(--mak-green-mid)}
 .login-btn:disabled{opacity:.6;cursor:not-allowed}
@@ -87,7 +92,13 @@ body{font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--ink)
 </div>
 <div class="form-group">
 <label class="form-label">PIN</label>
+<div class="pin-input-wrap">
 <input type="password" class="form-input" id="pinCode" placeholder="Enter your PIN" required autocomplete="current-password">
+<button type="button" class="pin-toggle-eye" onclick="togglePinVis('pinCode', this)" tabindex="-1" title="Show/hide PIN" aria-label="Show/hide PIN">
+<svg class="eye-open" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+<svg class="eye-closed" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="display:none"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+</button>
+</div>
 </div>
 <button type="submit" class="login-btn" id="loginBtn">Login</button>
 </form>
@@ -227,6 +238,20 @@ typeMessage('aiBubble', AI_MESSAGES.officerFocus, 0, { showCursor: true });
 document.getElementById('pinCode').addEventListener('focus', function () {
 typeMessage('aiBubble', AI_MESSAGES.pinFocus, 0, { showCursor: true });
 });
+function togglePinVis(inputId, btn) {
+var input = document.getElementById(inputId);
+var open = btn.querySelector('.eye-open');
+var closed = btn.querySelector('.eye-closed');
+if (input.type === 'password') {
+input.type = 'text';
+if (open) open.style.display = 'none';
+if (closed) closed.style.display = 'block';
+} else {
+input.type = 'password';
+if (open) open.style.display = 'block';
+if (closed) closed.style.display = 'none';
+}
+}
 document.getElementById('loginForm').addEventListener('submit', login);
 typeMessage('aiBubble', AI_MESSAGES.welcome, 200, { showCursor: true });
 checkServer();

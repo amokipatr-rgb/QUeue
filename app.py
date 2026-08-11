@@ -258,6 +258,22 @@ _CREATE_GENERAL_COMPLAINTS_SQL = """
         status VARCHAR(20) DEFAULT 'pending',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )"""
+_CREATE_SYSTEM_SETTINGS_SQL = """
+    CREATE TABLE IF NOT EXISTS system_settings (
+        setting_key VARCHAR(50) PRIMARY KEY,
+        setting_value VARCHAR(255) NOT NULL,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    )"""
+_CREATE_OFFICER_SYSTEM_RATINGS_SQL = """
+    CREATE TABLE IF NOT EXISTS officer_system_ratings (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        officer_id INT NOT NULL,
+        rating TINYINT NOT NULL,
+        comment TEXT DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY uk_officer_rating (officer_id),
+        CONSTRAINT fk_rating_officer FOREIGN KEY (officer_id) REFERENCES officers(id) ON DELETE CASCADE
+    )"""
 
 _ALL_TABLES = [
     ('offices', _CREATE_OFFICES_SQL),
@@ -270,6 +286,8 @@ _ALL_TABLES = [
     ('officer_sessions', _CREATE_OFFICER_SESSIONS_SQL),
     ('officer_status_log', _CREATE_OFFICER_STATUS_LOG_SQL),
     ('general_complaints', _CREATE_GENERAL_COMPLAINTS_SQL),
+    ('system_settings', _CREATE_SYSTEM_SETTINGS_SQL),
+    ('officer_system_ratings', _CREATE_OFFICER_SYSTEM_RATINGS_SQL),
 ]
 
 _SEED_OFFICES_SQL = """
@@ -419,6 +437,10 @@ try:
             cursor.execute(_SEED_COUNTERS_SQL)
             connection.commit()
             print("[OK] Seeded queue counters")
+        cursor.execute("INSERT IGNORE INTO system_settings (setting_key, setting_value) VALUES (%s, %s)",
+                       ('officer_rating_enabled', '0'))
+        connection.commit()
+        print("[OK] Ensured system_settings seeded")
 
         # ── INDEXES ──
         for name, table, col in _ALL_INDEXES:
@@ -2692,6 +2714,133 @@ def officer_change_password():
 
     except Exception as e:
         logger.error(f"Change password error: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# ============================================
+# OFFICER SYSTEM RATING
+# ============================================
+def _get_rating_enabled(cursor):
+    cursor.execute("SELECT setting_value FROM system_settings WHERE setting_key = 'officer_rating_enabled'")
+    row = cursor.fetchone()
+    return bool(row and row['setting_value'] in ('1', 'true', 'True', 'on'))
+
+
+@app.route('/api/admin/system-rating', methods=['GET'])
+def admin_get_system_rating():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        enabled = _get_rating_enabled(cursor)
+        cursor.execute("""
+            SELECT r.id, r.rating, r.comment, r.created_at,
+                   o.officer_number, o.officer_name,
+                   off.office_name
+            FROM officer_system_ratings r
+            JOIN officers o ON r.officer_id = o.id
+            LEFT JOIN offices off ON o.office_id = off.id
+            ORDER BY r.created_at DESC
+        """)
+        ratings = cursor.fetchall()
+        total = len(ratings)
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'enabled': enabled, 'total': total, 'ratings': ratings})
+
+    except Exception as e:
+        logger.error(f"Admin system-rating error: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/admin/system-rating/settings', methods=['POST'])
+def admin_set_system_rating_settings():
+    data = request.get_json()
+    enabled = bool(data.get('enabled', False))
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            INSERT INTO system_settings (setting_key, setting_value)
+            VALUES ('officer_rating_enabled', %s)
+            ON DUPLICATE KEY UPDATE setting_value = %s
+        """, ('1' if enabled else '0', '1' if enabled else '0'))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'enabled': enabled,
+                        'message': 'Officer system rating ' + ('enabled' if enabled else 'disabled')})
+
+    except Exception as e:
+        logger.error(f"Admin system-rating settings error: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/officer/system-rating/status/<int:officer_id>', methods=['GET'])
+def officer_get_system_rating_status(officer_id):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        enabled = _get_rating_enabled(cursor)
+        cursor.execute("SELECT id FROM officer_system_ratings WHERE officer_id = %s", (officer_id,))
+        already_rated = cursor.fetchone() is not None
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'enabled': enabled, 'already_rated': already_rated})
+
+    except Exception as e:
+        logger.error(f"Officer system-rating status error: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/officer/system-rating', methods=['POST'])
+def officer_submit_system_rating():
+    data = request.get_json()
+    officer_id = data.get('officer_id')
+    rating = data.get('rating')
+    comment = (data.get('comment') or '').strip()
+
+    if not officer_id:
+        return jsonify({'success': False, 'message': 'officer_id required'}), 400
+    try:
+        rating = int(rating)
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'message': 'Valid rating 1-5 required'}), 400
+    if rating < 1 or rating > 5:
+        return jsonify({'success': False, 'message': 'Rating must be between 1 and 5'}), 400
+    if len(comment) > 500:
+        return jsonify({'success': False, 'message': 'Comment is too long (max 500 characters)'}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        if not _get_rating_enabled(cursor):
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'message': 'System rating is currently disabled'}), 403
+
+        cursor.execute("SELECT id FROM officers WHERE id = %s", (officer_id,))
+        if not cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'message': 'Officer not found'}), 404
+
+        cursor.execute("SELECT id FROM officer_system_ratings WHERE officer_id = %s", (officer_id,))
+        if cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'message': 'You have already submitted your rating'}), 403
+
+        cursor.execute("""
+            INSERT INTO officer_system_ratings (officer_id, rating, comment)
+            VALUES (%s, %s, %s)
+        """, (officer_id, rating, comment or None))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'message': 'Thank you for your feedback!'})
+
+    except Exception as e:
+        logger.error(f"Officer system-rating submit error: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
 

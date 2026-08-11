@@ -657,6 +657,33 @@
       </div>
     </div>
 
+    <!-- SYSTEM RATING MODAL -->
+    <div class="overlay" id="ratingOverlay">
+      <div class="msg-modal-box" style="max-width:400px">
+        <div class="msg-modal-header">
+          <h3><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Rate the System</h3>
+          <button class="close-btn" onclick="closeRatingModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+        </div>
+        <div class="msg-modal-body" style="padding:22px 24px">
+          <div style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">How would you rate your experience using the SMQSS queue system?</div>
+          <div id="ratingStars" style="display:flex;gap:6px;justify-content:center;margin-bottom:8px"></div>
+          <div id="ratingLabel" style="text-align:center;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:16px;min-height:16px"></div>
+          <div class="form-group" style="margin-bottom:4px">
+            <label style="display:block;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:4px">Comment (optional)</label>
+            <textarea id="ratingComment" rows="3" maxlength="500" placeholder="Share any feedback about the system…" style="width:100%;box-sizing:border-box;padding:10px;border:1.5px solid var(--border-mid);border-radius:8px;font-size:13px;font-family:var(--font);outline:none;resize:vertical"></textarea>
+          </div>
+          <div id="ratingError" style="color:var(--red);font-size:12px;margin-top:8px;display:none"></div>
+          <div style="display:flex;gap:10px;margin-top:18px">
+            <button class="logout-btn" onclick="closeRatingModal()" style="flex:1;justify-content:center">Skip</button>
+            <button class="avail-toggle available" onclick="submitSystemRating()" style="flex:1;justify-content:center;gap:6px">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              Submit Rating
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
 <div class="drawer-overlay" id="drawerOverlay" onclick="closeDrawer()"></div>
 <div class="drawer" id="drawer">
   <div class="drawer-header">
@@ -1547,6 +1574,87 @@
     btn.querySelector('.eye-closed').style.display = isPass ? '' : 'none';
   }
 
+  var selectedRating = 0;
+  var ratingLabels = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
+
+  function openRatingModal() {
+    selectedRating = 0;
+    document.getElementById('ratingComment').value = '';
+    document.getElementById('ratingError').style.display = 'none';
+    renderRatingStars();
+    document.getElementById('ratingOverlay').classList.add('open');
+  }
+
+  function closeRatingModal() {
+    document.getElementById('ratingOverlay').classList.remove('open');
+  }
+
+  function renderRatingStars() {
+    var container = document.getElementById('ratingStars');
+    var html = '';
+    for (var i = 1; i <= 5; i++) {
+      var fill = i <= selectedRating ? '#f59e0b' : '#d1d5db';
+      html += '<button type="button" onclick="selectRating(' + i + ')" title="' + ratingLabels[i] + '" aria-label="' + ratingLabels[i] + '" style="background:none;border:none;cursor:pointer;padding:0;line-height:0">' +
+        '<svg width="32" height="32" viewBox="0 0 24 24" fill="' + fill + '" stroke="' + fill + '"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>' +
+        '</button>';
+    }
+    container.innerHTML = html;
+    document.getElementById('ratingLabel').textContent = selectedRating ? ratingLabels[selectedRating] : 'Tap a star to rate';
+  }
+
+  function selectRating(val) {
+    selectedRating = val;
+    renderRatingStars();
+  }
+
+  async function submitSystemRating() {
+    var errEl = document.getElementById('ratingError');
+    if (!selectedRating) {
+      errEl.textContent = 'Please select a star rating.';
+      errEl.style.display = 'block';
+      return;
+    }
+    errEl.style.display = 'none';
+    try {
+      var res = await fetch(API_BASE_URL + '/api/officer/system-rating', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({
+          officer_id: currentOfficer.id,
+          rating: selectedRating,
+          comment: document.getElementById('ratingComment').value.trim()
+        })
+      });
+      var data = await res.json();
+      if (data.success) {
+        sessionStorage.setItem('smqss_rated_' + currentOfficer.id, '1');
+        showToast('Thank you for your feedback!', 'success');
+        closeRatingModal();
+      } else {
+        errEl.textContent = data.message || 'Failed to submit rating.';
+        errEl.style.display = 'block';
+        if (data.message && data.message.indexOf('already') !== -1) {
+          sessionStorage.setItem('smqss_rated_' + currentOfficer.id, '1');
+          closeRatingModal();
+        }
+      }
+    } catch(e) {
+      errEl.textContent = 'Network error. Please try again.';
+      errEl.style.display = 'block';
+    }
+  }
+
+  async function checkSystemRating() {
+    try {
+      var res = await fetch(API_BASE_URL + '/api/officer/system-rating/status/' + currentOfficer.id);
+      var data = await res.json();
+      if (data.success && data.enabled && !data.already_rated &&
+          !sessionStorage.getItem('smqss_rated_' + currentOfficer.id)) {
+        setTimeout(openRatingModal, 1500);
+      }
+    } catch(e) {}
+  }
+
   function openChangePinModal() {
     document.getElementById('currentPin').value = '';
     document.getElementById('newPin').value = '';
@@ -1615,6 +1723,7 @@
     refreshInterval = setInterval(loadQueue, 5000);
     setInterval(loadOfficeStatus, 30000);
     document.getElementById('messageIconBtn').addEventListener('click', openMessageModal);
+    checkSystemRating();
   }
 
   window.callNext = callNext; window.callStudent = callStudent; window.serveStudent = serveStudent;
@@ -1673,6 +1782,8 @@
   window.openMessageModal = openMessageModal; window.openChangePinModal = openChangePinModal;
   window.submitChangePin = submitChangePin; window.onSearchInput = onSearchInput;
   window.clearSearch = clearSearch; window.closeSearchModal = closeSearchModal;
+  window.openRatingModal = openRatingModal; window.closeRatingModal = closeRatingModal;
+  window.selectRating = selectRating; window.submitSystemRating = submitSystemRating;
 
   init();
 </script>
