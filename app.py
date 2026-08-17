@@ -19,7 +19,10 @@ import json
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# ── SMTP ──
+# ── EMAIL ──
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
+EMAIL_FROM = os.environ.get('EMAIL_FROM', 'SMQSS <onboarding@resend.dev>')
+# SMTP fallback (for local/dev when Resend is unavailable)
 SMTP_HOST = 'smtp.gmail.com'
 SMTP_PORT = 587
 SMTP_USER = 'aldarafoundation.org@gmail.com'
@@ -1838,16 +1841,39 @@ def _resolve_ipv4(host, port):
     return infos[0][4][0]
 
 
+def send_email_via_resend(to_email, subject, body):
+    try:
+        payload = json.dumps({
+            'from': EMAIL_FROM,
+            'to': [to_email],
+            'subject': subject,
+            'text': body
+        }).encode('utf-8')
+        req = urllib.request.Request(
+            'https://api.resend.com/emails',
+            data=payload,
+            headers={
+                'Authorization': f'Bearer {RESEND_API_KEY}',
+                'Content-Type': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (SMQSS-Server)'
+            },
+            method='POST'
+        )
+        with urllib.request.urlopen(req, timeout=15) as r:
+            if r.status == 200:
+                return True, None
+            return False, f'Resend API returned HTTP {r.status}'
+    except Exception as e:
+        return False, str(e)
+
+
 def send_reply_email(complaint, reply_message):
     email_to = complaint.get('email')
-    if not email_to or not SMTP_USER or not SMTP_PASS:
-        return False, 'SMTP not configured'
+    if not email_to:
+        return False, 'No email address on complaint'
     try:
-        msg = EmailMessage()
-        msg['Subject'] = f"Re: Your Complaint #{complaint['id']} — SMQSS"
-        msg['From'] = SMTP_FROM
-        msg['To'] = email_to
-        msg.set_content(f"""Dear {complaint.get('full_name') or 'Valued Customer'},
+        subject = f"Re: Your Complaint #{complaint['id']} — SMQSS"
+        body = f"""Dear {complaint.get('full_name') or 'Valued Customer'},
 
 Thank you for reaching out to us regarding your concern at Makerere University.
 
@@ -1861,7 +1887,23 @@ If you have any further concerns, please don't hesitate to reach out.
 
 Best regards,
 Makerere University Queue Management System (SMQSS)
-""")
+"""
+
+        if RESEND_API_KEY:
+            sent, err = send_email_via_resend(email_to, subject, body)
+            if sent:
+                logger.info(f"Reply email sent via Resend to {email_to} for complaint #{complaint['id']}")
+                return True, None
+            logger.warning(f"Resend failed for complaint #{complaint['id']}: {err}. Falling back to SMTP.")
+
+        if not SMTP_USER or not SMTP_PASS:
+            return False, 'No email service configured (Resend key or SMTP credentials)'
+
+        msg = EmailMessage()
+        msg['Subject'] = subject
+        msg['From'] = SMTP_FROM
+        msg['To'] = email_to
+        msg.set_content(body)
         smtp_ip = _resolve_ipv4(SMTP_HOST, SMTP_PORT)
         with smtplib.SMTP(smtp_ip, SMTP_PORT, timeout=15) as s:
             s.ehlo(SMTP_HOST)
@@ -1869,7 +1911,7 @@ Makerere University Queue Management System (SMQSS)
             s.ehlo(SMTP_HOST)
             s.login(SMTP_USER, SMTP_PASS)
             s.send_message(msg)
-        logger.info(f"Reply email sent to {email_to} for complaint #{complaint['id']}")
+        logger.info(f"Reply email sent via SMTP to {email_to} for complaint #{complaint['id']}")
         return True, None
     except Exception as e:
         err = str(e)
