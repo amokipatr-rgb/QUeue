@@ -21,7 +21,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ── EMAIL ──
-RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY', 're_9oavfo8B_BVnR6vncyAV5famhaeoMSqvX')
 EMAIL_FROM = os.environ.get('EMAIL_FROM', 'SMQSS <onboarding@resend.dev>')
 # SMTP fallback (for local/dev when Resend is unavailable)
 SMTP_HOST = 'smtp.gmail.com'
