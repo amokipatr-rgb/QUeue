@@ -24,6 +24,9 @@ logger = logging.getLogger(__name__)
 # ── EMAIL ──
 RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
 EMAIL_FROM = os.environ.get('EMAIL_FROM', 'SMQSS <onboarding@resend.dev>')
+# ── AI ──
+GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
+GROQ_MODEL = 'llama-3.3-70b-versatile'
 # SMTP fallback (for local/dev when Resend is unavailable)
 SMTP_HOST = 'smtp.gmail.com'
 SMTP_PORT = 587
@@ -1875,6 +1878,68 @@ def send_email_via_resend(to_email, subject, body, html_body=None):
         return False, str(e)
 
 
+def polish_reply_with_groq(complaint_text, current_text, tone):
+    if not GROQ_API_KEY:
+        return None, 'AI not configured (set GROQ_API_KEY in Railway env vars)'
+    if not complaint_text or not complaint_text.strip():
+        return None, 'Complaint text is required to generate a reply'
+    tones = {
+        'professional': 'Professional and courteous',
+        'empathetic': 'Warm and empathetic, acknowledging the student\'s feelings',
+        'formal': 'Formal and official',
+        'friendly': 'Friendly and approachable'
+    }
+    tone_desc = tones.get((tone or '').lower(), tones['professional'])
+    if current_text:
+        instruction = (
+            "Rewrite and polish the admin's draft reply below. Keep the meaning and any facts intact, "
+            "fix grammar and spelling, and make it clear and well-structured.\n\n"
+            "DRAFT REPLY TO POLISH:\n" + current_text
+        )
+    else:
+        instruction = (
+            "Write a complete reply to the student's complaint from scratch. Address their concern directly, "
+            "be helpful and courteous, and end with a warm closing."
+        )
+    prompt = (
+        "You are a customer-support agent for Makerere University Queue Management System (SMQSS).\n"
+        f"TONE: {tone_desc}.\n"
+        "Rules: Do not use markdown or bullet symbols. Keep it concise (under 200 words). "
+        "Do not invent facts, promises, or resolutions not implied by the complaint. "
+        "Sign off as the SMQSS support team.\n\n"
+        f"ORIGINAL COMPLAINT FROM STUDENT:\n{complaint_text}\n\n"
+        f"{instruction}"
+    )
+    try:
+        payload = {
+            'model': GROQ_MODEL,
+            'messages': [{'role': 'user', 'content': prompt}],
+            'temperature': 0.7,
+            'max_tokens': 500
+        }
+        req = urllib.request.Request(
+            'https://api.groq.com/openai/v1/chat/completions',
+            data=json.dumps(payload).encode('utf-8'),
+            headers={
+                'Authorization': f'Bearer {GROQ_API_KEY}',
+                'Content-Type': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (SMQSS-Server)'
+            },
+            method='POST'
+        )
+        with urllib.request.urlopen(req, timeout=30) as r:
+            data = json.loads(r.read().decode('utf-8', errors='replace'))
+        text = ((data.get('choices') or [{}])[0].get('message', {}).get('content') or '').strip()
+        if not text:
+            return None, 'AI returned an empty response. Try again.'
+        return text, None
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode('utf-8', errors='replace')[:300]
+        return None, f'Groq API returned HTTP {e.code}: {detail}'
+    except Exception as e:
+        return None, f'AI request failed: {e}'
+
+
 def send_reply_email(complaint, reply_message):
     email_to = complaint.get('email')
     if not email_to:
@@ -2006,6 +2071,32 @@ def reply_general_complaint(complaint_id):
     except Exception as e:
         conn.rollback()
         logger.error(f"Reply complaint error: {e}")
+        return jsonify({'success': False, 'message': 'Internal server error'}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.route('/api/admin/general-complaints/<int:complaint_id>/polish', methods=['POST'])
+def polish_general_complaint(complaint_id):
+    data = request.get_json(silent=True) or {}
+    current_text = (data.get('message') or '').strip()
+    tone = (data.get('tone') or 'professional').strip()
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute("SELECT id, complaint_text FROM general_complaints WHERE id = %s", (complaint_id,))
+        complaint = cursor.fetchone()
+        if not complaint:
+            return jsonify({'success': False, 'message': 'Complaint not found'}), 404
+
+        draft, err = polish_reply_with_groq(complaint.get('complaint_text') or '', current_text, tone)
+        if err:
+            return jsonify({'success': False, 'message': err}), 500
+        return jsonify({'success': True, 'draft': draft})
+    except Exception as e:
+        logger.error(f"Polish complaint error: {e}")
         return jsonify({'success': False, 'message': 'Internal server error'}), 500
     finally:
         cursor.close()

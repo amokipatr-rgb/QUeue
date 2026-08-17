@@ -1935,6 +1935,15 @@
                 <label for="replyModalText">Your Reply *</label>
                 <textarea id="replyModalText" rows="6" placeholder="Type your response to the complainants..."></textarea>
             </div>
+            <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+                <select id="replyModalTone" style="flex:1;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:var(--bg);color:var(--text-primary);font-size:13px;outline:none">
+                    <option value="professional">Professional</option>
+                    <option value="empathetic">Empathetic</option>
+                    <option value="formal">Formal</option>
+                    <option value="friendly">Friendly</option>
+                </select>
+                <button type="button" class="btn-save" id="replyModalPolish" onclick="polishReply()">Polish with AI</button>
+            </div>
             <div id="replyModalError" style="display:none;background:#fef2f2;border:1px solid #fecaca;color:var(--red);padding:10px 14px;border-radius:8px;font-size:13px;margin-bottom:12px"></div>
             <div class="modal-actions">
                 <button type="button" class="btn-cancel-modal" onclick="closeModal('replyModal')">Cancel</button>
@@ -3261,6 +3270,39 @@
             } finally {
                 btn.disabled = false;
                 btn.textContent = 'Send Reply →';
+            }
+        }
+
+        async function polishReply() {
+            var idText = document.getElementById('replyModalId').textContent.replace('#', '');
+            var id = parseInt(idText, 10);
+            if (!id) return;
+            var btn = document.getElementById('replyModalPolish');
+            var errEl = document.getElementById('replyModalError');
+            var tone = document.getElementById('replyModalTone').value;
+            var message = document.getElementById('replyModalText').value.trim();
+            btn.disabled = true;
+            btn.textContent = 'Polishing…';
+            errEl.style.display = 'none';
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/admin/general-complaints/${id}/polish`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: message, tone: tone })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    document.getElementById('replyModalText').value = data.draft;
+                } else {
+                    errEl.textContent = data.message || 'Failed to polish reply.';
+                    errEl.style.display = 'block';
+                }
+            } catch (e) {
+                errEl.textContent = 'Network error. Please try again.';
+                errEl.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Polish with AI';
             }
         }
 
