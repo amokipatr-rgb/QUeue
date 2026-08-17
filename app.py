@@ -1833,6 +1833,11 @@ def delete_general_complaint(complaint_id):
         conn.close()
 
 
+def _resolve_ipv4(host, port):
+    infos = socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM)
+    return infos[0][4][0]
+
+
 def send_reply_email(complaint, reply_message):
     email_to = complaint.get('email')
     if not email_to or not SMTP_USER or not SMTP_PASS:
@@ -1857,8 +1862,11 @@ If you have any further concerns, please don't hesitate to reach out.
 Best regards,
 Makerere University Queue Management System (SMQSS)
 """)
-        with smtplib.SMTP(SMTP_HOST, SMTP_PORT, timeout=15) as s:
+        smtp_ip = _resolve_ipv4(SMTP_HOST, SMTP_PORT)
+        with smtplib.SMTP(smtp_ip, SMTP_PORT, timeout=15) as s:
+            s.ehlo(SMTP_HOST)
             s.starttls()
+            s.ehlo(SMTP_HOST)
             s.login(SMTP_USER, SMTP_PASS)
             s.send_message(msg)
         logger.info(f"Reply email sent to {email_to} for complaint #{complaint['id']}")
