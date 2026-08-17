@@ -21,7 +21,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ── EMAIL ──
-RESEND_API_KEY = os.environ.get('RESEND_API_KEY', 're_9oavfo8B_BVnR6vncyAV5famhaeoMSqvX')
+RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
 EMAIL_FROM = os.environ.get('EMAIL_FROM', 'SMQSS <onboarding@resend.dev>')
 # SMTP fallback (for local/dev when Resend is unavailable)
 SMTP_HOST = 'smtp.gmail.com'
@@ -1863,7 +1863,11 @@ def send_email_via_resend(to_email, subject, body):
         with urllib.request.urlopen(req, timeout=15) as r:
             if r.status == 200:
                 return True, None
-            return False, f'Resend API returned HTTP {r.status}'
+            detail = r.read().decode('utf-8', errors='replace')[:300]
+            return False, f'Resend API returned HTTP {r.status}: {detail}'
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode('utf-8', errors='replace')[:300]
+        return False, f'Resend API returned HTTP {e.code}: {detail}'
     except Exception as e:
         return False, str(e)
 
@@ -1895,10 +1899,11 @@ Makerere University Queue Management System (SMQSS)
             if sent:
                 logger.info(f"Reply email sent via Resend to {email_to} for complaint #{complaint['id']}")
                 return True, None
-            logger.warning(f"Resend failed for complaint #{complaint['id']}: {err}. Falling back to SMTP.")
+            logger.warning(f"Resend failed for complaint #{complaint['id']}: {err}")
+            return False, err
 
         if not SMTP_USER or not SMTP_PASS:
-            return False, 'No email service configured (Resend key or SMTP credentials)'
+            return False, 'No email service configured (set RESEND_API_KEY or SMTP credentials)'
 
         msg = EmailMessage()
         msg['Subject'] = subject
