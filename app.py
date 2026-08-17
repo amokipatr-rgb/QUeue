@@ -1906,7 +1906,7 @@ Makerere University Queue Management System (SMQSS)
         msg['To'] = email_to
         msg.set_content(body)
         smtp_ip = _resolve_ipv4(SMTP_HOST, SMTP_PORT)
-        with smtplib.SMTP(smtp_ip, SMTP_PORT, timeout=15) as s:
+        with smtplib.SMTP(smtp_ip, SMTP_PORT, timeout=8) as s:
             s.ehlo(SMTP_HOST)
             s.starttls()
             s.ehlo(SMTP_HOST)
