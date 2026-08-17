@@ -662,10 +662,10 @@
       <div class="msg-modal-box" style="max-width:400px">
         <div class="msg-modal-header">
           <h3><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Rate the System</h3>
-          <button class="close-btn" onclick="closeRatingModal()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="opacity:.7"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
         </div>
         <div class="msg-modal-body" style="padding:22px 24px">
-          <div style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">How would you rate your experience using the SMQSS queue system?</div>
+          <div style="font-size:13px;color:var(--text-secondary);margin-bottom:16px">Please rate your experience using the SMQSS queue system before you continue.</div>
           <div id="ratingStars" style="display:flex;gap:6px;justify-content:center;margin-bottom:8px"></div>
           <div id="ratingLabel" style="text-align:center;font-size:12px;font-weight:600;color:var(--text-secondary);margin-bottom:16px;min-height:16px"></div>
           <div class="form-group" style="margin-bottom:4px">
@@ -674,9 +674,8 @@
           </div>
           <div id="ratingError" style="color:var(--red);font-size:12px;margin-top:8px;display:none"></div>
           <div style="display:flex;gap:10px;margin-top:18px">
-            <button class="logout-btn" onclick="closeRatingModal()" style="flex:1;justify-content:center">Skip</button>
-            <button class="avail-toggle available" onclick="submitSystemRating()" style="flex:1;justify-content:center;gap:6px">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+            <button id="ratingSubmitBtn" onclick="submitSystemRating()" style="flex:1;justify-content:center;gap:6px;padding:11px 16px;background:linear-gradient(135deg, var(--green-dark), var(--green-mid));border:none;border-radius:10px;font-size:14px;font-weight:600;font-family:var(--font);color:#fff;cursor:pointer;display:flex;align-items:center;transition:filter 0.15s;box-shadow:0 2px 8px rgba(20,83,45,0.25)">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
               Submit Rating
             </button>
           </div>
@@ -1241,7 +1240,7 @@
   function closeModal() { document.getElementById('confirmOverlay').classList.remove('open'); }
   function closeResetModal() { document.getElementById('resetOverlay').classList.remove('open'); }
 
-  document.querySelectorAll('.overlay').forEach(el => { el.addEventListener('click', e => { if (e.target === el) el.classList.remove('open'); }); });
+  document.querySelectorAll('.overlay').forEach(el => { el.addEventListener('click', e => { if (e.target === el && el.id !== 'ratingOverlay') el.classList.remove('open'); }); });
 
   async function loadOfficeStatus() {
     const result = await apiCall(`/api/offices`);
