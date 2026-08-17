@@ -170,7 +170,7 @@
 
         /* ── HAMBURGER ── */
         .hamburger {
-            display: none;
+            display: flex;
             align-items: center;
             justify-content: center;
             width: 40px;
@@ -185,6 +185,21 @@
         }
         .hamburger:hover { background: var(--green-light); }
         .hamburger svg { width: 22px; height: 22px; }
+
+        /* ── COLLAPSED SIDEBAR (desktop) ── */
+        @media (min-width: 769px) {
+            body.sidebar-collapsed .sidebar { width: 64px; }
+            body.sidebar-collapsed .sidebar .logo-text,
+            body.sidebar-collapsed .sidebar .admin-meta,
+            body.sidebar-collapsed .sidebar .nav-item > span:not(.nav-icon),
+            body.sidebar-collapsed .sidebar .nav-section-label { display: none; }
+            body.sidebar-collapsed .sidebar .admin-pill { padding: 8px; justify-content: center; }
+            body.sidebar-collapsed .sidebar .nav-item { padding: 12px 16px; justify-content: center; }
+            body.sidebar-collapsed .sidebar .nav-badge { position: absolute; top: 6px; right: 6px; }
+            body.sidebar-collapsed .sidebar .sidebar-logo { padding: 16px 13px; justify-content: center; }
+            body.sidebar-collapsed .sidebar .logo-icon { margin: 0; }
+            body.sidebar-collapsed .main-wrapper { margin-left: 64px; }
+        }
 
         /* ── TOPBAR ── */
         .main-wrapper {
@@ -1973,8 +1988,13 @@
         }
 
         function toggleSidebar() {
-            document.querySelector('.sidebar').classList.toggle('open');
-            document.getElementById('sidebarOverlay').classList.toggle('open');
+            if (window.innerWidth <= 768) {
+                document.querySelector('.sidebar').classList.toggle('open');
+                document.getElementById('sidebarOverlay').classList.toggle('open');
+            } else {
+                document.body.classList.toggle('sidebar-collapsed');
+                localStorage.setItem('sidebarCollapsed', document.body.classList.contains('sidebar-collapsed') ? '1' : '0');
+            }
         }
 
         function closeSidebarMobile() {
@@ -3930,6 +3950,9 @@
         populateYearMonthDropdowns();
         onYearMonthChange();
         syncOfficeAvailNoticeUi();
+        if (window.innerWidth > 768 && localStorage.getItem('sidebarCollapsed') === '1') {
+            document.body.classList.add('sidebar-collapsed');
+        }
         var savedTab = localStorage.getItem('adminActiveTab') || 'overview';
         var navEl = document.querySelector('[onclick*="' + savedTab + '"]');
         showPage(savedTab, navEl || document.querySelector('.nav-item.active'));
