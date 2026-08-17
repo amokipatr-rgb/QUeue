@@ -573,7 +573,7 @@
         /* ── MODAL ── */
         .modal-overlay {
             display: none; position: fixed; inset: 0;
-            background: rgba(15,30,20,0.5); backdrop-filter: blur(4px);
+            background: rgba(15,30,20,0.5);
             z-index: 1000; align-items: center; justify-content: center;
             padding: 16px;
         }
@@ -2330,6 +2330,9 @@
             document.getElementById('officeAvailability').value = String(office.availability_status || 'available').toLowerCase().trim() === 'unavailable' ? 'unavailable' : 'available';
             document.getElementById('officeUnavailNotice').value = office.unavailability_notice || '';
             syncOfficeAvailNoticeUi();
+            renderServicesList();
+            renderOfficersList();
+            openModal('officeModal');
             const servicesResponse = await fetch(`${API_BASE_URL}/api/offices/${id}/services`);
             const servicesData = await servicesResponse.json();
             if (servicesData.success && servicesData.services) pendingServices = servicesData.services;
@@ -2338,7 +2341,6 @@
             const statsData = await statsResponse.json();
             if (statsData.success && statsData.officers) pendingOfficers = statsData.officers.filter(o => o.office_id === id);
             renderOfficersList();
-            openModal('officeModal');
         }
 
         async function deleteOffice(id) {
@@ -2517,11 +2519,11 @@
             document.getElementById('officerName').value = o.officer_name || '';
             document.getElementById('officerEmail').value = o.email || '';
             document.getElementById('officerPhone').value = o.phone || '';
-            await loadOfficeSelect();
-            document.getElementById('officerOfficeId').value = String(o.office_id);
             document.getElementById('officerPin').value = '';
             document.getElementById('officerPin').placeholder = 'Leave blank to keep current PIN';
             openModal('officerModal');
+            await loadOfficeSelect();
+            document.getElementById('officerOfficeId').value = String(o.office_id);
         }
 
         function openAddOfficerModal() {
