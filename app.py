@@ -1887,7 +1887,6 @@ def reply_general_complaint(complaint_id):
         if not complaint:
             return jsonify({'success': False, 'message': 'Complaint not found'}), 404
 
-        sent = send_reply_email(complaint, reply_message)
         sent, err = send_reply_email(complaint, reply_message)
         if not sent:
             return jsonify({'success': False, 'message': err or 'Failed to send email'}), 500
