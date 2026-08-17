@@ -16,6 +16,7 @@ import time
 import urllib.request
 import json
 import socket
+from html import escape
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -1842,17 +1843,19 @@ def _resolve_ipv4(host, port):
     return infos[0][4][0]
 
 
-def send_email_via_resend(to_email, subject, body):
+def send_email_via_resend(to_email, subject, body, html_body=None):
     try:
-        payload = json.dumps({
+        payload = {
             'from': EMAIL_FROM,
             'to': [to_email],
             'subject': subject,
             'text': body
-        }).encode('utf-8')
+        }
+        if html_body:
+            payload['html'] = html_body
         req = urllib.request.Request(
             'https://api.resend.com/emails',
-            data=payload,
+            data=json.dumps(payload).encode('utf-8'),
             headers={
                 'Authorization': f'Bearer {RESEND_API_KEY}',
                 'Content-Type': 'application/json',
@@ -1878,6 +1881,11 @@ def send_reply_email(complaint, reply_message):
         return False, 'No email address on complaint'
     try:
         subject = f"Re: Your Complaint #{complaint['id']} — SMQSS"
+        name = escape(complaint.get('full_name') or 'Valued Customer')
+        complaint_text = escape(complaint.get('complaint_text', '') or '')
+        reply_text = escape(reply_message)
+        complaint_id = complaint['id']
+
         body = f"""Dear {complaint.get('full_name') or 'Valued Customer'},
 
 Thank you for reaching out to us regarding your concern at Makerere University.
@@ -1894,8 +1902,52 @@ Best regards,
 Makerere University Queue Management System (SMQSS)
 """
 
+        html_body = f"""<div style="margin:0;padding:0;background-color:#f0f2f5;font-family:'Segoe UI',Arial,Helvetica,sans-serif;">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f0f2f5;padding:24px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="100%" style="max-width:600px;background-color:#ffffff;border:1px solid #e4e8ee;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(10,15,24,0.06);">
+          <tr>
+            <td style="background:linear-gradient(135deg,#1a3c2c,#2a5a3a);padding:28px 32px;">
+              <div style="font-size:20px;font-weight:800;color:#ffffff;letter-spacing:-0.01em;">&#9678;&nbsp; SMQSS</div>
+              <div style="font-size:11px;font-weight:600;color:#bfe0c4;text-transform:uppercase;letter-spacing:0.12em;margin-top:4px;">Complaint Response</div>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:28px 32px;">
+              <p style="margin:0 0 14px;font-size:15px;color:#0a0f18;line-height:1.6;">Dear <strong>{name}</strong>,</p>
+              <p style="margin:0 0 14px;font-size:14px;color:#2a3a4e;line-height:1.6;">Thank you for reaching out to us regarding your concern at <strong>Makerere University</strong>. Our team has reviewed your complaint and provided a response below.</p>
+
+              <div style="background:#f5f7fa;border:1px solid #e4e8ee;border-radius:8px;padding:14px 16px;margin:0 0 16px;">
+                <div style="font-size:10px;font-weight:700;color:#4a5a6e;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Original Complaint</div>
+                <div style="font-size:13.5px;color:#2a3a4e;line-height:1.6;white-space:pre-wrap;">{complaint_text}</div>
+              </div>
+
+              <div style="background:#e8f5e9;border-left:4px solid #1a3c2c;border-radius:8px;padding:14px 16px;margin:0 0 20px;">
+                <div style="font-size:10px;font-weight:700;color:#1a3c2c;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:6px;">Our Response</div>
+                <div style="font-size:13.5px;color:#1a3c2c;line-height:1.6;white-space:pre-wrap;">{reply_text}</div>
+              </div>
+
+              <p style="margin:0 0 18px;font-size:14px;color:#2a3a4e;line-height:1.6;">If you have any further concerns, please don't hesitate to reach out to us.</p>
+
+              <p style="margin:0;font-size:14px;color:#0a0f18;line-height:1.6;">Best regards,</p>
+              <p style="margin:2px 0 0;font-size:14px;color:#0a0f18;line-height:1.6;"><strong>Makerere University</strong><br>Queue Management System (SMQSS)</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#f7f8fa;border-top:1px solid #e4e8ee;padding:14px 32px;">
+              <div style="font-size:11px;color:#4a5a6e;line-height:1.6;">Reference: #{complaint_id}</div>
+              <div style="font-size:11px;color:#4a5a6e;line-height:1.6;margin-top:2px;">SMQSS &bull; Copyright &copy; Ogwal Richard and Odongo Steven Eyobu (PhD)</div>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</div>"""
+
         if RESEND_API_KEY:
-            sent, err = send_email_via_resend(email_to, subject, body)
+            sent, err = send_email_via_resend(email_to, subject, body, html_body)
             if sent:
                 logger.info(f"Reply email sent via Resend to {email_to} for complaint #{complaint['id']}")
                 return True, None
@@ -1910,6 +1962,7 @@ Makerere University Queue Management System (SMQSS)
         msg['From'] = SMTP_FROM
         msg['To'] = email_to
         msg.set_content(body)
+        msg.add_alternative(html_body, subtype='html')
         smtp_ip = _resolve_ipv4(SMTP_HOST, SMTP_PORT)
         with smtplib.SMTP(smtp_ip, SMTP_PORT, timeout=8) as s:
             s.ehlo(SMTP_HOST)
