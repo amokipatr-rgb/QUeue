@@ -3729,7 +3729,7 @@ def admin_heatmap():
                         hr_end = f"{day_str} {hr:02d}:59:59"
                         cursor.execute("""
                             SELECT COUNT(DISTINCT officer_id) AS val FROM officer_sessions
-                            WHERE office_id = %s AND status = 'active'
+                            WHERE office_id = %s AND status IN ('active','completed')
                               AND login_time <= %s AND (logout_time IS NULL OR logout_time >= %s)
                         """, (off['id'], hr_end, hr_start))
                         row = cursor.fetchone()
