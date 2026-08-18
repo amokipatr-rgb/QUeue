@@ -659,18 +659,31 @@ def get_db_connection():
 
 
 # ── OFFICER SESSION HELPERS ──
+END_OF_DAY_HOUR = 17  # working day ends at 5 PM (8 AM - 5 PM operating hours)
+
 def auto_expire_sessions():
-    """Close any active sessions that have been open for 8+ hours."""
+    """Close active sessions at the end of the working day (5 PM) so that daily
+    hours reflect real in-office time instead of an 8-hour cap. After-hours
+    logins and stale sessions fall back to an 8h cap / 24h safety net."""
     try:
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("""
             UPDATE officer_sessions
             SET status = 'completed',
-                logout_time = DATE_ADD(login_time, INTERVAL 8 HOUR)
+                logout_time = CASE
+                    WHEN (DATE(login_time) + INTERVAL %s HOUR) > login_time
+                     AND NOW() >= (DATE(login_time) + INTERVAL %s HOUR)
+                    THEN (DATE(login_time) + INTERVAL %s HOUR)
+                    ELSE DATE_ADD(login_time, INTERVAL 8 HOUR)
+                END
             WHERE status = 'active'
-              AND TIMESTAMPDIFF(HOUR, login_time, NOW()) >= 8
-        """)
+              AND (
+                    ((DATE(login_time) + INTERVAL %s HOUR) > login_time
+                     AND NOW() >= (DATE(login_time) + INTERVAL %s HOUR))
+                 OR TIMESTAMPDIFF(HOUR, login_time, NOW()) >= 24
+              )
+        """, (END_OF_DAY_HOUR, END_OF_DAY_HOUR, END_OF_DAY_HOUR, END_OF_DAY_HOUR, END_OF_DAY_HOUR))
         if cursor.rowcount:
             # Close any dangling status logs for expired sessions
             cursor.execute("""
