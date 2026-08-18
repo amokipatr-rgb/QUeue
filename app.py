@@ -662,43 +662,45 @@ def get_db_connection():
 END_OF_DAY_HOUR = 17  # working day ends at 5 PM (8 AM - 5 PM operating hours)
 
 def auto_expire_sessions():
-    """Close active sessions at the end of the working day (5 PM) so that daily
+    """DISABLED for printer testing (restore the 5 PM end-of-day closure later).
+    Close active sessions at the end of the working day (5 PM) so that daily
     hours reflect real in-office time instead of an 8-hour cap. After-hours
     logins and stale sessions fall back to an 8h cap / 24h safety net."""
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor()
-        cursor.execute("""
-            UPDATE officer_sessions
-            SET status = 'completed',
-                logout_time = CASE
-                    WHEN (DATE(login_time) + INTERVAL %s HOUR) > login_time
-                     AND NOW() >= (DATE(login_time) + INTERVAL %s HOUR)
-                    THEN (DATE(login_time) + INTERVAL %s HOUR)
-                    ELSE DATE_ADD(login_time, INTERVAL 8 HOUR)
-                END
-            WHERE status = 'active'
-              AND (
-                    ((DATE(login_time) + INTERVAL %s HOUR) > login_time
-                     AND NOW() >= (DATE(login_time) + INTERVAL %s HOUR))
-                 OR TIMESTAMPDIFF(HOUR, login_time, NOW()) >= 24
-              )
-        """, (END_OF_DAY_HOUR, END_OF_DAY_HOUR, END_OF_DAY_HOUR, END_OF_DAY_HOUR, END_OF_DAY_HOUR))
-        if cursor.rowcount:
-            # Close any dangling status logs for expired sessions
-            cursor.execute("""
-                UPDATE officer_status_log sl
-                JOIN officer_sessions s ON sl.session_id = s.id
-                SET sl.ended_at = s.logout_time,
-                    sl.duration_minutes = TIMESTAMPDIFF(MINUTE, sl.started_at, s.logout_time)
-                WHERE sl.ended_at IS NULL AND s.status = 'completed'
-            """)
-            conn.commit()
-    except Exception as e:
-        logger.warning(f"[SESSION] Auto-expire error: {e}")
-    finally:
-        try: cursor.close(); conn.close()
-        except: pass
+    # try:
+    #     conn = get_db_connection()
+    #     cursor = conn.cursor()
+    #     cursor.execute("""
+    #         UPDATE officer_sessions
+    #         SET status = 'completed',
+    #             logout_time = CASE
+    #                 WHEN (DATE(login_time) + INTERVAL %s HOUR) > login_time
+    #                  AND NOW() >= (DATE(login_time) + INTERVAL %s HOUR)
+    #                 THEN (DATE(login_time) + INTERVAL %s HOUR)
+    #                 ELSE DATE_ADD(login_time, INTERVAL 8 HOUR)
+    #             END
+    #         WHERE status = 'active'
+    #           AND (
+    #                 ((DATE(login_time) + INTERVAL %s HOUR) > login_time
+    #                  AND NOW() >= (DATE(login_time) + INTERVAL %s HOUR))
+    #              OR TIMESTAMPDIFF(HOUR, login_time, NOW()) >= 24
+    #           )
+    #     """, (END_OF_DAY_HOUR, END_OF_DAY_HOUR, END_OF_DAY_HOUR, END_OF_DAY_HOUR, END_OF_DAY_HOUR))
+    #     if cursor.rowcount:
+    #         # Close any dangling status logs for expired sessions
+    #         cursor.execute("""
+    #             UPDATE officer_status_log sl
+    #             JOIN officer_sessions s ON sl.session_id = s.id
+    #             SET sl.ended_at = s.logout_time,
+    #                 sl.duration_minutes = TIMESTAMPDIFF(MINUTE, sl.started_at, s.logout_time)
+    #             WHERE sl.ended_at IS NULL AND s.status = 'completed'
+    #         """)
+    #         conn.commit()
+    # except Exception as e:
+    #     logger.warning(f"[SESSION] Auto-expire error: {e}")
+    # finally:
+    #     try: cursor.close(); conn.close()
+    #     except: pass
+    pass
 
 
 def close_active_status_log(cursor, session_id, officer_id, ended_at):
