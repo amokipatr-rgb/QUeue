@@ -1535,6 +1535,20 @@ def generate_student_token():
 
         # ── NEW BEHAVIOR: students can get a token even without rating the previous one ──
 
+        # Self-healing sync: keep counter ahead of the max used number (prevents duplicate-key 500s)
+        cursor.execute("""
+            UPDATE queue_counters qc
+            JOIN (
+                SELECT t.office_id, MAX(CAST(SUBSTRING(t.token_number, LENGTH(o.office_code) + 1) AS UNSIGNED)) AS used_max
+                FROM university_tokens t
+                JOIN offices o ON t.office_id = o.id
+                WHERE t.office_id = %s
+                GROUP BY t.office_id
+            ) x ON qc.office_id = x.office_id
+            SET qc.last_number = GREATEST(qc.last_number, x.used_max)
+            WHERE qc.office_id = %s
+        """, (office_id, office_id))
+
         cursor.execute("INSERT IGNORE INTO queue_counters (office_id, last_number) VALUES (%s, 0)", (office_id,))
         cursor.execute("""
             UPDATE queue_counters
