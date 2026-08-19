@@ -2280,9 +2280,10 @@ def get_officer_queue(officer_id):
             FROM university_tokens t
             LEFT JOIN services s ON t.service_id = s.id
             WHERE t.office_id = %s AND t.status IN ('called','serving')
-            ORDER BY t.called_at DESC LIMIT 1
+            ORDER BY t.called_at ASC
         """, (officer['office_id'],))
-        current = cursor.fetchone()
+        current_tokens = cursor.fetchall()
+        current = current_tokens[0] if current_tokens else None
 
         cursor.execute("""
             SELECT COUNT(*) as cnt FROM university_tokens
@@ -2300,6 +2301,7 @@ def get_officer_queue(officer_id):
             'success': True,
             'waiting': waiting,
             'current': current,
+            'current_tokens': current_tokens,
             'office_code': officer['office_code'],
             'office_name': officer['office_name'],
             'location': officer.get('location', ''),
@@ -2336,9 +2338,11 @@ def get_public_queues():
                 SELECT t.token_number, t.student_name
                 FROM university_tokens t
                 WHERE t.office_id = %s AND t.status = 'called'
-                ORDER BY t.called_at DESC LIMIT 1
+                ORDER BY t.called_at ASC
+                LIMIT 8
             """, (office['id'],))
-            called = cursor.fetchone()
+            called_tokens = cursor.fetchall()
+            called = called_tokens[0] if called_tokens else None
 
             cursor.execute("""
                 SELECT t.token_number, t.student_name
@@ -2361,6 +2365,7 @@ def get_public_queues():
                 'location': office.get('location', ''),
                 'availability_status': office.get('availability_status') or 'available',
                 'unavailability_notice': office.get('unavailability_notice'),
+                'called_tokens': called_tokens,
                 'current_called': called['token_number'] if called else None,
                 'called_student': called['student_name'] if called else None,
                 'current_serving': serving['token_number'] if serving else None,
@@ -2522,6 +2527,98 @@ def officer_call_next():
     except Exception as e:
         conn.rollback()
         logger.error(f"Error in call-next: {e}")
+        logger.error(traceback.format_exc())
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.route('/api/officer/call-batch', methods=['POST'])
+def officer_call_batch():
+    data = request.get_json()
+    officer_id = data.get('officer_id')
+    officer_number = data.get('officer_number')
+    batch_size = data.get('batch_size', 1)
+
+    try:
+        batch_size = int(batch_size)
+    except (TypeError, ValueError):
+        batch_size = 1
+    batch_size = max(1, min(batch_size, 10))
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute("SELECT office_id FROM officers WHERE id=%s", (officer_id,))
+        officer = cursor.fetchone()
+        if not officer:
+            return jsonify({'success': False, 'message': 'Officer not found'})
+
+        cursor.execute("""
+            SELECT token_number FROM university_tokens
+            WHERE office_id = %s AND status = 'serving'
+        """, (officer['office_id'],))
+        current_serving = cursor.fetchone()
+
+        if current_serving:
+            cursor.execute("""
+                UPDATE university_tokens t
+                INNER JOIN officers o ON o.id = %s
+                SET t.status = 'completed', t.completed_at = NOW(),
+                    t.assigned_officer_id = IFNULL(t.assigned_officer_id, o.id),
+                    t.assigned_officer_number = COALESCE(t.assigned_officer_number, o.officer_number)
+                WHERE t.token_number = %s AND DATE(t.requested_at) = CURDATE()
+            """, (officer_id, current_serving['token_number']))
+
+        cursor.execute("""
+            SELECT id, token_number, student_name, service_code, student_phone, parent_phone
+            FROM university_tokens
+            WHERE office_id=%s AND status='waiting'
+            ORDER BY is_priority DESC, requested_at ASC
+            LIMIT %s
+        """, (officer['office_id'], batch_size))
+
+        batch = cursor.fetchall()
+        if not batch:
+            return jsonify({'success': False, 'message': 'No students waiting'})
+
+        tokens = []
+        for idx, token in enumerate(batch):
+            cursor.execute("""
+                UPDATE university_tokens
+                SET status='called', called_at=NOW(),
+                    assigned_officer_id=%s, assigned_officer_number=%s
+                WHERE id=%s
+            """, (officer_id, officer_number, token['id']))
+            cursor.execute("""
+                INSERT INTO queue_logs (token_number, officer_id, action, action_details, created_at)
+                VALUES (%s, %s, 'called', CONCAT('Batch called from officer dashboard - Student: ', IFNULL(%s, '')), NOW())
+            """, (token['token_number'], officer_id, token['student_name']))
+            tokens.append({
+                'token_number': token['token_number'],
+                'student_name': token['student_name'] or '',
+                'service_code': token['service_code'],
+                'student_phone': token.get('student_phone') or '',
+                'parent_phone': token.get('parent_phone') or ''
+            })
+
+        cursor.execute("""
+            UPDATE officers SET status='calling', current_token=%s, last_activity=NOW()
+            WHERE id=%s
+        """, (tokens[0]['token_number'], officer_id))
+
+        conn.commit()
+
+        return jsonify({
+            'success': True,
+            'tokens': tokens,
+            'count': len(tokens)
+        })
+
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Error in call-batch: {e}")
         logger.error(traceback.format_exc())
         return jsonify({'success': False, 'message': str(e)}), 500
     finally:
