@@ -1067,10 +1067,10 @@
             let text;
             if (withNames.length === tokens.length) {
                 const parts = tokens.map(t => `${t.student_name} with token ${t.token_number.split('').join(' ')}`);
-                text = `Attention, the following ${parts.join(', ')}, please proceed to ${officeName}.`;
+                text = `Attention Please, the following ${parts.join(', ')}, please proceed to ${officeName}.`;
             } else {
                 const spelled = tokens.map(t => t.token_number.split('').join(' ')).join(', ');
-                text = `Attention, the following tokens ${spelled}, please proceed to ${officeName}.`;
+                text = `Attention Please, the following tokens ${spelled}, please proceed to ${officeName}.`;
             }
 
             vt.textContent = `Announcing ${batchSig}...`;
