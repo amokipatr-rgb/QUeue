@@ -159,7 +159,8 @@ _CREATE_SERVICES_SQL = """
 _CREATE_UNIVERSITY_TOKENS_SQL = """
     CREATE TABLE IF NOT EXISTS university_tokens (
         id INT AUTO_INCREMENT PRIMARY KEY,
-        token_number VARCHAR(20) NOT NULL UNIQUE,
+        token_number VARCHAR(20) NOT NULL,
+        token_date DATE NOT NULL,
         office_id INT NOT NULL,
         service_id INT NOT NULL,
         service_code VARCHAR(20) NOT NULL,
@@ -188,7 +189,8 @@ _CREATE_UNIVERSITY_TOKENS_SQL = """
         feedback_submitted_at TIMESTAMP NULL DEFAULT NULL,
         CONSTRAINT fk_token_office FOREIGN KEY (office_id) REFERENCES offices(id),
         CONSTRAINT fk_token_service FOREIGN KEY (service_id) REFERENCES services(id),
-        CONSTRAINT fk_token_officer FOREIGN KEY (assigned_officer_id) REFERENCES officers(id) ON DELETE SET NULL
+        CONSTRAINT fk_token_officer FOREIGN KEY (assigned_officer_id) REFERENCES officers(id) ON DELETE SET NULL,
+        CONSTRAINT uq_token_number_date UNIQUE (token_number, token_date)
     )"""
 _CREATE_OFFICE_MESSAGES_SQL = """
     CREATE TABLE IF NOT EXISTS office_messages (
@@ -423,6 +425,33 @@ try:
             cursor.execute("ALTER TABLE general_complaints ADD COLUMN email VARCHAR(100) DEFAULT NULL AFTER contact")
             connection.commit()
             print("[OK] email column added to general_complaints")
+
+        # ── UNIVERSITY TOKENS: per-day token numbering (token_date + composite unique) ──
+        cursor.execute("SHOW COLUMNS FROM university_tokens LIKE 'token_date'")
+        if not cursor.fetchone():
+            print("[WARN] university_tokens table missing token_date column! Adding...")
+            cursor.execute("ALTER TABLE university_tokens ADD COLUMN token_date DATE NULL AFTER token_number")
+            connection.commit()
+            print("[OK] token_date column added to university_tokens")
+
+        cursor.execute("UPDATE university_tokens SET token_date = DATE(requested_at) WHERE token_date IS NULL")
+        connection.commit()
+        print("[OK] Backfilled token_date from requested_at")
+
+        cursor.execute("SHOW INDEX FROM university_tokens WHERE Column_name = 'token_number' AND Non_unique = 0")
+        has_global_unique = cursor.fetchone()
+        if has_global_unique:
+            print("[WARN] Dropping global UNIQUE index on token_number (replaced by per-day unique)...")
+            cursor.execute("ALTER TABLE university_tokens DROP INDEX token_number")
+            connection.commit()
+            print("[OK] Dropped global UNIQUE index on token_number")
+
+        cursor.execute("SHOW INDEX FROM university_tokens WHERE Key_name = 'uq_token_number_date'")
+        if not cursor.fetchone():
+            print("[WARN] Adding per-day UNIQUE constraint uq_token_number_date...")
+            cursor.execute("ALTER TABLE university_tokens ADD CONSTRAINT uq_token_number_date UNIQUE (token_number, token_date)")
+            connection.commit()
+            print("[OK] Added per-day UNIQUE constraint uq_token_number_date")
 
         # ── SEED DATA ──
         cursor.execute("SELECT COUNT(*) FROM offices")
@@ -1108,17 +1137,31 @@ def admin_reset_office_queue(office_id):
         """, (office_id,))
         
         cursor.execute("""
+            SELECT token_number FROM university_tokens
+            WHERE office_id = %s AND DATE(requested_at) = CURDATE()
+        """, (office_id,))
+        used = set()
+        for r in cursor.fetchall():
+            tail = r['token_number'][len(office['office_code']):]
+            if tail.isdigit():
+                used.add(int(tail))
+        next_num = 1
+        while next_num in used:
+            next_num += 1
+        next_token = f"{office['office_code']}{str(next_num).zfill(2)}"
+
+        cursor.execute("""
             INSERT INTO queue_logs (token_number, officer_id, action, action_details, created_at)
             VALUES ('SYSTEM', %s, 'queue_reset', 
-                    CONCAT('Queue reset for ', %s, ' - Counter reset. Next token will be ', %s, '01'), NOW())
-        """, (officer_id, office['office_name'], office['office_code']))
-        
+                    CONCAT('Queue reset for ', %s, ' - Numbering restarts from first free number for today. Next token: ', %s), NOW())
+        """, (officer_id, office['office_name'], next_token))
+
         conn.commit()
-        
+
         return jsonify({
-            'success': True, 
-            'message': f'Queue reset for {office["office_name"]}. Next token will be {office["office_code"]}01',
-            'next_token': f'{office["office_code"]}01'
+            'success': True,
+            'message': f'Queue reset for {office["office_name"]}. Numbering restarts from the first free number for today. Next token: {next_token}',
+            'next_token': next_token
         })
         
     except Exception as e:
@@ -1535,32 +1578,23 @@ def generate_student_token():
 
         # ── NEW BEHAVIOR: students can get a token even without rating the previous one ──
 
-        # Self-healing sync: keep counter ahead of the max used number (prevents duplicate-key 500s)
+        # Per-day first-free numbering: scan ONLY today's tokens for this office,
+        # so yesterday's numbers don't block today's restart at XX01 (no data deleted).
         cursor.execute("""
-            UPDATE queue_counters qc
-            JOIN (
-                SELECT t.office_id, MAX(CAST(SUBSTRING(t.token_number, LENGTH(o.office_code) + 1) AS UNSIGNED)) AS used_max
-                FROM university_tokens t
-                JOIN offices o ON t.office_id = o.id
-                WHERE t.office_id = %s
-                GROUP BY t.office_id
-            ) x ON qc.office_id = x.office_id
-            SET qc.last_number = GREATEST(qc.last_number, x.used_max)
-            WHERE qc.office_id = %s
-        """, (office_id, office_id))
-
-        cursor.execute("INSERT IGNORE INTO queue_counters (office_id, last_number) VALUES (%s, 0)", (office_id,))
-        cursor.execute("""
-            UPDATE queue_counters
-            SET last_number = LAST_INSERT_ID(last_number + 1)
-            WHERE office_id = %s
+            SELECT token_number FROM university_tokens
+            WHERE office_id = %s AND DATE(requested_at) = CURDATE()
         """, (office_id,))
-        cursor.execute("SELECT LAST_INSERT_ID() AS next_num")
-        result = cursor.fetchone()
-        next_num = result['next_num']
+        used = set()
+        for r in cursor.fetchall():
+            tail = r['token_number'][len(office['office_code']):]
+            if tail.isdigit():
+                used.add(int(tail))
+        next_num = 1
+        while next_num in used:
+            next_num += 1
         token_number = f"{office['office_code']}{str(next_num).zfill(2)}"
 
-        print(f"Token generated: {token_number} (counter={next_num})")
+        print(f"Token generated: {token_number} (next_num={next_num})")
 
         cursor.execute("""
             SELECT COUNT(*) as ahead_count
@@ -1576,11 +1610,11 @@ def generate_student_token():
 
         cursor.execute("""
             INSERT INTO university_tokens
-                (token_number, office_id, service_id, service_code,
+                (token_number, token_date, office_id, service_id, service_code,
                  student_name, student_id, student_phone,
                  parent_name, parent_phone, is_priority,
                  status, queue_position, estimated_wait_minutes, source, requested_at)
-            VALUES (%s, %s, %s, %s, %s, %s, %s,
+            VALUES (%s, CURDATE(), %s, %s, %s, %s, %s, %s,
                     %s, %s, %s,
                     'waiting', %s, %s, 'kiosk', NOW())
         """, (
@@ -1649,6 +1683,8 @@ def get_token_info():
             JOIN offices off ON t.office_id = off.id
             LEFT JOIN services s ON t.service_id = s.id
             WHERE t.token_number = %s
+            ORDER BY t.requested_at DESC
+            LIMIT 1
         """, (token_number,))
         token = cursor.fetchone()
 
@@ -1709,6 +1745,8 @@ def submit_feedback():
             SELECT id, office_id, status, rating, feedback_submitted_at
             FROM university_tokens
             WHERE token_number = %s
+            ORDER BY requested_at DESC
+            LIMIT 1
         """, (token_number,))
         token = cursor.fetchone()
 
@@ -2441,7 +2479,7 @@ def officer_call_next():
                 SET t.status = 'completed', t.completed_at = NOW(),
                     t.assigned_officer_id = IFNULL(t.assigned_officer_id, o.id),
                     t.assigned_officer_number = COALESCE(t.assigned_officer_number, o.officer_number)
-                WHERE t.token_number = %s
+                WHERE t.token_number = %s AND DATE(t.requested_at) = CURDATE()
             """, (officer_id, current_serving['token_number']))
 
         cursor.execute("""
@@ -2503,7 +2541,7 @@ def officer_call_specific():
     try:
         cursor.execute("""
             SELECT student_name FROM university_tokens
-            WHERE token_number=%s
+            WHERE token_number=%s AND DATE(requested_at) = CURDATE()
         """, (token_number,))
         token = cursor.fetchone()
 
@@ -2511,7 +2549,7 @@ def officer_call_specific():
             UPDATE university_tokens
             SET status='called', called_at=NOW(),
                 assigned_officer_id=%s, assigned_officer_number=%s
-            WHERE token_number=%s AND status='waiting'
+            WHERE token_number=%s AND status='waiting' AND DATE(requested_at) = CURDATE()
         """, (officer_id, officer_number, token_number))
 
         cursor.execute("""
@@ -2553,7 +2591,7 @@ def officer_serve():
             SELECT t.student_name, t.office_id, off.office_name 
             FROM university_tokens t
             JOIN offices off ON t.office_id = off.id
-            WHERE t.token_number = %s
+            WHERE t.token_number = %s AND DATE(t.requested_at) = CURDATE()
         """, (token_number,))
         token_info = cursor.fetchone()
         
@@ -2563,7 +2601,7 @@ def officer_serve():
         cursor.execute("""
             UPDATE university_tokens 
             SET status='serving', serving_started_at=NOW() 
-            WHERE token_number=%s
+            WHERE token_number=%s AND DATE(requested_at) = CURDATE()
         """, (token_number,))
         
         cursor.execute("""
@@ -2611,7 +2649,7 @@ def officer_complete():
             SET t.status = 'completed', t.completed_at = NOW(),
                 t.assigned_officer_id = IFNULL(t.assigned_officer_id, o.id),
                 t.assigned_officer_number = COALESCE(t.assigned_officer_number, o.officer_number)
-            WHERE t.token_number = %s
+            WHERE t.token_number = %s AND DATE(t.requested_at) = CURDATE()
         """, (officer_id, token_number))
         cursor.execute("""
             UPDATE officers SET status='available', current_token=NULL, last_activity=NOW()
@@ -2650,7 +2688,7 @@ def officer_skip():
         cursor.execute("""
             UPDATE university_tokens 
             SET status='skipped', skipped_at=NOW() 
-            WHERE token_number=%s
+            WHERE token_number=%s AND DATE(requested_at) = CURDATE()
         """, (token_number,))
         cursor.execute("""
             UPDATE officers SET status='available', current_token=NULL, last_activity=NOW() 
@@ -2676,7 +2714,7 @@ def officer_recall():
     cursor = conn.cursor(dictionary=True)
     try:
         cursor.execute("""
-            SELECT student_name FROM university_tokens WHERE token_number=%s
+            SELECT student_name FROM university_tokens WHERE token_number=%s AND DATE(requested_at) = CURDATE()
         """, (token_number,))
         token = cursor.fetchone()
         
@@ -2711,6 +2749,7 @@ def get_recent_recalls():
             JOIN officers o ON l.officer_id = o.id
             JOIN offices off ON o.office_id = off.id
             LEFT JOIN university_tokens t ON l.token_number = t.token_number
+                AND DATE(t.requested_at) = DATE(l.created_at)
             WHERE l.action = 'recall' AND l.created_at >= NOW() - INTERVAL 2 MINUTE
             ORDER BY l.created_at DESC
             LIMIT 50
