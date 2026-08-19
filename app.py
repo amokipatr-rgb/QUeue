@@ -2731,6 +2731,80 @@ def officer_serve():
         conn.close()
 
 
+@app.route('/api/officer/serve-batch', methods=['POST'])
+def officer_serve_batch():
+    data = request.get_json()
+    officer_id = data.get('officer_id')
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute("SELECT office_id FROM officers WHERE id=%s", (officer_id,))
+        officer = cursor.fetchone()
+        if not officer:
+            return jsonify({'success': False, 'message': 'Officer not found'})
+
+        cursor.execute("""
+            SELECT id, token_number, student_name FROM university_tokens
+            WHERE office_id = %s AND status = 'called'
+            ORDER BY called_at ASC
+        """, (officer['office_id'],))
+        batch = cursor.fetchall()
+        if not batch:
+            return jsonify({'success': False, 'message': 'No called tokens to serve'})
+
+        for token in batch:
+            cursor.execute("""
+                UPDATE university_tokens t
+                INNER JOIN officers o ON o.id = %s
+                SET t.status = 'completed', t.serving_started_at = NOW(), t.completed_at = NOW(),
+                    t.assigned_officer_id = IFNULL(t.assigned_officer_id, o.id),
+                    t.assigned_officer_number = COALESCE(t.assigned_officer_number, o.officer_number)
+                WHERE t.id = %s
+            """, (officer_id, token['id']))
+            cursor.execute("""
+                INSERT INTO queue_logs (token_number, officer_id, action, action_details, created_at)
+                VALUES (%s, %s, 'serving',
+                        CONCAT('Started serving (batch serve all) - Student: ', IFNULL(%s, '')),
+                        NOW())
+            """, (token['token_number'], officer_id, token.get('student_name') or ''))
+            cursor.execute("""
+                INSERT INTO queue_logs (token_number, officer_id, action, action_details, created_at)
+                VALUES (%s, %s, 'completed',
+                        CONCAT('Completed (batch serve all) - Student: ', IFNULL(%s, '')),
+                        NOW())
+            """, (token['token_number'], officer_id, token.get('student_name') or ''))
+
+        cursor.execute("""
+            UPDATE officers SET status='available', current_token=NULL, last_activity=NOW()
+            WHERE id=%s
+        """, (officer_id,))
+
+        try:
+            cursor.execute("""
+                UPDATE officer_sessions
+                SET tokens_served = tokens_served + %s
+                WHERE officer_id = %s AND status = 'active'
+            """, (len(batch), officer_id))
+        except Exception as se:
+            logger.warning(f"[SESSION] Failed to increment tokens_served (batch): {se}")
+
+        conn.commit()
+        return jsonify({
+            'success': True,
+            'count': len(batch),
+            'tokens': [t['token_number'] for t in batch]
+        })
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Error in serve-batch: {e}")
+        logger.error(traceback.format_exc())
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
 @app.route('/api/officer/complete', methods=['POST'])
 def officer_complete():
     data = request.get_json()
