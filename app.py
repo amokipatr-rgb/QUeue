@@ -2486,7 +2486,7 @@ def officer_call_next():
                 SET t.status = 'completed', t.completed_at = NOW(),
                     t.assigned_officer_id = IFNULL(t.assigned_officer_id, o.id),
                     t.assigned_officer_number = COALESCE(t.assigned_officer_number, o.officer_number)
-                WHERE t.token_number = %s AND DATE(t.requested_at) = CURDATE()
+                WHERE t.token_number = %s AND t.status = 'serving'
             """, (officer_id, current_serving['token_number']))
 
         cursor.execute("""
@@ -2640,7 +2640,7 @@ def officer_call_specific():
     try:
         cursor.execute("""
             SELECT student_name FROM university_tokens
-            WHERE token_number=%s AND DATE(requested_at) = CURDATE()
+            WHERE token_number=%s AND status='waiting'
         """, (token_number,))
         token = cursor.fetchone()
 
@@ -2648,7 +2648,7 @@ def officer_call_specific():
             UPDATE university_tokens
             SET status='called', called_at=NOW(),
                 assigned_officer_id=%s, assigned_officer_number=%s
-            WHERE token_number=%s AND status='waiting' AND DATE(requested_at) = CURDATE()
+            WHERE token_number=%s AND status='waiting'
         """, (officer_id, officer_number, token_number))
 
         cursor.execute("""
@@ -2690,8 +2690,9 @@ def officer_serve():
             SELECT t.student_name, t.office_id, off.office_name 
             FROM university_tokens t
             JOIN offices off ON t.office_id = off.id
-            WHERE t.token_number = %s AND DATE(t.requested_at) = CURDATE()
-        """, (token_number,))
+            JOIN officers o ON o.id = %s
+            WHERE t.token_number = %s AND t.office_id = o.office_id AND t.status = 'called'
+        """, (officer_id, token_number))
         token_info = cursor.fetchone()
         
         if not token_info:
@@ -2700,7 +2701,7 @@ def officer_serve():
         cursor.execute("""
             UPDATE university_tokens 
             SET status='serving', serving_started_at=NOW() 
-            WHERE token_number=%s AND DATE(requested_at) = CURDATE()
+            WHERE token_number=%s AND status='called'
         """, (token_number,))
         
         cursor.execute("""
@@ -2875,7 +2876,7 @@ def officer_complete():
             SET t.status = 'completed', t.completed_at = NOW(),
                 t.assigned_officer_id = IFNULL(t.assigned_officer_id, o.id),
                 t.assigned_officer_number = COALESCE(t.assigned_officer_number, o.officer_number)
-            WHERE t.token_number = %s AND DATE(t.requested_at) = CURDATE()
+            WHERE t.token_number = %s AND t.status = 'serving'
         """, (officer_id, token_number))
         cursor.execute("""
             UPDATE officers SET status='available', current_token=NULL, last_activity=NOW()
@@ -2914,7 +2915,7 @@ def officer_skip():
         cursor.execute("""
             UPDATE university_tokens 
             SET status='skipped', skipped_at=NOW() 
-            WHERE token_number=%s AND DATE(requested_at) = CURDATE()
+            WHERE token_number=%s AND status='called'
         """, (token_number,))
         cursor.execute("""
             UPDATE officers SET status='available', current_token=NULL, last_activity=NOW() 
@@ -2940,7 +2941,7 @@ def officer_recall():
     cursor = conn.cursor(dictionary=True)
     try:
         cursor.execute("""
-            SELECT student_name FROM university_tokens WHERE token_number=%s AND DATE(requested_at) = CURDATE()
+            SELECT student_name FROM university_tokens WHERE token_number=%s AND status='called'
         """, (token_number,))
         token = cursor.fetchone()
         
