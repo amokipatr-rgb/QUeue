@@ -1327,16 +1327,16 @@
                 } else if (lastCalledTokens[office.office_code]) {
                     lastCalledTokens[office.office_code] = new Set();
                 }
-                if (office.current_serving) {
+                if (office.serving_tokens && office.serving_tokens.length) {
                     activeTokens.push({ 
                         type: 'serving', 
+                        tokens: office.serving_tokens,
                         token: office.current_serving, 
                         officeName: office.office_name,
                         studentName: office.serving_student || ''
                     });
-                    totalServing++;
-                    
-                    if (lastServingTokens[office.office_code] !== office.current_serving) {
+                    totalServing += office.serving_tokens.length;
+                    if (office.current_serving) {
                         lastServingTokens[office.office_code] = office.current_serving;
                     }
                 }
@@ -1369,6 +1369,22 @@
                             </div>
                         `;
                     }
+                    if (t.type === 'serving' && t.tokens && t.tokens.length > 1) {
+                        const tokenHtml = t.tokens.map(tk => `<span class="token-number">${escapeHtml(tk.token_number)}</span>`).join('<span class="token-sep">·</span>');
+                        const nameHtml = t.tokens.map(tk => tk.student_name).filter(n => n && n.trim()).map(n => escapeHtml(truncateName(n)));
+                        const namesStr = nameHtml.length ? nameHtml.join(', ') : '';
+                        return `
+                            <div class="serving-card">
+                                <div class="status-badge badge-serving">
+                                    <span class="badge-dot"></span>
+                                    BEING SERVED NOW
+                                </div>
+                                <div class="batch-token-row">${tokenHtml}</div>
+                                ${namesStr ? `<div class="batch-names">${namesStr}</div>` : ''}
+                                <div class="office-name">${escapeHtml(t.officeName)}</div>
+                            </div>
+                        `;
+                    }
                     return `
                         <div class="${t.type}-card">
                             <div class="status-badge badge-${t.type}">
@@ -1381,7 +1397,7 @@
                         </div>
                     `;
                 }).join('');
-                var key = activeTokens.map(function(t){return t.type+':'+t.token}).join('|');
+                var key = activeTokens.map(function(t){return t.type+':'+(t.tokens ? t.tokens.map(function(x){return x.token_number}).join(',') : t.token)}).join('|');
                 if (activeGrid.dataset.key !== key) { activeGrid.dataset.key = key; activeGrid.innerHTML = html; }
                 var calledEl = document.getElementById('totalCalled');
                 calledEl.className = 'chip-tokens-mode';

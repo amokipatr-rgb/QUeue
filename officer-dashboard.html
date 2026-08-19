@@ -162,6 +162,7 @@
     .batch-row-actions .btn-skip     { background: #DC2626; }
     .batch-row-actions .btn-recall   { background: #7C3AED; }
     .btn-serve-all { background: linear-gradient(135deg, #22C55E, #16A34A); color: #fff; border: none; }
+    .btn-complete-all { background: linear-gradient(135deg, #3B82F6, #2563EB); color: #fff; border: none; }
     .btn-recall-all { background: #7C3AED; color: #fff; border: none; }
     .batch-status-line { font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; opacity: 0.55; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
     .batch-select { padding: 9px 10px; border-radius: var(--radius); border: 1px solid var(--border); font-size: 13px; font-family: var(--font); font-weight: 600; background: var(--white); color: var(--text); }
@@ -1111,7 +1112,7 @@
             <div class="batch-row-actions">${actionBtn}<button class="action-btn btn-skip" onclick="skipToken('${t.token_number}', this)">${ic.skip} Skip</button><button class="action-btn btn-recall" onclick="recallToken('${t.token_number}', this)">${ic.repeat} Recall</button></div>
           </div>`;
         }).join('');
-        servEl.innerHTML = `<div class="serving-hero serving-batch"><div class="serving-label">${anyServing ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Batch Serving' : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.5 12.38a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.41 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.29 6.29l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Batch Called'}</div><div class="batch-status-line">${total} tokens called — proceed one at a time to the window</div><div class="batch-rows">${rowsHtml}</div></div><div class="action-grid">${anyServing ? '' : '<button class="action-btn btn-serve-all" onclick="serveAllBatch()">' + ic.play + ' Serve All at Once</button>'}<button class="action-btn btn-recall-all" onclick="recallAllBatch()">${ic.repeat} Recall All</button><button class="action-btn btn-reset" onclick="resetQueue()">${ic.reset} Reset Queue</button></div>`;
+        servEl.innerHTML = `<div class="serving-hero serving-batch"><div class="serving-label">${anyServing ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Batch Serving' : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.5 12.38a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.41 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.29 6.29l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Batch Called'}</div><div class="batch-status-line">${total} tokens called — proceed one at a time to the window</div><div class="batch-rows">${rowsHtml}</div></div><div class="action-grid">${anyServing ? '<button class="action-btn btn-complete-all" onclick="completeAllBatch()">' + ic.check + ' Complete All at Once</button>' : '<button class="action-btn btn-serve-all" onclick="serveAllBatch()">' + ic.play + ' Serve All at Once</button>'}<button class="action-btn btn-recall-all" onclick="recallAllBatch()">${ic.repeat} Recall All</button><button class="action-btn btn-reset" onclick="resetQueue()">${ic.reset} Reset Queue</button></div>`;
         statusDot.className = 'status-dot dot-amber';
         statusText.textContent = anyServing ? 'Serving' : 'Called';
         tokenBadge.textContent = currentServing || tokens[0].token_number;
@@ -1277,6 +1278,25 @@
         showToast('No tokens were recalled', 'error');
       }
       await loadQueue();
+    } finally { if (btn) setLoading(btn, false); }
+  }
+
+  async function completeAllBatch() {
+    const btn = document.querySelector('.btn-complete-all');
+    setLoading(btn, true);
+    addLog('Completing entire serving batch…');
+    try {
+      const result = await apiCall('/api/officer/complete-batch', 'POST', { officer_id: currentOfficer.id });
+      if (result.success) {
+        addLog(`Batch of ${result.count} completed`, 'success');
+        showToast(`Completed ${result.count} students`, 'success');
+        const completedEl = document.getElementById('completedToday');
+        completedEl.textContent = (parseInt(completedEl.textContent) || 0) + (result.count || 0);
+        await loadQueue();
+      } else {
+        addLog(result.message || 'No serving tokens to complete', 'error');
+        showToast(result.message || 'No serving tokens to complete', 'error');
+      }
     } finally { if (btn) setLoading(btn, false); }
   }
 
@@ -1899,7 +1919,7 @@
 
   window.callNext = callNext; window.callStudent = callStudent; window.serveStudent = serveStudent;
   window.completeService = completeService; window.skipStudent = skipStudent; window.recallStudent = recallStudent;
-  window.callBatch = callBatch; window.serveAllBatch = serveAllBatch; window.recallAllBatch = recallAllBatch;
+  window.callBatch = callBatch; window.serveAllBatch = serveAllBatch; window.recallAllBatch = recallAllBatch; window.completeAllBatch = completeAllBatch;
   window.resetQueue = resetQueue; window.loadQueue = loadQueue; window.clearLog = clearLog;
   window.closeModal = closeModal; window.confirmAction = confirmAction; window.closeResetModal = closeResetModal;
   window.toggleOfficeAvailability = toggleOfficeAvailability; window.loadOfficeStatus = loadOfficeStatus;

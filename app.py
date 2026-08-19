@@ -2348,9 +2348,10 @@ def get_public_queues():
                 SELECT t.token_number, t.student_name
                 FROM university_tokens t
                 WHERE t.office_id = %s AND t.status = 'serving'
-                ORDER BY t.serving_started_at DESC LIMIT 1
+                ORDER BY t.serving_started_at DESC
             """, (office['id'],))
-            serving = cursor.fetchone()
+            serving_tokens = cursor.fetchall()
+            serving = serving_tokens[0] if serving_tokens else None
 
             cursor.execute("""
                 SELECT COUNT(*) as waiting_count FROM university_tokens
@@ -2368,6 +2369,7 @@ def get_public_queues():
                 'called_tokens': called_tokens,
                 'current_called': called['token_number'] if called else None,
                 'called_student': called['student_name'] if called else None,
+                'serving_tokens': serving_tokens,
                 'current_serving': serving['token_number'] if serving else None,
                 'serving_student': serving['student_name'] if serving else None,
                 'waiting_count': waiting_count['waiting_count'] if waiting_count else 0
@@ -2757,7 +2759,7 @@ def officer_serve_batch():
             cursor.execute("""
                 UPDATE university_tokens t
                 INNER JOIN officers o ON o.id = %s
-                SET t.status = 'completed', t.serving_started_at = NOW(), t.completed_at = NOW(),
+                SET t.status = 'serving', t.serving_started_at = NOW(),
                     t.assigned_officer_id = IFNULL(t.assigned_officer_id, o.id),
                     t.assigned_officer_number = COALESCE(t.assigned_officer_number, o.officer_number)
                 WHERE t.id = %s
@@ -2768,10 +2770,63 @@ def officer_serve_batch():
                         CONCAT('Started serving (batch serve all) - Student: ', IFNULL(%s, '')),
                         NOW())
             """, (token['token_number'], officer_id, token.get('student_name') or ''))
+
+        cursor.execute("""
+            UPDATE officers SET status='serving', last_activity=NOW()
+            WHERE id=%s
+        """, (officer_id,))
+
+        conn.commit()
+        return jsonify({
+            'success': True,
+            'count': len(batch),
+            'tokens': [t['token_number'] for t in batch]
+        })
+    except Exception as e:
+        conn.rollback()
+        logger.error(f"Error in serve-batch: {e}")
+        logger.error(traceback.format_exc())
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        cursor.close()
+        conn.close()
+
+
+@app.route('/api/officer/complete-batch', methods=['POST'])
+def officer_complete_batch():
+    data = request.get_json()
+    officer_id = data.get('officer_id')
+
+    conn = get_db_connection()
+    cursor = conn.cursor(dictionary=True)
+    try:
+        cursor.execute("SELECT office_id FROM officers WHERE id=%s", (officer_id,))
+        officer = cursor.fetchone()
+        if not officer:
+            return jsonify({'success': False, 'message': 'Officer not found'})
+
+        cursor.execute("""
+            SELECT id, token_number, student_name FROM university_tokens
+            WHERE office_id = %s AND status = 'serving'
+            ORDER BY serving_started_at ASC
+        """, (officer['office_id'],))
+        batch = cursor.fetchall()
+        if not batch:
+            return jsonify({'success': False, 'message': 'No serving tokens to complete'})
+
+        for token in batch:
+            cursor.execute("""
+                UPDATE university_tokens t
+                INNER JOIN officers o ON o.id = %s
+                SET t.status = 'completed', t.completed_at = NOW(),
+                    t.assigned_officer_id = IFNULL(t.assigned_officer_id, o.id),
+                    t.assigned_officer_number = COALESCE(t.assigned_officer_number, o.officer_number)
+                WHERE t.id = %s
+            """, (officer_id, token['id']))
             cursor.execute("""
                 INSERT INTO queue_logs (token_number, officer_id, action, action_details, created_at)
                 VALUES (%s, %s, 'completed',
-                        CONCAT('Completed (batch serve all) - Student: ', IFNULL(%s, '')),
+                        CONCAT('Completed (batch complete all) - Student: ', IFNULL(%s, '')),
                         NOW())
             """, (token['token_number'], officer_id, token.get('student_name') or ''))
 
@@ -2787,7 +2842,7 @@ def officer_serve_batch():
                 WHERE officer_id = %s AND status = 'active'
             """, (len(batch), officer_id))
         except Exception as se:
-            logger.warning(f"[SESSION] Failed to increment tokens_served (batch): {se}")
+            logger.warning(f"[SESSION] Failed to increment tokens_served (batch complete): {se}")
 
         conn.commit()
         return jsonify({
@@ -2797,7 +2852,7 @@ def officer_serve_batch():
         })
     except Exception as e:
         conn.rollback()
-        logger.error(f"Error in serve-batch: {e}")
+        logger.error(f"Error in complete-batch: {e}")
         logger.error(traceback.format_exc())
         return jsonify({'success': False, 'message': str(e)}), 500
     finally:
