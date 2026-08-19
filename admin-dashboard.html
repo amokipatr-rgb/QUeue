@@ -2381,7 +2381,7 @@
         }
 
         async function resetOfficeQueue(officeId) {
-            if (!confirm('Reset the queue counter so token numbering restarts from the first free number? Waiting students are not affected.')) return;
+            if (!confirm('Reset all waiting students for this office?')) return;
             if (!currentAdmin || !currentAdmin.id) {
                 showToast('Session expired. Sign in again.', 'error');
                 window.location.href = '/';

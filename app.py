@@ -1094,37 +1094,30 @@ def admin_reset_office_queue(office_id):
         if not office:
             return jsonify({'success': False, 'message': 'Office not found'}), 404
         
-        # ── OLD BEHAVIOR (rollback point): expire waiting/called + delete today's leftovers ──
-        # cursor.execute("""
-        #     UPDATE university_tokens
-        #     SET status = 'expired'
-        #     WHERE office_id = %s AND status IN ('waiting', 'called')
-        # """, (office_id,))
-        #
-        # cursor.execute("""
-        #     DELETE FROM university_tokens
-        #     WHERE office_id = %s
-        #     AND requested_at >= CURDATE()
-        #     AND status IN ('expired', 'skipped')
-        # """, (office_id,))
-
-        # ── NEW BEHAVIOR: counter-only reset (no deletion, no expire) ──
         cursor.execute("""
-            INSERT INTO queue_counters (office_id, last_number) VALUES (%s, 0)
-            ON DUPLICATE KEY UPDATE last_number = 0
+            UPDATE university_tokens
+            SET status = 'expired'
+            WHERE office_id = %s AND status IN ('waiting', 'called')
         """, (office_id,))
-
+        
+        cursor.execute("""
+            DELETE FROM university_tokens
+            WHERE office_id = %s 
+            AND requested_at >= CURDATE()
+            AND status IN ('expired', 'skipped')
+        """, (office_id,))
+        
         cursor.execute("""
             INSERT INTO queue_logs (token_number, officer_id, action, action_details, created_at)
             VALUES ('SYSTEM', %s, 'queue_reset', 
-                    CONCAT('Queue counter reset for ', %s, ' - numbering restarts from first free number'), NOW())
-        """, (officer_id, office['office_name']))
-
+                    CONCAT('Queue reset for ', %s, ' - Counter reset. Next token will be ', %s, '01'), NOW())
+        """, (officer_id, office['office_name'], office['office_code']))
+        
         conn.commit()
-
+        
         return jsonify({
-            'success': True,
-            'message': f'Queue counter reset for {office["office_name"]}. Numbering restarts from first free number.',
+            'success': True, 
+            'message': f'Queue reset for {office["office_name"]}. Next token will be {office["office_code"]}01',
             'next_token': f'{office["office_code"]}01'
         })
         
@@ -1542,19 +1535,6 @@ def generate_student_token():
 
         # ── NEW BEHAVIOR: students can get a token even without rating the previous one ──
 
-        # ── OLD BEHAVIOR (rollback point): plain counter increment ──
-        # cursor.execute("INSERT IGNORE INTO queue_counters (office_id, last_number) VALUES (%s, 0)", (office_id,))
-        # cursor.execute("""
-        #     UPDATE queue_counters
-        #     SET last_number = LAST_INSERT_ID(last_number + 1)
-        #     WHERE office_id = %s
-        # """, (office_id,))
-        # cursor.execute("SELECT LAST_INSERT_ID() AS next_num")
-        # result = cursor.fetchone()
-        # next_num = result['next_num']
-        # token_number = f"{office['office_code']}{str(next_num).zfill(2)}"
-
-        # ── NEW BEHAVIOR: counter increment + first free number (no duplicates) ──
         cursor.execute("INSERT IGNORE INTO queue_counters (office_id, last_number) VALUES (%s, 0)", (office_id,))
         cursor.execute("""
             UPDATE queue_counters
@@ -1564,14 +1544,6 @@ def generate_student_token():
         cursor.execute("SELECT LAST_INSERT_ID() AS next_num")
         result = cursor.fetchone()
         next_num = result['next_num']
-        cursor.execute("SELECT token_number FROM university_tokens WHERE office_id = %s", (office_id,))
-        used = set()
-        for r in cursor.fetchall():
-            tail = r['token_number'][len(office['office_code']):]
-            if tail.isdigit():
-                used.add(int(tail))
-        while next_num in used:
-            next_num += 1
         token_number = f"{office['office_code']}{str(next_num).zfill(2)}"
 
         print(f"Token generated: {token_number} (counter={next_num})")
