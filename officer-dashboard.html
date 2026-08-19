@@ -146,6 +146,20 @@
     .serving-service-name{ font-size: 13px; opacity: 0.75; margin-top: 8px; display: flex; align-items: center; justify-content: center; gap: 6px; }
     .serving-status-text { font-size: 12px; font-weight: 600; margin-top: 6px; color: var(--green-accent); display: flex; align-items: center; justify-content: center; gap: 5px; }
 
+    /* BATCH SERVING */
+    .serving-batch { text-align: left; padding: 18px; }
+    .batch-rows { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+    .batch-row { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15); border-radius: 10px; padding: 10px 12px; display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; }
+    .batch-row-token { font-family: var(--mono); font-size: 20px; font-weight: 500; color: var(--gold); letter-spacing: 1px; min-width: 74px; }
+    .batch-row-info { min-width: 0; }
+    .batch-row-name { font-size: 13px; font-weight: 600; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .batch-row-service { font-size: 11px; opacity: 0.7; }
+    .batch-row-actions { display: flex; gap: 5px; }
+    .batch-row-actions .action-btn { padding: 7px 9px; font-size: 10.5px; white-space: nowrap; }
+    .batch-row-actions .btn-serve, .batch-row-actions .btn-complete { grid-column: auto; }
+    .batch-status-line { font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; opacity: 0.55; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
+    .batch-select { padding: 9px 10px; border-radius: var(--radius); border: 1px solid var(--border); font-size: 13px; font-family: var(--font); font-weight: 600; background: var(--white); color: var(--text); }
+
     /* ACTION BTNS */
     .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     .action-btn  { padding: 11px 10px; border: none; border-radius: var(--radius); font-size: 12px; font-weight: 600; font-family: var(--font); cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 7px; }
@@ -754,6 +768,7 @@
   let pendingAction = null;
   let allMessages = [];
   let isProcessingCall = false;
+  let batchSize = 1;
   let refreshInterval = null;
 
   // ============================================
@@ -1070,23 +1085,50 @@
     const statusDot = document.getElementById('statusDot');
     const statusText = document.getElementById('officerStatus');
     const tokenBadge = document.getElementById('currentTokenBadge');
-    if (result.current && result.current.status !== 'completed') {
-      currentServing = result.current.token_number;
-      const isCalled = result.current.status === 'called';
-      servEl.innerHTML = `<div class="serving-hero"><div class="serving-label">${isCalled ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.5 12.38a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.41 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.29 6.29l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Now Called' : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Now Serving'}</div><div class="serving-token-num">${result.current.token_number}</div><div class="serving-service-name"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg> ${result.current.service_name || result.current.service_code}</div><div class="serving-status-text"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> ${isCalled ? 'Called — please proceed to window' : 'Being served now'}</div></div><div class="action-grid">${isCalled ? '<button class="action-btn btn-serve" onclick="serveStudent()">' + ic.play + ' Start Serving</button>' : '<button class="action-btn btn-complete" onclick="completeService()">' + ic.check + ' Complete</button>'}<button class="action-btn btn-recall" onclick="recallStudent()">${ic.repeat} Recall</button><button class="action-btn btn-skip" onclick="skipStudent()">${ic.skip} Skip</button><button class="action-btn btn-reset" onclick="resetQueue()">${ic.reset} Reset Queue</button></div>`;
-      statusDot.className = 'status-dot dot-amber';
-      statusText.textContent = isCalled ? 'Called' : 'Serving';
-      tokenBadge.textContent = result.current.token_number;
-      tokenBadge.style.display = 'inline-block';
-      document.getElementById('servingCount').textContent = 1;
+    if (result.current_tokens && result.current_tokens.length) {
+      const tokens = result.current_tokens.filter(t => t.status !== 'completed');
+      const total = tokens.length;
+      const anyServing = tokens.some(t => t.status === 'serving');
+      currentServing = tokens[0] ? tokens[0].token_number : null;
+
+      if (total > 1) {
+        const rowsHtml = tokens.map(t => {
+          const isServing = t.status === 'serving';
+          const actionBtn = isServing
+            ? `<button class="action-btn btn-complete" onclick="completeToken('${t.token_number}', this)">${ic.check} Complete</button>`
+            : `<button class="action-btn btn-serve" onclick="serveToken('${t.token_number}', this)">${ic.play} Start Serving</button>`;
+          return `<div class="batch-row">
+            <div class="batch-row-token">${t.token_number}</div>
+            <div class="batch-row-info"><div class="batch-row-name">${t.student_name || 'Student'}</div><div class="batch-row-service">${t.service_name || t.service_code || ''}</div></div>
+            <div class="batch-row-actions">${actionBtn}<button class="action-btn btn-skip" onclick="skipToken('${t.token_number}', this)">${ic.skip} Skip</button><button class="action-btn btn-recall" onclick="recallToken('${t.token_number}', this)">${ic.repeat} Recall</button></div>
+          </div>`;
+        }).join('');
+        servEl.innerHTML = `<div class="serving-hero serving-batch"><div class="serving-label">${anyServing ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Batch Serving' : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.5 12.38a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.41 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.29 6.29l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Batch Called'}</div><div class="batch-status-line">${total} tokens called — proceed one at a time to the window</div><div class="batch-rows">${rowsHtml}</div></div><div class="action-grid"><button class="action-btn btn-reset" onclick="resetQueue()">${ic.reset} Reset Queue</button></div>`;
+        statusDot.className = 'status-dot dot-amber';
+        statusText.textContent = anyServing ? 'Serving' : 'Called';
+        tokenBadge.textContent = currentServing || tokens[0].token_number;
+        tokenBadge.style.display = 'inline-block';
+        document.getElementById('servingCount').textContent = total;
+      } else {
+        const t = tokens[0];
+        const isCalled = t.status === 'called';
+        servEl.innerHTML = `<div class="serving-hero"><div class="serving-label">${isCalled ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.5 12.38a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.41 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.29 6.29l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Now Called' : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Now Serving'}</div><div class="serving-token-num">${t.token_number}</div><div class="serving-service-name"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg> ${t.service_name || t.service_code}</div><div class="serving-status-text"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> ${isCalled ? 'Called — please proceed to window' : 'Being served now'}</div></div><div class="action-grid">${isCalled ? '<button class="action-btn btn-serve" onclick="serveStudent()">' + ic.play + ' Start Serving</button>' : '<button class="action-btn btn-complete" onclick="completeService()">' + ic.check + ' Complete</button>'}<button class="action-btn btn-recall" onclick="recallStudent()">${ic.repeat} Recall</button><button class="action-btn btn-skip" onclick="skipStudent()">${ic.skip} Skip</button><button class="action-btn btn-reset" onclick="resetQueue()">${ic.reset} Reset Queue</button></div>`;
+        statusDot.className = 'status-dot dot-amber';
+        statusText.textContent = isCalled ? 'Called' : 'Serving';
+        tokenBadge.textContent = t.token_number;
+        tokenBadge.style.display = 'inline-block';
+        document.getElementById('servingCount').textContent = 1;
+      }
     } else {
       currentServing = null;
-      servEl.innerHTML = `<div class="empty" style="margin-bottom:14px;"><div class="empty-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div class="empty-text">No student being served</div></div><div class="action-grid"><button class="action-btn btn-next" onclick="callNext()">${ic.callnext} Call Next Student</button><button class="action-btn btn-reset" onclick="resetQueue()">${ic.reset} Reset Queue</button></div>`;
+      servEl.innerHTML = `<div class="empty" style="margin-bottom:14px;"><div class="empty-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div class="empty-text">No student being served</div></div><div class="action-grid"><button class="action-btn btn-next" onclick="callNext()">${ic.callnext} Call Next Student</button><button class="action-btn btn-reset" onclick="resetQueue()">${ic.reset} Reset Queue</button></div><div style="display:flex;gap:8px;align-items:center;margin-top:10px;justify-content:center;"><select class="batch-select" id="batchSizeSelect" onchange="batchSize=parseInt(this.value)"><option value="1">1</option><option value="3">3</option><option value="5">5</option><option value="10">10</option></select><button class="action-btn btn-next" style="grid-column:auto;flex:1;max-width:220px" onclick="callBatch()">${ic.callnext} Call Batch</button></div>`;
       statusDot.className = 'status-dot dot-green';
       statusText.textContent = 'Available';
       tokenBadge.style.display = 'none';
       document.getElementById('servingCount').textContent = 0;
     }
+    const sel = document.getElementById('batchSizeSelect');
+    if (sel) sel.value = batchSize;
   }
 
   async function callNext() {
@@ -1125,6 +1167,87 @@
         showToast(result.message || 'Failed to call student', 'error');
       }
     } finally { isProcessingCall = false; setLoading(btn, false); }
+  }
+
+  async function callBatch() {
+    if (isProcessingCall) { showToast('Already processing a call, please wait...', 'warning'); return; }
+    const size = parseInt(batchSize) || 1;
+    const btn = document.querySelector('#batchSizeSelect');
+    const btnEl = btn ? btn.nextElementSibling : null;
+    if (btnEl) setLoading(btnEl, true);
+    isProcessingCall = true;
+    addLog(`Calling batch of ${size}…`);
+    try {
+      await autoCompleteCurrentServing();
+      const result = await apiCall('/api/officer/call-batch', 'POST', { officer_id: currentOfficer.id, officer_number: currentOfficer.officer_number, batch_size: size });
+      if (result.success) {
+        const called = (result.tokens || []).map(t => t.token_number).join(', ');
+        addLog(`Called batch: ${called}`, 'success');
+        showToast(`Called ${called}`, 'success');
+        await loadQueue();
+      } else {
+        addLog(result.message || 'No students waiting', 'error');
+        showToast(result.message || 'No students waiting', 'error');
+      }
+    } finally { isProcessingCall = false; if (btnEl) setLoading(btnEl, false); }
+  }
+
+  async function serveToken(tokenNumber, btn) {
+    setLoading(btn, true);
+    try {
+      const result = await apiCall('/api/officer/serve', 'POST', { officer_id: currentOfficer.id, token_number: tokenNumber });
+      if (result.success) {
+        addLog(`Now serving ${tokenNumber}`, 'success');
+        showToast(`Now serving ${tokenNumber}`, 'success');
+        await loadQueue();
+      } else {
+        showToast(result.message || 'Failed to start serving', 'error');
+      }
+    } finally { setLoading(btn, false); }
+  }
+
+  async function completeToken(tokenNumber, btn) {
+    setLoading(btn, true);
+    try {
+      const result = await apiCall('/api/officer/complete', 'POST', { officer_id: currentOfficer.id, token_number: tokenNumber });
+      if (result.success) {
+        addLog(`Completed ${tokenNumber}`, 'success');
+        showToast(`Service completed for ${tokenNumber}`, 'success');
+        const completedEl = document.getElementById('completedToday');
+        completedEl.textContent = (parseInt(completedEl.textContent) || 0) + 1;
+        await loadQueue();
+      } else {
+        showToast(result.message || 'Failed to complete service', 'error');
+      }
+    } finally { setLoading(btn, false); }
+  }
+
+  async function skipToken(tokenNumber, btn) {
+    setLoading(btn, true);
+    try {
+      const result = await apiCall('/api/officer/skip', 'POST', { officer_id: currentOfficer.id, token_number: tokenNumber });
+      if (result.success) {
+        addLog(`Skipped ${tokenNumber}`, 'warning');
+        showToast(`${tokenNumber} skipped`, 'warning');
+        await loadQueue();
+      } else {
+        showToast(result.message || 'Failed to skip', 'error');
+      }
+    } finally { setLoading(btn, false); }
+  }
+
+  async function recallToken(tokenNumber, btn) {
+    setLoading(btn, true);
+    addLog(`Recalling ${tokenNumber}…`);
+    try {
+      const result = await apiCall('/api/officer/recall', 'POST', { officer_id: currentOfficer.id, token_number: tokenNumber });
+      if (result.success) {
+        addLog(`Recall sent for ${tokenNumber}`, 'success');
+        showToast(`Recall sent for ${tokenNumber}`, 'info');
+      } else {
+        showToast(result.message || 'Recall failed', 'error');
+      }
+    } finally { setLoading(btn, false); }
   }
 
   async function serveStudent() {

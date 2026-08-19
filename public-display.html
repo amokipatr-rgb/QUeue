@@ -95,6 +95,11 @@
             50% { box-shadow: 0 0 40px rgba(255,193,7,0.5); }
         }
 
+        .batch-token-row { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 10px; }
+        .batch-token-row .token-number { margin: 0; }
+        .batch-token-row .token-sep { color: rgba(255,152,0,0.4); font-size: 28px; font-weight: 700; }
+        .batch-names { margin-top: 4px; font-size: 15px; color: rgba(255,255,255,0.8); }
+
         /* ── SERVING CARD ── */
         .serving-card {
             background: #000d03;
@@ -1046,6 +1051,61 @@
             });
         }
 
+        async function generateVoiceBatch(tokens, officeName) {
+            const batchSig = (tokens || []).map(t => t.token_number).join(',');
+            const annKey = `batch|${batchSig}|${officeName}|called`;
+            const annNow = Date.now();
+            if (recentAnnouncements[annKey] && annNow - recentAnnouncements[annKey] < 5000) {
+                return;
+            }
+            recentAnnouncements[annKey] = annNow;
+
+            const vi = document.getElementById('voiceIndicator');
+            const vt = document.getElementById('voiceText');
+            const withNames = tokens.filter(t => t.student_name && t.student_name.trim() !== '');
+            
+            let text;
+            if (withNames.length === tokens.length) {
+                const parts = tokens.map(t => `${t.student_name} with token ${t.token_number.split('').join(' ')}`);
+                text = `Now calling ${parts.join(', ')}. Please proceed to ${officeName}.`;
+            } else {
+                const spelled = tokens.map(t => t.token_number.split('').join(' ')).join(', ');
+                text = `Now calling tokens ${spelled}. Please proceed to ${officeName}.`;
+            }
+
+            vt.textContent = `Announcing ${batchSig}...`;
+            vi.style.borderColor = 'rgba(255,193,7,0.4)';
+            
+            try {
+                const response = await fetch('/api/tts', {
+                    method: 'POST',
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ text })
+                });
+                if (response.ok) {
+                    const blob = await response.blob();
+                    const el = document.createElement('video');
+                    el.playsInline = true;
+                    el.style.cssText = 'position:fixed;width:0;height:0;opacity:0;pointer-events:none';
+                    el.src = URL.createObjectURL(blob);
+                    el.load();
+                    document.body.appendChild(el);
+                    audioQueue.push(el); 
+                    playNextAudio();
+                    vt.textContent = `Done: ${batchSig}`;
+                    vi.style.borderColor = 'rgba(0,230,118,0.3)';
+                    setTimeout(() => { 
+                        vt.textContent = 'Voice SMQSS Ready'; 
+                        vi.style.borderColor = 'rgba(255,255,255,0.08)'; 
+                    }, 2000);
+                }
+            } catch(e) { 
+                console.error('Voice error:', e); 
+                vt.textContent = 'Voice Error'; 
+                setTimeout(() => { vt.textContent = 'Voice SMQSS Ready'; }, 2000); 
+            }
+        }
+
         function showRecallBanner(token, officeName, studentName) {
             document.querySelector('.recall-banner')?.remove();
             const b = document.createElement('div');
@@ -1237,19 +1297,35 @@
 
             for (const office of queues) {
                 totalWaiting += office.waiting_count || 0;
-                if (office.current_called) {
+                const calledList = (office.called_tokens || []).filter(t => t.token_number);
+                if (calledList.length) {
                     activeTokens.push({ 
                         type: 'called', 
-                        token: office.current_called, 
+                        tokens: calledList,
+                        token: calledList[0].token_number, 
                         officeName: office.office_name,
-                        studentName: office.called_student || ''
+                        studentName: calledList[0].student_name || ''
                     });
                     totalCalled++;
                     
-                    if (lastCalledTokens[office.office_code] !== office.current_called) {
-                        lastCalledTokens[office.office_code] = office.current_called;
-                        generateVoice(office.current_called, office.called_student, office.office_name, 'called');
+                    if (!lastCalledTokens[office.office_code]) lastCalledTokens[office.office_code] = new Set();
+                    const calledSet = new Set(calledList.map(t => t.token_number));
+                    const newTokens = calledList.filter(t => !lastCalledTokens[office.office_code].has(t.token_number));
+                    if (newTokens.length) {
+                        newTokens.forEach(t => lastCalledTokens[office.office_code].add(t.token_number));
+                        if (newTokens.length > 1) {
+                            generateVoiceBatch(newTokens, office.office_name);
+                        } else {
+                            generateVoice(newTokens[0].token_number, newTokens[0].student_name, office.office_name, 'called');
+                        }
                     }
+                    for (const t of [...lastCalledTokens[office.office_code]]) {
+                        if (!calledSet.has(t) && t !== office.current_serving) {
+                            lastCalledTokens[office.office_code].delete(t);
+                        }
+                    }
+                } else if (lastCalledTokens[office.office_code]) {
+                    lastCalledTokens[office.office_code] = new Set();
                 }
                 if (office.current_serving) {
                     activeTokens.push({ 
@@ -1276,17 +1352,35 @@
                 activeGrid.style.display = 'grid';
                 document.getElementById('noticesUpNext').style.display = 'none';
 
-                var html = activeTokens.map(t => `
-                    <div class="${t.type}-card">
-                        <div class="status-badge badge-${t.type}">
-                            <span class="badge-dot"></span>
-                            ${t.type === 'called' ? 'CALLED — PLEASE PROCEED' : 'BEING SERVED NOW'}
+                var html = activeTokens.map(t => {
+                    if (t.type === 'called' && t.tokens && t.tokens.length > 1) {
+                        const tokenHtml = t.tokens.map(tk => `<span class="token-number">${escapeHtml(tk.token_number)}</span>`).join('<span class="token-sep">·</span>');
+                        const nameHtml = t.tokens.map(tk => tk.student_name).filter(n => n && n.trim()).map(n => escapeHtml(truncateName(n)));
+                        const namesStr = nameHtml.length ? nameHtml.join(', ') : '';
+                        return `
+                            <div class="called-card">
+                                <div class="status-badge badge-called">
+                                    <span class="badge-dot"></span>
+                                    CALLED — PLEASE PROCEED
+                                </div>
+                                <div class="batch-token-row">${tokenHtml}</div>
+                                ${namesStr ? `<div class="batch-names">${namesStr}</div>` : ''}
+                                <div class="office-name">${escapeHtml(t.officeName)}</div>
+                            </div>
+                        `;
+                    }
+                    return `
+                        <div class="${t.type}-card">
+                            <div class="status-badge badge-${t.type}">
+                                <span class="badge-dot"></span>
+                                ${t.type === 'called' ? 'CALLED — PLEASE PROCEED' : 'BEING SERVED NOW'}
+                            </div>
+                            <div class="token-number">${t.token}</div>
+                            ${t.studentName ? `<div class="student-name">${escapeHtml(truncateName(t.studentName))}</div>` : ''}
+                            <div class="office-name">${escapeHtml(t.officeName)}</div>
                         </div>
-                        <div class="token-number">${t.token}</div>
-                        ${t.studentName ? `<div class="student-name">${escapeHtml(truncateName(t.studentName))}</div>` : ''}
-                        <div class="office-name">${escapeHtml(t.officeName)}</div>
-                    </div>
-                `).join('');
+                    `;
+                }).join('');
                 var key = activeTokens.map(function(t){return t.type+':'+t.token}).join('|');
                 if (activeGrid.dataset.key !== key) { activeGrid.dataset.key = key; activeGrid.innerHTML = html; }
                 var calledEl = document.getElementById('totalCalled');
