@@ -152,7 +152,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--ink)
       <div id="ratingSection"></div>
       <div class="btn-row">
         <a class="btn-back" href="/student-token.html">← Back</a>
-        <button class="btn" id="submitBtn" onclick="submitRating()" disabled>Submit Feedback</button>
+        <button class="btn" id="submitBtn" onclick="submitRating()" disabled>Submit Your Ratings</button>
       </div>
     </div>
 
@@ -253,6 +253,7 @@ if (backLink) {
 const API_BASE = window.location.origin;
 let currentToken = null;
 let selectedRating = 0;
+let isComplaintMode = false;
 
 
 document.getElementById('tokenInput').addEventListener('keydown', function(e){
@@ -346,6 +347,7 @@ async function lookupToken(){
     var bubble = document.querySelector('#tokenInfo .chat-bubble');
     typeWriter(bubble, statusMessage(t.student_name, t.office_name, t.office_code, t.service_name, t.status), 30, function(){
       var isCompleted = t.status === 'completed';
+      isComplaintMode = !isCompleted;
 
     document.getElementById('ratingSection').innerHTML =
       '<div class="rating-title'+(isCompleted?'':' complaint')+'">'+(isCompleted?'How was your experience?':'Report an Issue')+'</div>'+
@@ -363,7 +365,7 @@ async function lookupToken(){
         '<label for="feedbackText">'+(isCompleted?'Additional comments (optional)':'Describe your issue *')+'</label>'+
         '<textarea id="feedbackText" placeholder="Tell us what went well or what went wrong — e.g. quick service, friendly staff, or long wait, skipped..."></textarea>'+
       '</div>';
-    document.getElementById('submitBtn').textContent = isCompleted ? 'Submit Feedback' : 'Submit Complaint';
+    document.getElementById('submitBtn').textContent = 'Submit Your Ratings';
     selectedRating = 0;
     document.getElementById('submitBtn').disabled = true;
     });
@@ -390,7 +392,7 @@ async function submitRating(){
 
   const feedbackText = document.getElementById('feedbackText') ? document.getElementById('feedbackText').value.trim() : '';
 
-  var isComplaint = currentToken && document.getElementById('submitBtn').textContent === 'Submit Complaint';
+  var isComplaint = isComplaintMode;
   if(isComplaint && !feedbackText){
     showError('Please describe your issue before submitting.');
     return;
@@ -411,7 +413,7 @@ async function submitRating(){
     });
     const data = await res.json();
     if(data.success){
-      var isComplaint = document.getElementById('submitBtn').textContent === 'Submit Complaint';
+      var isComplaint = isComplaintMode;
       document.getElementById('confirmText').textContent = isComplaint
         ? 'We have received your complaint. Our team will review it and follow up. Thank you for helping us improve.'
         : 'Your feedback has been recorded. It helps us improve our service delivery for everyone at Makerere University.';
