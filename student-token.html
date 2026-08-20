@@ -557,10 +557,8 @@ let selectedOffice=null, selectedService=null;
 let currentStep=0;
 
 function checkOfficeHours(){
- // TEMP DISABLED for testing — office-hours gate commented out
- // var h=new Date().getHours();
- // var open=h>=8&&h<17;
- var open=true;
+ var h=new Date().getHours();
+ var open=h>=8&&h<17;
  var banner=document.getElementById('closedBanner');
  var btn=document.getElementById('getStartedBtn');
  var desc=btn?btn.nextElementSibling:null;
@@ -581,8 +579,7 @@ function buildHeaderTicker(){
  var inner=document.getElementById('headerTickerInner');
  if(!inner)return;
  var h=new Date().getHours();
- // var open=h>=8&&h<17; // TEMP DISABLED for testing
- var open=true;
+ var open=h>=8&&h<17;
  var items=open
   ? ['👉 To get started, click "Get My Token"','◆ Select your preferred office and service','◆ Enter your name and student number and click get my token','◆ 🖥️ Watch the public display for your turn','◆ 🙏 Thank you for using our service']
   : ['🕒 Offices are currently closed','◆ Operating hours: 8:00 AM – 5:00 PM','◆ You can only rate service for now','◆ 🙏 Thank you for your understanding'];
