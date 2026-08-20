@@ -1067,10 +1067,12 @@
             let text;
             if (withNames.length === tokens.length) {
                 const parts = tokens.map(t => `${t.student_name} with token ${t.token_number.split('').join(' ')}`);
-                text = `Attention Please, the following ${parts.join(', ')}, please proceed to ${officeName}.`;
+                const list = parts.slice(0, -1).join(', ') + (parts.length > 1 ? ' and ' : '') + parts[parts.length - 1];
+                text = `Attention please. The following people, including ${list}, are requested to proceed to ${officeName}.`;
             } else {
-                const spelled = tokens.map(t => t.token_number.split('').join(' ')).join(', ');
-                text = `Attention Please, the following tokens ${spelled}, please proceed to ${officeName}.`;
+                const spelled = tokens.map(t => t.token_number.split('').join(' '));
+                const list = spelled.slice(0, -1).join(', ') + (spelled.length > 1 ? ' and ' : '') + spelled[spelled.length - 1];
+                text = `Attention please. The following people, including token ${list}, are requested to proceed to ${officeName}.`;
             }
 
             vt.textContent = `Announcing ${batchSig}...`;
