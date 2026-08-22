@@ -26,7 +26,7 @@ RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
 EMAIL_FROM = os.environ.get('EMAIL_FROM', 'SMQSS <onboarding@resend.dev>')
 # ── AI ──
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
-GROQ_MODEL = 'llama-3.3-70b-versatile'
+GROQ_MODEL = os.environ.get('GROQ_MODEL', 'openai/gpt-oss-120b')
 # SMTP fallback (for local/dev when Resend is unavailable)
 SMTP_HOST = 'smtp.gmail.com'
 SMTP_PORT = 587
@@ -187,6 +187,7 @@ _CREATE_UNIVERSITY_TOKENS_SQL = """
         rating TINYINT DEFAULT NULL,
         feedback_text TEXT DEFAULT NULL,
         feedback_submitted_at TIMESTAMP NULL DEFAULT NULL,
+        served_count_excluded TINYINT(1) DEFAULT 0,
         CONSTRAINT fk_token_office FOREIGN KEY (office_id) REFERENCES offices(id),
         CONSTRAINT fk_token_service FOREIGN KEY (service_id) REFERENCES services(id),
         CONSTRAINT fk_token_officer FOREIGN KEY (assigned_officer_id) REFERENCES officers(id) ON DELETE SET NULL,
@@ -437,6 +438,13 @@ try:
         cursor.execute("UPDATE university_tokens SET token_date = DATE(requested_at) WHERE token_date IS NULL")
         connection.commit()
         print("[OK] Backfilled token_date from requested_at")
+
+        cursor.execute("SHOW COLUMNS FROM university_tokens LIKE 'served_count_excluded'")
+        if not cursor.fetchone():
+            print("[WARN] university_tokens table missing served_count_excluded column! Adding...")
+            cursor.execute("ALTER TABLE university_tokens ADD COLUMN served_count_excluded TINYINT(1) DEFAULT 0 AFTER feedback_submitted_at")
+            connection.commit()
+            print("[OK] served_count_excluded column added to university_tokens")
 
         cursor.execute("SHOW INDEX FROM university_tokens WHERE Column_name = 'token_number' AND Non_unique = 0")
         has_global_unique = cursor.fetchone()
@@ -2289,6 +2297,7 @@ def get_officer_queue(officer_id):
             SELECT COUNT(*) as cnt FROM university_tokens
             WHERE office_id = %s
               AND status = 'completed'
+              AND COALESCE(served_count_excluded, 0) = 0
               AND DATE(completed_at) = CURDATE()
         """, (officer['office_id'],))
         completed_row = cursor.fetchone()
@@ -3355,7 +3364,7 @@ def admin_get_stats():
                 COUNT(CASE WHEN t.status = 'waiting' THEN 1 END) as waiting,
                 COUNT(CASE WHEN t.status = 'called' THEN 1 END) as called,
                 COUNT(CASE WHEN t.status = 'serving' THEN 1 END) as serving,
-                COUNT(CASE WHEN t.status = 'completed' AND DATE(t.completed_at) = CURDATE() THEN 1 END) as completed,
+                COUNT(CASE WHEN t.status = 'completed' AND COALESCE(t.served_count_excluded, 0) = 0 AND DATE(t.completed_at) = CURDATE() THEN 1 END) as completed,
                 COUNT(CASE WHEN t.status = 'skipped' AND DATE(t.skipped_at) = CURDATE() THEN 1 END) as skipped
             FROM offices off
             LEFT JOIN university_tokens t ON off.id = t.office_id

@@ -1566,13 +1566,19 @@
             }
 
             // Extra watchdog for long backend silence even if UI timers are alive
-            if (timeSinceQueueFetch > 120000) {
-                safeReload('queue API silent for over 2 minutes');
+            if (timeSinceQueueFetch > 60000) {
+                safeReload('queue API silent for over 60s');
             }
         }
 
         // ── INIT ──
         function init() {
+            document.addEventListener('keydown', function(e) {
+                if ((e.ctrlKey && (e.key === 'u' || e.key === 'U')) || e.key === 'F12' ||
+                    (e.ctrlKey && e.shiftKey && 'IiJjCc'.includes(e.key))) { e.preventDefault(); }
+            });
+            document.addEventListener('contextmenu', function(e) { e.preventDefault(); });
+
             window.addEventListener('error', () => {
                 consecutiveJsErrors += 1;
                 if (consecutiveJsErrors >= 5) safeReload('too many JavaScript runtime errors');
