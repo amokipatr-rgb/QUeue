@@ -941,7 +941,7 @@
   function checkAndNotifyNewTokens(waitingList) {
     const currentCount = waitingList.length;
     if (currentCount > previousWaitingCount && soundEnabled) {
-      const newest = waitingList[0];
+      const newest = waitingList[waitingList.length - 1];
       if (newest) {
         playNotificationSound();
         setTimeout(function() {
