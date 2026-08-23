@@ -798,6 +798,8 @@
   let soundEnabled = true;
   let previousWaitingCount = 0;
   let notificationStatus = 'default'; // default, granted, denied
+  let voiceQueue = [];
+  let isVoicePlaying = false;
 
   function updateNotificationStatus() {
     const dot = document.getElementById('notifDot');
@@ -924,9 +926,23 @@
       if (res.ok) {
         const blob = await res.blob();
         const audio = new Audio(URL.createObjectURL(blob));
-        audio.play().catch(e => console.log('Token voice error:', e));
+        voiceQueue.push(audio);
+        playNextVoice();
       }
     } catch (e) { console.error('Token voice error:', e); }
+  }
+
+  function playNextVoice() {
+    if (isVoicePlaying || !voiceQueue.length) return;
+    isVoicePlaying = true;
+    const audio = voiceQueue[0];
+    audio.onended = function() {
+      voiceQueue.shift();
+      URL.revokeObjectURL(audio.src);
+      isVoicePlaying = false;
+      playNextVoice();
+    };
+    audio.play().catch(function() { isVoicePlaying = false; });
   }
 
   function showBrowserNotification(tokenNumber, studentName) {
@@ -1085,7 +1101,8 @@
       if (res.ok) {
         const blob = await res.blob();
         const audio = new Audio(URL.createObjectURL(blob));
-        audio.play().catch(e => console.log('Welcome audio error:', e));
+        voiceQueue.push(audio);
+        playNextVoice();
       }
     } catch (e) { console.error('Welcome voice error:', e); }
   }
