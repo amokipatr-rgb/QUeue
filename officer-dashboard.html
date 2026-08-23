@@ -909,6 +909,26 @@
     } catch(e) { console.log('Audio error:', e); }
   }
 
+  async function playTokenVoice(tokenNumber, studentName) {
+    if (!soundEnabled) return;
+    const spelled = tokenNumber.split('').join(' ');
+    const text = studentName
+      ? `New token. Token ${spelled}. ${studentName} is waiting.`
+      : `New token. Token ${spelled}. Please attend.`;
+    try {
+      const res = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const audio = new Audio(URL.createObjectURL(blob));
+        audio.play().catch(e => console.log('Token voice error:', e));
+      }
+    } catch (e) { console.error('Token voice error:', e); }
+  }
+
   function showBrowserNotification(tokenNumber, studentName) {
     if (!soundEnabled) return;
     if (notificationStatus !== 'granted') return;
@@ -924,6 +944,9 @@
       const newest = waitingList[0];
       if (newest) {
         playNotificationSound();
+        setTimeout(function() {
+          playTokenVoice(newest.token_number, newest.student_name);
+        }, 270);
         showBrowserNotification(newest.token_number, newest.student_name);
         showToast(`🎫 New token: ${newest.token_number} - ${newest.student_name || 'Student'}`, 'info');
         addLog(`🔔 New token arrived: ${newest.token_number}`, 'info');
@@ -1924,7 +1947,7 @@
       loadOfficeStatus(),
       loadQueue()
     ]);
-    refreshInterval = setInterval(loadQueue, 5000);
+    refreshInterval = setInterval(loadQueue, 2000);
     setInterval(loadOfficeStatus, 30000);
     document.getElementById('messageIconBtn').addEventListener('click', openMessageModal);
     checkSystemRating();
