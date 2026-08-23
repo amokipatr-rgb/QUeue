@@ -143,7 +143,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--ink)
         <div style="flex:1;height:1px;background:var(--border)"></div>
       </div>
       <div class="btn-row">
-        <button class="btn" onclick="openGeneralComplaint()" style="background:var(--white);color:var(--mak-green);border:2px solid var(--mak-green);box-shadow:none;font-weight:600">Submit a General Complaint</button>
+        <button class="btn" onclick="openGeneralComplaint()" style="background:var(--white);color:var(--mak-green);border:2px solid var(--mak-green);box-shadow:none;font-weight:600">Submit a Request</button>
       </div>
     </div>
 
@@ -210,19 +210,19 @@ body{font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--ink)
         <input type="email" id="gcEmail" placeholder="e.g. you@example.com">
       </div>
       <div class="field">
-        <label for="gcText">Your Complaint</label>
-        <textarea id="gcText" rows="4" placeholder="Describe your complaint in detail..."></textarea>
+        <label for="gcText">Your Request</label>
+        <textarea id="gcText" rows="4" placeholder="Describe your request in detail..."></textarea>
       </div>
       <div class="btn-row" style="display:flex;gap:10px;justify-content:center">
         <button class="btn-back" onclick="goToStep('step0', true)">← Back</button>
-        <button class="btn" onclick="submitGeneralComplaint()">Submit Complaint</button>
+        <button class="btn" onclick="submitGeneralComplaint()">Submit Request</button>
       </div>
     </div>
 
     <div class="step-content" id="step4">
       <div class="confirm-icon"><svg viewBox="0 0 24 24"><polyline points="2,12 8,18 22,4" stroke="white" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
-      <div class="confirm-title">Complaint Received</div>
-      <p class="confirm-desc">Your complaint has been submitted. Our team will review it and follow up. Thank you for helping us improve.</p>
+      <div class="confirm-title">Request Received</div>
+      <p class="confirm-desc">Your request has been submitted. Our team will review it and follow up. Thank you for helping us improve.</p>
       <div class="btn-row">
         <button class="btn-back" onclick="window.location.href='/student-token'">← Back to Home</button>
       </div>
@@ -501,7 +501,7 @@ async function submitGeneralComplaint(){
   var email = document.getElementById('gcEmail').value.trim();
 
   if(!category){ showGcError('Please select a category.'); return; }
-  if(!complaintText){ showGcError('Please describe your complaint.'); return; }
+  if(!complaintText){ showGcError('Please describe your request.'); return; }
   if(!email){ showGcError('Please enter your email address for follow-up.'); return; }
 
   var payload = {
@@ -532,7 +532,7 @@ async function submitGeneralComplaint(){
     if(data.success){
       goToStep('step4', true);
     } else {
-      showGcError(data.message || 'Failed to submit complaint.');
+      showGcError(data.message || 'Failed to submit request.');
     }
   } catch(err){
     showGcError('Network error. Please try again.');
