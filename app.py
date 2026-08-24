@@ -697,6 +697,62 @@ def get_db_connection():
 
 # ── OFFICER SESSION HELPERS ──
 END_OF_DAY_HOUR = 17  # working day ends at 5 PM (8 AM - 5 PM operating hours)
+WORK_START_HOUR = 8   # 8:00 AM
+WORK_END_HOUR = 17    # 5:00 PM
+
+def calc_daily_attendance(sessions):
+    """Calculate daily attendance from first-login/last-logout, clamped to 8 AM–5 PM.
+
+    Args:
+        sessions: list of dicts with 'login_time', 'logout_time' (datetime objects or strings),
+                  and optional 'tokens_served' (int).
+    Returns:
+        dict with first_login, last_logout, effective_start, effective_end,
+        duration_minutes, tokens_served — or None if no sessions.
+    """
+    if not sessions:
+        return None
+
+    login_times = []
+    logout_times = []
+    total_served = 0
+
+    for s in sessions:
+        lt = s['login_time']
+        if isinstance(lt, str):
+            lt = datetime.fromisoformat(lt)
+        login_times.append(lt)
+
+        lo = s.get('logout_time')
+        if lo:
+            if isinstance(lo, str):
+                lo = datetime.fromisoformat(lo)
+            logout_times.append(lo)
+
+        total_served += s.get('tokens_served', 0) or 0
+
+    first_login = min(login_times)
+    last_logout = max(logout_times) if logout_times else first_login
+
+    # Clamp to working hours on the session date
+    session_date = first_login.date()
+    work_start = first_login.replace(hour=WORK_START_HOUR, minute=0, second=0, microsecond=0)
+    work_end = first_login.replace(hour=WORK_END_HOUR, minute=0, second=0, microsecond=0)
+
+    effective_start = max(first_login, work_start)
+    effective_end = min(last_logout, work_end)
+
+    duration = max(0, int((effective_end - effective_start).total_seconds() / 60))
+
+    return {
+        'first_login': first_login,
+        'last_logout': last_logout,
+        'effective_start': effective_start,
+        'effective_end': effective_end,
+        'duration_minutes': duration,
+        'tokens_served': total_served,
+    }
+
 
 def auto_expire_sessions():
     """Close active sessions at the end of the working day (5 PM) so that daily
@@ -1953,9 +2009,41 @@ def send_email_via_resend(to_email, subject, body, html_body=None):
         return False, str(e)
 
 
-def polish_reply_with_groq(complaint_text, current_text, tone):
+def call_groq_ai(prompt, max_tokens=800, temperature=0.5):
+    """Generic GROQ API call. Returns (text, error)."""
     if not GROQ_API_KEY:
         return None, 'AI not configured (set GROQ_API_KEY in Railway env vars)'
+    try:
+        payload = {
+            'model': GROQ_MODEL,
+            'messages': [{'role': 'user', 'content': prompt}],
+            'temperature': temperature,
+            'max_tokens': max_tokens
+        }
+        req = urllib.request.Request(
+            'https://api.groq.com/openai/v1/chat/completions',
+            data=json.dumps(payload).encode('utf-8'),
+            headers={
+                'Authorization': f'Bearer {GROQ_API_KEY}',
+                'Content-Type': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (SMQSS-Server)'
+            },
+            method='POST'
+        )
+        with urllib.request.urlopen(req, timeout=30) as r:
+            data = json.loads(r.read().decode('utf-8', errors='replace'))
+        text = ((data.get('choices') or [{}])[0].get('message', {}).get('content') or '').strip()
+        if not text:
+            return None, 'AI returned an empty response. Try again.'
+        return text, None
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode('utf-8', errors='replace')[:300]
+        return None, f'Groq API returned HTTP {e.code}: {detail}'
+    except Exception as e:
+        return None, f'AI request failed: {e}'
+
+
+def polish_reply_with_groq(complaint_text, current_text, tone):
     if not complaint_text or not complaint_text.strip():
         return None, 'Complaint text is required to generate a reply'
     tones = {
@@ -1985,34 +2073,97 @@ def polish_reply_with_groq(complaint_text, current_text, tone):
         f"ORIGINAL COMPLAINT FROM STUDENT:\n{complaint_text}\n\n"
         f"{instruction}"
     )
-    try:
-        payload = {
-            'model': GROQ_MODEL,
-            'messages': [{'role': 'user', 'content': prompt}],
-            'temperature': 0.7,
-            'max_tokens': 500
-        }
-        req = urllib.request.Request(
-            'https://api.groq.com/openai/v1/chat/completions',
-            data=json.dumps(payload).encode('utf-8'),
-            headers={
-                'Authorization': f'Bearer {GROQ_API_KEY}',
-                'Content-Type': 'application/json',
-                'User-Agent': 'Mozilla/5.0 (SMQSS-Server)'
-            },
-            method='POST'
+    return call_groq_ai(prompt, max_tokens=500, temperature=0.7)
+
+
+def analyze_attendance_with_groq(attendance_data, week_start, week_end):
+    """AI-powered weekly attendance analysis."""
+    if not attendance_data:
+        return None, 'No attendance data to analyze'
+
+    # Format the data for the AI prompt
+    lines = []
+    for o in attendance_data:
+        lines.append(f"Officer: {o['officer_name']} (#{o['officer_number']}) — {o['office_name']}")
+        lines.append(f"  Attendance: {o['availability_pct']}% | Monthly Grade: {o.get('monthly_grade_pct', 'N/A')}% | Tokens Served: {o['tokens_served']}")
+        for dd in o.get('days', []):
+            if dd['present']:
+                lines.append(f"  {dd['date']}: {dd.get('effective_start', '?')} to {dd.get('effective_end', '?')} = {dd['total_minutes']} min")
+        lines.append("")
+
+    formatted_data = "\n".join(lines)
+
+    prompt = (
+        "You are an attendance analyst for Makerere University Queue Management System (SMQSS).\n"
+        "Analyze the following weekly attendance data and provide:\n"
+        "1. Overall status summary (1-2 sentences)\n"
+        "2. Per-officer observations (name, status, any concerns)\n"
+        "3. Anomalies detected (multiple devices, unusual hours, long sessions, low service despite high attendance)\n"
+        "4. Actionable recommendations\n\n"
+        "RULES:\n"
+        "- Be concise (under 500 words)\n"
+        "- Use plain text, no markdown\n"
+        "- Focus on actionable insights\n"
+        "- Only mention anomalies you are confident about from the data\n"
+        "- If data looks normal, say so\n"
+        "- Working hours are 8 AM to 5 PM\n\n"
+        f"WEEK: {week_start} to {week_end}\n\n"
+        f"ATTENDANCE DATA:\n{formatted_data}"
+    )
+    return call_groq_ai(prompt, max_tokens=800, temperature=0.5)
+
+
+def analyze_feedback_with_groq(feedback_data, officer_stats, complaint_data):
+    """AI-powered feedback vs officers analysis."""
+    if not feedback_data and not complaint_data:
+        return None, 'No feedback data to analyze'
+
+    # Format token-based feedback
+    fb_lines = []
+    for f in feedback_data[:50]:  # limit to 50 most recent
+        rating_str = f"{f['rating']}/5" if f.get('rating', 0) > 0 else "COMPLAINT"
+        officer = f"{f.get('officer_name', 'Unknown')} (#{f.get('officer_number', '?')})" if f.get('officer_name') else "Unassigned"
+        fb_lines.append(f"[{rating_str}] Token {f['token_number']} | Officer: {officer} | Office: {f.get('office_name', '?')}")
+        if f.get('feedback_text'):
+            fb_lines.append(f"  Text: {f['feedback_text'][:200]}")
+    feedback_text = "\n".join(fb_lines) if fb_lines else "No token-based feedback"
+
+    # Format per-officer stats
+    stats_lines = []
+    for s in officer_stats:
+        stats_lines.append(
+            f"{s['officer_name']} (#{s['officer_number']}) — {s['office_name']}: "
+            f"{s.get('submission_count', 0)} submissions, avg rating {s.get('avg_rating', 'N/A')}, "
+            f"{s.get('complaint_count', 0)} complaints, {s.get('rating_count', 0)} ratings"
         )
-        with urllib.request.urlopen(req, timeout=30) as r:
-            data = json.loads(r.read().decode('utf-8', errors='replace'))
-        text = ((data.get('choices') or [{}])[0].get('message', {}).get('content') or '').strip()
-        if not text:
-            return None, 'AI returned an empty response. Try again.'
-        return text, None
-    except urllib.error.HTTPError as e:
-        detail = e.read().decode('utf-8', errors='replace')[:300]
-        return None, f'Groq API returned HTTP {e.code}: {detail}'
-    except Exception as e:
-        return None, f'AI request failed: {e}'
+    stats_text = "\n".join(stats_lines) if stats_lines else "No per-officer stats"
+
+    # Format general complaints
+    gc_lines = []
+    for c in complaint_data[:20]:  # limit to 20 most recent
+        gc_lines.append(f"[{c.get('category', '?')}] {c.get('full_name', 'Anonymous')}: {c.get('complaint_text', '')[:200]}")
+    gc_text = "\n".join(gc_lines) if gc_lines else "No general complaints"
+
+    prompt = (
+        "You are a feedback analyst for Makerere University Queue Management System (SMQSS).\n"
+        "Analyze student feedback and correlate it with officer performance.\n"
+        "Provide:\n"
+        "1. Overall feedback summary (1-2 sentences)\n"
+        "2. Per-officer analysis (rating trends, complaint patterns, strengths)\n"
+        "3. Correlation between officers and feedback themes\n"
+        "4. Top concerns from students\n"
+        "5. Actionable recommendations for improvement\n\n"
+        "RULES:\n"
+        "- Be concise (under 600 words)\n"
+        "- Use plain text, no markdown\n"
+        "- Focus on patterns, not individual cases\n"
+        "- Be constructive and specific\n"
+        "- Only draw conclusions supported by the data\n\n"
+        f"TOKEN-BASED FEEDBACK (most recent):\n{feedback_text}\n\n"
+        f"PER-OFFICER STATISTICS:\n{stats_text}\n\n"
+        f"GENERAL COMPLAINTS (most recent):\n{gc_text}"
+    )
+    return call_groq_ai(prompt, max_tokens=800, temperature=0.5)
 
 
 def send_reply_email(complaint, reply_message):
@@ -3529,6 +3680,79 @@ def admin_officer_service_stats():
 # ============================================
 # ADMIN: FEEDBACK / RATINGS
 # ============================================
+@app.route('/api/admin/feedback/analyze', methods=['POST'])
+def admin_feedback_analyze():
+    """AI-powered feedback vs officers analysis."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Fetch token-based feedback with officer linkage
+        cursor.execute("""
+            SELECT
+                t.token_number, t.student_name, t.rating, t.feedback_text, t.status,
+                t.service_code, s.service_name,
+                o.officer_name, o.officer_number,
+                off.office_name, off.office_code,
+                t.feedback_submitted_at
+            FROM university_tokens t
+            LEFT JOIN services s ON t.service_id = s.id
+            LEFT JOIN officers o ON t.assigned_officer_id = o.id
+            LEFT JOIN offices off ON t.office_id = off.id
+            WHERE t.feedback_submitted_at IS NOT NULL
+            ORDER BY t.feedback_submitted_at DESC
+            LIMIT 50
+        """)
+        feedback_data = cursor.fetchall()
+
+        # Fetch per-officer stats
+        cursor.execute("""
+            SELECT
+                o.officer_name, o.officer_number, off.office_name,
+                COUNT(t.id) AS submission_count,
+                ROUND(AVG(CASE WHEN t.rating > 0 THEN t.rating END), 1) AS avg_rating,
+                SUM(CASE WHEN t.rating > 0 THEN 1 ELSE 0 END) AS rating_count,
+                SUM(CASE WHEN t.rating = 0 AND t.feedback_text IS NOT NULL THEN 1 ELSE 0 END) AS complaint_count
+            FROM officers o
+            JOIN offices off ON o.office_id = off.id
+            LEFT JOIN university_tokens t ON o.id = t.assigned_officer_id AND t.feedback_submitted_at IS NOT NULL
+            GROUP BY o.id, o.officer_name, o.officer_number, off.office_name
+            HAVING submission_count > 0
+            ORDER BY complaint_count DESC, avg_rating ASC
+        """)
+        officer_stats = cursor.fetchall()
+
+        # Fetch general complaints
+        cursor.execute("""
+            SELECT category, full_name, complaint_text, status, created_at
+            FROM general_complaints
+            ORDER BY created_at DESC
+            LIMIT 20
+        """)
+        complaint_data = cursor.fetchall()
+
+        cursor.close()
+        conn.close()
+
+        # Convert dates to strings for JSON
+        for f in feedback_data:
+            if f.get('feedback_submitted_at'):
+                f['feedback_submitted_at'] = f['feedback_submitted_at'].isoformat()
+        for c in complaint_data:
+            if c.get('created_at'):
+                c['created_at'] = c['created_at'].isoformat()
+
+        analysis, err = analyze_feedback_with_groq(feedback_data, officer_stats, complaint_data)
+        if err:
+            return jsonify({'success': False, 'message': err}), 500
+
+        return jsonify({'success': True, 'analysis': analysis})
+
+    except Exception as e:
+        logger.error(f"Error analyzing feedback: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
 @app.route('/api/admin/feedback', methods=['GET'])
 def admin_get_feedback():
     try:
@@ -3700,6 +3924,103 @@ def admin_feedback_stats():
 # ============================================
 # OFFICER ATTENDANCE
 # ============================================
+@app.route('/api/admin/attendance/analyze', methods=['POST'])
+def admin_attendance_analyze():
+    """AI-powered weekly attendance analysis."""
+    try:
+        data = request.get_json(silent=True) or {}
+        week = data.get('week', '')
+        if not week:
+            today = datetime.now()
+            week = (today - timedelta(days=today.weekday())).strftime('%Y-%m-%d')
+
+        week_end = (datetime.strptime(week, '%Y-%m-%d') + timedelta(days=4)).strftime('%Y-%m-%d')
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Fetch weekly attendance data (same logic as admin_officer_attendance)
+        cursor.execute("""
+            SELECT
+                o.id AS officer_id, o.officer_number, o.officer_name,
+                off.id AS office_id, off.office_code, off.office_name, off.location,
+                s.id AS session_id, s.session_date,
+                DATE_FORMAT(s.login_time, '%Y-%m-%d %H:%i:%s') AS login_time,
+                DATE_FORMAT(s.logout_time, '%Y-%m-%d %H:%i:%s') AS logout_time,
+                s.login_ip, s.login_location, s.device_info, s.tokens_served,
+                TIMESTAMPDIFF(MINUTE, s.login_time, COALESCE(s.logout_time, NOW())) AS duration_minutes
+            FROM officers o
+            JOIN offices off ON o.office_id = off.id
+            LEFT JOIN officer_sessions s ON o.id = s.officer_id
+                AND s.session_date BETWEEN %s AND %s
+            ORDER BY o.officer_name, s.session_date
+        """, (week, week_end))
+        rows = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        # Group by officer and day
+        officers_map = {}
+        for row in rows:
+            oid = row['officer_id']
+            if oid not in officers_map:
+                officers_map[oid] = {
+                    'officer_id': oid, 'officer_number': row['officer_number'],
+                    'officer_name': row['officer_name'], 'office_name': row['office_name'],
+                    'days': {}
+                }
+            sd = str(row['session_date']) if row['session_date'] else None
+            if sd:
+                if sd not in officers_map[oid]['days']:
+                    officers_map[oid]['days'][sd] = []
+                officers_map[oid]['days'][sd].append({
+                    'login_time': row['login_time'], 'logout_time': row['logout_time'],
+                    'tokens_served': row['tokens_served'] or 0,
+                    'duration_minutes': row['duration_minutes'] or 0,
+                })
+
+        # Build attendance data with daily aggregation
+        attendance_data = []
+        for oid, odata in officers_map.items():
+            total_minutes = 0
+            total_served = 0
+            days_present = 0
+            day_details = []
+            for d in range(5):
+                date_key = (datetime.strptime(week, '%Y-%m-%d') + timedelta(days=d)).strftime('%Y-%m-%d')
+                sessions = odata['days'].get(date_key, [])
+                daily = calc_daily_attendance(sessions) if sessions else None
+                if daily:
+                    days_present += 1
+                    total_minutes += daily['duration_minutes']
+                    total_served += daily['tokens_served']
+                    day_details.append({
+                        'date': date_key, 'present': True,
+                        'total_minutes': daily['duration_minutes'],
+                        'effective_start': daily['effective_start'].isoformat(),
+                        'effective_end': daily['effective_end'].isoformat(),
+                    })
+                else:
+                    day_details.append({'date': date_key, 'present': False, 'total_minutes': 0})
+            WEEKLY_TARGET = 540 * 5
+            avail_pct = min(round(total_minutes / WEEKLY_TARGET * 100, 1), 100) if total_minutes else 0
+            attendance_data.append({
+                'officer_name': odata['officer_name'], 'officer_number': odata['officer_number'],
+                'office_name': odata['office_name'], 'availability_pct': avail_pct,
+                'tokens_served': total_served, 'days': day_details,
+            })
+
+        analysis, err = analyze_attendance_with_groq(attendance_data, week, week_end)
+        if err:
+            return jsonify({'success': False, 'message': err}), 500
+
+        return jsonify({'success': True, 'analysis': analysis, 'week_start': week, 'week_end': week_end})
+
+    except Exception as e:
+        logger.error(f"Error analyzing attendance: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
 @app.route('/api/admin/officer-attendance', methods=['GET'])
 def admin_officer_attendance():
     """Weekly attendance for all officers. Accepts ?week=YYYY-MM-DD (Monday of that week)."""
@@ -3774,7 +4095,7 @@ def admin_officer_attendance():
                     'duration_minutes': row['duration_minutes'] or 0,
                 })
 
-        # Compute weekly totals
+        # Compute weekly totals using first-login/last-logout per day, clamped to 8-5
         result = []
         for oid, odata in officers_map.items():
             total_minutes = 0
@@ -3784,22 +4105,24 @@ def admin_officer_attendance():
             for d in range(5):
                 date_key = (datetime.strptime(week_start, '%Y-%m-%d') + timedelta(days=d)).strftime('%Y-%m-%d')
                 sessions = odata['days'].get(date_key, [])
-                day_minutes = sum(s['duration_minutes'] for s in sessions)
-                day_served = sum(s['tokens_served'] for s in sessions)
-                if sessions:
+                daily = calc_daily_attendance(sessions) if sessions else None
+                if daily:
+                    day_minutes = daily['duration_minutes']
+                    day_served = daily['tokens_served']
                     days_present += 1
                     total_minutes += day_minutes
                     total_served += day_served
-                    last = sessions[-1]
                     day_details.append({
                         'date': date_key,
                         'present': True,
                         'sessions': sessions,
                         'total_minutes': day_minutes,
                         'tokens_served': day_served,
-                        'device_info': last.get('device_info') or '',
-                        'login_ip': last.get('login_ip') or '',
-                        'login_location': last.get('login_location') or '',
+                        'effective_start': daily['effective_start'].isoformat(),
+                        'effective_end': daily['effective_end'].isoformat(),
+                        'device_info': sessions[-1].get('device_info') or '',
+                        'login_ip': sessions[-1].get('login_ip') or '',
+                        'login_location': sessions[-1].get('login_location') or '',
                     })
                 else:
                     day_details.append({
@@ -3808,6 +4131,8 @@ def admin_officer_attendance():
                         'sessions': [],
                         'total_minutes': 0,
                         'tokens_served': 0,
+                        'effective_start': '',
+                        'effective_end': '',
                         'device_info': '',
                         'login_ip': '',
                         'login_location': '',
@@ -3846,12 +4171,21 @@ def admin_officer_attendance():
         MONTHLY_TARGET = 540 * working_days
 
         cursor.execute("""
-            SELECT officer_id,
-                   SUM(TIMESTAMPDIFF(MINUTE, login_time, COALESCE(logout_time, NOW()))) AS month_minutes
-            FROM officer_sessions
-            WHERE session_date BETWEEN %s AND %s
+            SELECT officer_id, SUM(daily_minutes) AS month_minutes
+            FROM (
+                SELECT officer_id, session_date,
+                       GREATEST(0,
+                           TIMESTAMPDIFF(MINUTE,
+                               GREATEST(MIN(login_time), DATE(session_date) + INTERVAL %s HOUR),
+                               LEAST(COALESCE(MAX(logout_time), NOW()), DATE(session_date) + INTERVAL %s HOUR)
+                           )
+                       ) AS daily_minutes
+                FROM officer_sessions
+                WHERE session_date BETWEEN %s AND %s
+                GROUP BY officer_id, session_date
+            ) daily
             GROUP BY officer_id
-        """, (month_start, month_end_str))
+        """, (WORK_START_HOUR, WORK_END_HOUR, month_start, month_end_str))
         monthly_rows = cursor.fetchall()
         monthly_map = {r['officer_id']: (r['month_minutes'] or 0) for r in monthly_rows}
 
@@ -3910,9 +4244,38 @@ def admin_officer_attendance_detail(officer_id):
             """, (fmt_dt, fmt_dt, sess['session_id']))
             sess['status_log'] = cursor.fetchall()
 
+        # Build daily summary: first-login/last-logout per day, clamped to 8-5
+        from collections import defaultdict
+        by_date = defaultdict(list)
+        for sess in sessions:
+            d = sess.get('session_date')
+            if isinstance(d, str):
+                d = datetime.strptime(d, '%Y-%m-%d').date()
+            # Parse formatted times back to datetime for calc_daily_attendance
+            lt = datetime.strptime(sess['login_time'], '%Y-%m-%d %H:%M:%S') if sess.get('login_time') else None
+            lo = datetime.strptime(sess['logout_time'], '%Y-%m-%d %H:%M:%S') if sess.get('logout_time') else None
+            if lt:
+                by_date[d].append({
+                    'login_time': lt,
+                    'logout_time': lo,
+                    'tokens_served': sess.get('tokens_served', 0),
+                })
+
+        daily_summary = []
+        for date_key in sorted(by_date.keys()):
+            daily = calc_daily_attendance(by_date[date_key])
+            if daily:
+                daily_summary.append({
+                    'date': date_key.strftime('%Y-%m-%d') if hasattr(date_key, 'strftime') else str(date_key),
+                    'first_login': daily['first_login'].strftime('%Y-%m-%d %H:%M:%S'),
+                    'last_logout': daily['last_logout'].strftime('%Y-%m-%d %H:%M:%S'),
+                    'duration_minutes': daily['duration_minutes'],
+                    'tokens_served': daily['tokens_served'],
+                })
+
         cursor.close()
         conn.close()
-        return jsonify({'success': True, 'officer_id': officer_id, 'sessions': sessions})
+        return jsonify({'success': True, 'officer_id': officer_id, 'sessions': sessions, 'daily_summary': daily_summary})
 
     except Exception as e:
         logger.error(f"Error fetching officer attendance detail: {e}")
@@ -3941,21 +4304,32 @@ def admin_attendance_summary():
                 off.office_code,
                 off.office_name,
                 off.location,
-                COUNT(DISTINCT s.session_date) AS days_attended,
-                COALESCE(SUM(TIMESTAMPDIFF(MINUTE, s.login_time, COALESCE(s.logout_time, NOW()))), 0) AS total_minutes,
-                COALESCE(SUM(s.tokens_served), 0) AS total_tokens,
-                ROUND(COUNT(DISTINCT s.session_date) / 5 * 100, 1) AS attendance_pct,
-                ROUND(COALESCE(SUM(TIMESTAMPDIFF(MINUTE, s.login_time, COALESCE(s.logout_time, NOW()))), 0) / 60, 1) AS total_hours,
-                CASE WHEN COUNT(DISTINCT s.session_date) > 0
-                     THEN ROUND(COALESCE(SUM(s.tokens_served), 0) * 60.0 / NULLIF(SUM(TIMESTAMPDIFF(MINUTE, s.login_time, COALESCE(s.logout_time, NOW()))), 0), 1)
+                COUNT(DISTINCT d.session_date) AS days_attended,
+                COALESCE(SUM(d.daily_minutes), 0) AS total_minutes,
+                COALESCE(SUM(d.daily_served), 0) AS total_tokens,
+                ROUND(COUNT(DISTINCT d.session_date) / 5 * 100, 1) AS attendance_pct,
+                ROUND(COALESCE(SUM(d.daily_minutes), 0) / 60, 1) AS total_hours,
+                CASE WHEN COUNT(DISTINCT d.session_date) > 0
+                     THEN ROUND(COALESCE(SUM(d.daily_served), 0) * 60.0 / NULLIF(SUM(d.daily_minutes), 0), 1)
                      ELSE 0 END AS tokens_per_hour
             FROM officers o
             JOIN offices off ON o.office_id = off.id
-            LEFT JOIN officer_sessions s ON o.id = s.officer_id
-                AND s.session_date BETWEEN %s AND %s
+            LEFT JOIN (
+                SELECT officer_id, office_id, session_date,
+                       GREATEST(0,
+                           TIMESTAMPDIFF(MINUTE,
+                               GREATEST(MIN(login_time), DATE(session_date) + INTERVAL %s HOUR),
+                               LEAST(COALESCE(MAX(logout_time), NOW()), DATE(session_date) + INTERVAL %s HOUR)
+                           )
+                       ) AS daily_minutes,
+                       SUM(COALESCE(tokens_served, 0)) AS daily_served
+                FROM officer_sessions
+                WHERE session_date BETWEEN %s AND %s
+                GROUP BY officer_id, office_id, session_date
+            ) d ON o.id = d.officer_id
             GROUP BY o.id, o.officer_number, o.officer_name, off.office_code, off.office_name, off.location
             ORDER BY attendance_pct DESC, total_tokens DESC
-        """, (week_start, week_end))
+        """, (WORK_START_HOUR, WORK_END_HOUR, week_start, week_end))
 
         summary = cursor.fetchall()
         for row in summary:
@@ -4130,12 +4504,21 @@ def admin_attendance_trends():
             """, (week_start + ' 00:00:00', week_end + ' 23:59:59'))
             tokens_created = int(cursor.fetchone()['total'])
 
-            # Total officer hours logged
+            # Total officer hours logged (clamped to 8-5)
             cursor.execute("""
-                SELECT COALESCE(SUM(TIMESTAMPDIFF(MINUTE, login_time, COALESCE(logout_time, NOW()))), 0) AS total_minutes
-                FROM officer_sessions
-                WHERE session_date BETWEEN %s AND %s
-            """, (week_start, week_end))
+                SELECT COALESCE(SUM(daily_minutes), 0) AS total_minutes
+                FROM (
+                    SELECT GREATEST(0,
+                        TIMESTAMPDIFF(MINUTE,
+                            GREATEST(MIN(login_time), DATE(session_date) + INTERVAL %s HOUR),
+                            LEAST(COALESCE(MAX(logout_time), NOW()), DATE(session_date) + INTERVAL %s HOUR)
+                        )
+                    ) AS daily_minutes
+                    FROM officer_sessions
+                    WHERE session_date BETWEEN %s AND %s
+                    GROUP BY officer_id, session_date
+                ) d
+            """, (WORK_START_HOUR, WORK_END_HOUR, week_start, week_end))
             total_minutes = int(cursor.fetchone()['total_minutes'])
 
             # Unique officers who logged in
@@ -4198,19 +4581,30 @@ def admin_attendance_trends():
                 'weekly_tokens': weekly
             })
 
-        # Top officers by attendance
+        # Top officers by attendance (clamped to 8-5)
         cursor.execute("""
             SELECT o.id, o.officer_name, o.officer_number,
-                   COUNT(DISTINCT s.session_date) AS days_attended,
-                   COALESCE(SUM(TIMESTAMPDIFF(MINUTE, s.login_time, COALESCE(s.logout_time, NOW()))), 0) AS total_minutes,
-                   COALESCE(SUM(s.tokens_served), 0) AS total_served
-            FROM officer_sessions s
-            JOIN officers o ON s.officer_id = o.id
-            WHERE s.session_date >= %s
+                   COUNT(DISTINCT d.session_date) AS days_attended,
+                   COALESCE(SUM(d.daily_minutes), 0) AS total_minutes,
+                   COALESCE(SUM(d.daily_served), 0) AS total_served
+            FROM (
+                SELECT officer_id, session_date,
+                       GREATEST(0,
+                           TIMESTAMPDIFF(MINUTE,
+                               GREATEST(MIN(login_time), DATE(session_date) + INTERVAL %s HOUR),
+                               LEAST(COALESCE(MAX(logout_time), NOW()), DATE(session_date) + INTERVAL %s HOUR)
+                           )
+                       ) AS daily_minutes,
+                       SUM(COALESCE(tokens_served, 0)) AS daily_served
+                FROM officer_sessions
+                WHERE session_date >= %s
+                GROUP BY officer_id, session_date
+            ) d
+            JOIN officers o ON d.officer_id = o.id
             GROUP BY o.id, o.officer_name, o.officer_number
             ORDER BY days_attended DESC, total_minutes DESC
             LIMIT 10
-        """, ((today - timedelta(days=num_weeks * 7)).strftime('%Y-%m-%d'),))
+        """, (WORK_START_HOUR, WORK_END_HOUR, (today - timedelta(days=num_weeks * 7)).strftime('%Y-%m-%d')))
         top_officers = cursor.fetchall()
         for row in top_officers:
             row['total_minutes'] = int(row['total_minutes'])

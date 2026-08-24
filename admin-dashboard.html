@@ -1253,6 +1253,10 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:14px;height:14px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
                         Clear Data
                     </button>
+                    <button type="button" class="btn-sm" id="attAnalyzeBtn" onclick="analyzeAttendance()" style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border:1px solid #7c3aed;border-radius:var(--radius-sm);background:linear-gradient(135deg,#7c3aed,#2563eb);cursor:pointer;font-size:12px;font-weight:600;color:#fff;font-family:inherit">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:14px;height:14px"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                        Analyze Week
+                    </button>
                 </div>
                 <div style="font-size:13px;color:var(--text-secondary);margin-bottom:16px" id="attWeekLabel">Loading...</div>
 
@@ -1267,6 +1271,19 @@
                     <div class="tab-item" data-tab="heatmap" onclick="switchAttTab('heatmap',this)" style="padding:10px 20px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;white-space:nowrap;flex-shrink:0">Heat Map</div>
                     <div class="tab-item" data-tab="trends" onclick="switchAttTab('trends',this)" style="padding:10px 20px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;white-space:nowrap;flex-shrink:0">Trends</div>
                     <div class="tab-item" data-tab="log" onclick="switchAttTab('log',this)" style="padding:10px 20px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;white-space:nowrap;flex-shrink:0">Detailed Log</div>
+                </div>
+
+                <div id="attAIAnalysis" style="display:none;margin-bottom:20px">
+                    <div style="background:linear-gradient(135deg,#f5f3ff,#eff6ff);border:1px solid #c4b5fd;border-radius:12px;overflow:hidden">
+                        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:rgba(124,58,237,0.08);border-bottom:1px solid #c4b5fd">
+                            <span style="font-weight:700;font-size:14px;color:#7c3aed;display:flex;align-items:center;gap:8px">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" style="width:18px;height:18px"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                AI Attendance Intelligence
+                            </span>
+                            <button onclick="closeAIAnalysis('attAIAnalysis')" style="background:none;border:none;cursor:pointer;font-size:18px;color:#7c3aed;padding:4px 8px">&times;</button>
+                        </div>
+                        <div id="attAIAnalysisContent" style="padding:16px;font-size:13px;line-height:1.6;color:#1e1b4b;white-space:pre-wrap"></div>
+                    </div>
                 </div>
 
                 <div id="attTabTable" class="att-tab-content" style="display:block">
@@ -1374,10 +1391,29 @@
             <div class="page" id="page-feedback">
                 <div class="toolbar-row" style="justify-content:space-between">
                     <span style="font-size:13px;color:var(--text-secondary)" id="feedbackCount">Loading...</span>
-                    <button type="button" class="btn-sm" onclick="loadFeedback()" style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--white);cursor:pointer;font-size:12px;font-weight:600;color:var(--text-secondary);font-family:inherit">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:14px;height:14px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-                        Refresh
-                    </button>
+                    <div style="display:flex;gap:8px;align-items:center">
+                        <button type="button" class="btn-sm" onclick="loadFeedback()" style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);background:var(--white);cursor:pointer;font-size:12px;font-weight:600;color:var(--text-secondary);font-family:inherit">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:14px;height:14px"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                            Refresh
+                        </button>
+                        <button type="button" class="btn-sm" id="fbAnalyzeBtn" onclick="analyzeFeedback()" style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border:1px solid #7c3aed;border-radius:var(--radius-sm);background:linear-gradient(135deg,#7c3aed,#2563eb);cursor:pointer;font-size:12px;font-weight:600;color:#fff;font-family:inherit">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:14px;height:14px"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                            Analyze Feedback
+                        </button>
+                    </div>
+                </div>
+
+                <div id="fbAIAnalysis" style="display:none;margin-bottom:20px">
+                    <div style="background:linear-gradient(135deg,#f5f3ff,#eff6ff);border:1px solid #c4b5fd;border-radius:12px;overflow:hidden">
+                        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:rgba(124,58,237,0.08);border-bottom:1px solid #c4b5fd">
+                            <span style="font-weight:700;font-size:14px;color:#7c3aed;display:flex;align-items:center;gap:8px">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" style="width:18px;height:18px"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                AI Feedback Intelligence
+                            </span>
+                            <button onclick="closeAIAnalysis('fbAIAnalysis')" style="background:none;border:none;cursor:pointer;font-size:18px;color:#7c3aed;padding:4px 8px">&times;</button>
+                        </div>
+                        <div id="fbAIAnalysisContent" style="padding:16px;font-size:13px;line-height:1.6;color:#1e1b4b;white-space:pre-wrap"></div>
+                    </div>
                 </div>
 
                 <!-- Analytics cards -->
@@ -3306,6 +3342,71 @@
             }
         }
 
+        function closeAIAnalysis(panelId) {
+            document.getElementById(panelId).style.display = 'none';
+        }
+
+        async function analyzeAttendance() {
+            var btn = document.getElementById('attAnalyzeBtn');
+            var panel = document.getElementById('attAIAnalysis');
+            var content = document.getElementById('attAIAnalysisContent');
+            var week = document.getElementById('attWeek').value;
+
+            btn.disabled = true;
+            btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:14px;height:14px;animation:spin 1s linear infinite"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Analyzing...';
+            panel.style.display = 'block';
+            content.textContent = 'Analyzing attendance data...';
+
+            try {
+                var res = await fetch(API_BASE_URL + '/api/admin/attendance/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ week: week })
+                });
+                var data = await res.json();
+                if (data.success) {
+                    content.textContent = data.analysis;
+                } else {
+                    content.textContent = 'Error: ' + (data.message || 'Failed to analyze');
+                }
+            } catch (e) {
+                content.textContent = 'Network error. Please try again.';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:14px;height:14px"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Analyze Week';
+            }
+        }
+
+        async function analyzeFeedback() {
+            var btn = document.getElementById('fbAnalyzeBtn');
+            var panel = document.getElementById('fbAIAnalysis');
+            var content = document.getElementById('fbAIAnalysisContent');
+
+            btn.disabled = true;
+            btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:14px;height:14px;animation:spin 1s linear infinite"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Analyzing...';
+            panel.style.display = 'block';
+            content.textContent = 'Analyzing feedback data...';
+
+            try {
+                var res = await fetch(API_BASE_URL + '/api/admin/feedback/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({})
+                });
+                var data = await res.json();
+                if (data.success) {
+                    content.textContent = data.analysis;
+                } else {
+                    content.textContent = 'Error: ' + (data.message || 'Failed to analyze');
+                }
+            } catch (e) {
+                content.textContent = 'Network error. Please try again.';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:14px;height:14px"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Analyze Feedback';
+            }
+        }
+
         async function reopenComplaint(id) {
             try {
                 const res = await fetch(`${API_BASE_URL}/api/admin/general-complaints/${id}/reopen`, { method: 'POST' });
@@ -3520,7 +3621,8 @@
                 if (!data.success) { tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--red)">' + escapeHtml(data.message || 'Failed to load data') + '</td></tr>'; return; }
 
                 var sessions = data.sessions || [];
-                meta.innerHTML = '<strong>' + escapeHtml(officeName || '') + '</strong> &middot; ' + monthNames[month - 1] + ' ' + year + ' &middot; ' + sessions.length + ' session(s)';
+                var dailySummary = data.daily_summary || [];
+                meta.innerHTML = '<strong>' + escapeHtml(officeName || '') + '</strong> &middot; ' + monthNames[month - 1] + ' ' + year + ' &middot; ' + sessions.length + ' session(s) &middot; ' + dailySummary.length + ' day(s)';
 
                 if (!sessions.length) {
                     tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)">No sessions this month</td></tr>';
@@ -3528,14 +3630,13 @@
                     return;
                 }
 
-                var totalMin = 0;
+                // Individual sessions (audit trail)
                 var rows = '';
                 sessions.forEach(function(s) {
                     var date = s.session_date ? s.session_date.slice(5) : '—';
                     var login = s.login_time ? toEAT(s.login_time) : '—';
                     var logout = s.logout_time ? toEAT(s.logout_time) : '—';
                     var dur = s.duration_minutes || 0;
-                    totalMin += dur;
                     rows += '<tr>' +
                         '<td>' + escapeHtml(date) + '</td>' +
                         '<td>' + login + '</td>' +
@@ -3548,6 +3649,9 @@
                 });
                 tbody.innerHTML = rows;
 
+                // Monthly grade from daily_summary (clamped to 8-5)
+                var totalMin = 0;
+                dailySummary.forEach(function(d) { totalMin += d.duration_minutes; });
                 var dailyTarget = 540;
                 var workingDays = 0;
                 for (var dd = 1; dd <= lastDay; dd++) {
@@ -3591,13 +3695,11 @@
                 for (var d = 0; d < 5; d++) {
                     var dd = o.days[d];
                     if (dd.present) {
-                        var sessions = dd.sessions || [];
-                        var s = sessions[0] || {};
-                        var login = toEAT(s.login_time);
-                        var logout = toEAT(s.logout_time);
+                        var login = dd.effective_start ? toEAT(dd.effective_start) : '—';
+                        var logout = dd.effective_end ? toEAT(dd.effective_end) : '—';
                         dayCells += '<td>' +
                             '<div class="att-cell-times">' + login + '→' + logout + '</div>' +
-                            '<div class="att-cell-dur">' + formatMinutes(s.duration_minutes || 0) + '</div>' +
+                            '<div class="att-cell-dur">' + formatMinutes(dd.total_minutes || 0) + '</div>' +
                         '</td>';
                         cardDayCells += '<span class="att-card-day present" title="' + escapeHtml(dd.date) + '">' + dayLabels[d] + ' ' + login + '→' + logout + '</span> ';
                     } else {
