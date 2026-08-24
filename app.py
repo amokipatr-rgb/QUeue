@@ -21,18 +21,18 @@ from html import escape
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# ── EMAIL ──
-RESEND_API_KEY = os.environ.get('RESEND_API_KEY', '')
-EMAIL_FROM = os.environ.get('EMAIL_FROM', 'SMQSS <onboarding@resend.dev>')
+# ── EMAIL (Brevo) ──
+BREVO_API_KEY = os.environ.get('BREVO_API_KEY', '')
+EMAIL_FROM = os.environ.get('EMAIL_FROM', 'SMQSS <smqss82@gmail.com>')
 # ── AI ──
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
 GROQ_MODEL = os.environ.get('GROQ_MODEL', 'openai/gpt-oss-120b')
-# SMTP fallback (for local/dev when Resend is unavailable)
-SMTP_HOST = 'smtp.gmail.com'
-SMTP_PORT = 587
-SMTP_USER = 'aldarafoundation.org@gmail.com'
-SMTP_PASS = 'wxjbrikffkpuzrqw'
-SMTP_FROM = SMTP_USER
+# SMTP fallback (Brevo SMTP relay)
+SMTP_HOST = os.environ.get('BREVO_SMTP_HOST', 'smtp-relay.brevo.com')
+SMTP_PORT = int(os.environ.get('BREVO_SMTP_PORT', '587'))
+SMTP_USER = os.environ.get('BREVO_SMTP_USER', 'b69419001@smtp-brevo.com')
+SMTP_PASS = os.environ.get('BREVO_SMTP_KEY', '')
+SMTP_FROM = EMAIL_FROM
 
 def geoip(ip):
     """Resolve an IP address to a location string using ip-api.com (free, no key)."""
@@ -1977,34 +1977,37 @@ def _resolve_ipv4(host, port):
     return infos[0][4][0]
 
 
-def send_email_via_resend(to_email, subject, body, html_body=None):
+def send_email_via_brevo(to_email, subject, body, html_body=None):
+    """Send email via Brevo API."""
+    if not BREVO_API_KEY:
+        return False, 'BREVO_API_KEY not configured'
     try:
         payload = {
-            'from': EMAIL_FROM,
-            'to': [to_email],
+            'sender': {'name': 'SMQSS', 'email': 'smqss82@gmail.com'},
+            'to': [{'email': to_email}],
             'subject': subject,
-            'text': body
+            'textContent': body
         }
         if html_body:
-            payload['html'] = html_body
+            payload['htmlContent'] = html_body
         req = urllib.request.Request(
-            'https://api.resend.com/emails',
+            'https://api.brevo.com/v3/smtp/email',
             data=json.dumps(payload).encode('utf-8'),
             headers={
-                'Authorization': f'Bearer {RESEND_API_KEY}',
+                'api-key': BREVO_API_KEY,
                 'Content-Type': 'application/json',
                 'User-Agent': 'Mozilla/5.0 (SMQSS-Server)'
             },
             method='POST'
         )
         with urllib.request.urlopen(req, timeout=15) as r:
-            if r.status == 200:
+            if r.status in (200, 201):
                 return True, None
             detail = r.read().decode('utf-8', errors='replace')[:300]
-            return False, f'Resend API returned HTTP {r.status}: {detail}'
+            return False, f'Brevo API returned HTTP {r.status}: {detail}'
     except urllib.error.HTTPError as e:
         detail = e.read().decode('utf-8', errors='replace')[:300]
-        return False, f'Resend API returned HTTP {e.code}: {detail}'
+        return False, f'Brevo API returned HTTP {e.code}: {detail}'
     except Exception as e:
         return False, str(e)
 
@@ -2237,16 +2240,15 @@ Makerere University Queue Management System (SMQSS)
   </table>
 </div>"""
 
-        if RESEND_API_KEY:
-            sent, err = send_email_via_resend(email_to, subject, body, html_body)
+        if BREVO_API_KEY:
+            sent, err = send_email_via_brevo(email_to, subject, body, html_body)
             if sent:
-                logger.info(f"Reply email sent via Resend to {email_to} for complaint #{complaint['id']}")
+                logger.info(f"Reply email sent via Brevo to {email_to} for complaint #{complaint['id']}")
                 return True, None
-            logger.warning(f"Resend failed for complaint #{complaint['id']}: {err}")
-            return False, err
+            logger.warning(f"Brevo API failed for complaint #{complaint['id']}: {err}")
 
         if not SMTP_USER or not SMTP_PASS:
-            return False, 'No email service configured (set RESEND_API_KEY or SMTP credentials)'
+            return False, 'No email service configured (set BREVO_API_KEY or SMTP credentials)'
 
         msg = EmailMessage()
         msg['Subject'] = subject
@@ -3940,13 +3942,14 @@ def admin_attendance_analyze():
         cursor = conn.cursor(dictionary=True)
 
         # Fetch weekly attendance data (same logic as admin_officer_attendance)
+        fmt_dt = '%Y-%m-%d %H:%i:%s'
         cursor.execute("""
             SELECT
                 o.id AS officer_id, o.officer_number, o.officer_name,
                 off.id AS office_id, off.office_code, off.office_name, off.location,
                 s.id AS session_id, s.session_date,
-                DATE_FORMAT(s.login_time, '%Y-%m-%d %H:%i:%s') AS login_time,
-                DATE_FORMAT(s.logout_time, '%Y-%m-%d %H:%i:%s') AS logout_time,
+                DATE_FORMAT(s.login_time, %s) AS login_time,
+                DATE_FORMAT(s.logout_time, %s) AS logout_time,
                 s.login_ip, s.login_location, s.device_info, s.tokens_served,
                 TIMESTAMPDIFF(MINUTE, s.login_time, COALESCE(s.logout_time, NOW())) AS duration_minutes
             FROM officers o
@@ -3954,7 +3957,7 @@ def admin_attendance_analyze():
             LEFT JOIN officer_sessions s ON o.id = s.officer_id
                 AND s.session_date BETWEEN %s AND %s
             ORDER BY o.officer_name, s.session_date
-        """, (week, week_end))
+        """, (fmt_dt, fmt_dt, week, week_end))
         rows = cursor.fetchall()
         cursor.close()
         conn.close()
