@@ -2295,11 +2295,14 @@ def reply_general_complaint(complaint_id):
 
         sent, err = send_reply_email(complaint, reply_message)
         if not sent:
-            return jsonify({'success': False, 'message': err or 'Failed to send email'}), 500
+            logger.warning(f"Email failed for complaint #{complaint_id}: {err}")
 
         cursor.execute("UPDATE general_complaints SET status = 'resolved' WHERE id = %s", (complaint_id,))
         conn.commit()
-        return jsonify({'success': True, 'message': f'Reply sent to {complaint["email"]} and marked as resolved'})
+        if sent:
+            return jsonify({'success': True, 'message': f'Reply sent to {complaint["email"]} and marked as resolved'})
+        else:
+            return jsonify({'success': True, 'message': f'Reply saved but email failed: {err}. Complaint marked as resolved.'})
     except Exception as e:
         conn.rollback()
         logger.error(f"Reply complaint error: {e}")
