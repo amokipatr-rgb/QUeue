@@ -1247,12 +1247,11 @@
 
             var html = '';
             if (hasNotices) {
-                noticesList.forEach(function(msg) {
-                    html += '<div class="notice-card">' +
-                        '<div class="notice-label">Notice From: <span class="notice-office-name">' + escapeHtml(msg.office_name || 'Office Notice') + '</span></div>' +
-                        '<div class="notice-text">' + escapeHtml(msg.message || '') + '</div>' +
-                    '</div>';
-                });
+                var msg = noticesList[idleMessageIndex % noticesList.length];
+                html += '<div class="notice-card">' +
+                    '<div class="notice-label">Notice From: <span class="notice-office-name">' + escapeHtml(msg.office_name || 'Office Notice') + '</span></div>' +
+                    '<div class="notice-text">' + escapeHtml(msg.message || '') + '</div>' +
+                '</div>';
             }
 
             if (currentUpNextItems.length > 0) {
@@ -1277,6 +1276,9 @@
             if (idleMessageRotationTimer) return;
             idleMessageRotationTimer = setInterval(() => {
                 if (!isIdle) return;
+                var noticesList = (currentUnavailNotices || []).concat(currentMessages || []);
+                if (noticesList.length <= 1) return;
+                idleMessageIndex = (idleMessageIndex + 1) % noticesList.length;
                 renderNoticesGrid();
             }, 7000);
         }
