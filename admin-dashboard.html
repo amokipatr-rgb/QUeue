@@ -1253,10 +1253,6 @@
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:14px;height:14px"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
                         Clear Data
                     </button>
-                    <button type="button" class="btn-sm" id="attAnalyzeBtn" onclick="analyzeAttendance()" style="display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border:1px solid #7c3aed;border-radius:var(--radius-sm);background:linear-gradient(135deg,#7c3aed,#2563eb);cursor:pointer;font-size:12px;font-weight:600;color:#fff;font-family:inherit">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:14px;height:14px"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                        Analyze Week
-                    </button>
                 </div>
                 <div style="font-size:13px;color:var(--text-secondary);margin-bottom:16px" id="attWeekLabel">Loading...</div>
 
@@ -1271,19 +1267,6 @@
                     <div class="tab-item" data-tab="heatmap" onclick="switchAttTab('heatmap',this)" style="padding:10px 20px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;white-space:nowrap;flex-shrink:0">Heat Map</div>
                     <div class="tab-item" data-tab="trends" onclick="switchAttTab('trends',this)" style="padding:10px 20px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;white-space:nowrap;flex-shrink:0">Trends</div>
                     <div class="tab-item" data-tab="log" onclick="switchAttTab('log',this)" style="padding:10px 20px;cursor:pointer;font-size:13px;font-weight:600;color:var(--text-muted);border-bottom:2px solid transparent;margin-bottom:-2px;transition:all .15s;white-space:nowrap;flex-shrink:0">Detailed Log</div>
-                </div>
-
-                <div id="attAIAnalysis" style="display:none;margin-bottom:20px">
-                    <div style="background:linear-gradient(135deg,#f5f3ff,#eff6ff);border:1px solid #c4b5fd;border-radius:12px;overflow:hidden">
-                        <div style="display:flex;justify-content:space-between;align-items:center;padding:12px 16px;background:rgba(124,58,237,0.08);border-bottom:1px solid #c4b5fd">
-                            <span style="font-weight:700;font-size:14px;color:#7c3aed;display:flex;align-items:center;gap:8px">
-                                <svg viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" style="width:18px;height:18px"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                                AI Attendance Intelligence
-                            </span>
-                            <button onclick="closeAIAnalysis('attAIAnalysis')" style="background:none;border:none;cursor:pointer;font-size:18px;color:#7c3aed;padding:4px 8px">&times;</button>
-                        </div>
-                        <div id="attAIAnalysisContent" style="padding:16px;font-size:13px;line-height:1.6;color:#1e1b4b;white-space:pre-wrap"></div>
-                    </div>
                 </div>
 
                 <div id="attTabTable" class="att-tab-content" style="display:block">
@@ -1357,7 +1340,13 @@
                 <div class="modal-box-officer">
                     <div class="modal-header">
                         <h2 id="officerModalTitle">Officer Details</h2>
-                        <button class="modal-close" onclick="closeOfficerModal()">&times;</button>
+                        <div style="display:flex;gap:8px;align-items:center">
+                            <button class="btn-sm" id="officerAnalyzeBtn" onclick="analyzeOfficer()" style="padding:5px 12px;border:1px solid #7c3aed;border-radius:8px;background:linear-gradient(135deg,#7c3aed,#2563eb);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;display:inline-flex;align-items:center;gap:4px">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:13px;height:13px"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                Analyze
+                            </button>
+                            <button class="modal-close" onclick="closeOfficerModal()">&times;</button>
+                        </div>
                     </div>
                     <div class="modal-body">
                         <div class="officer-meta" id="officerModalMeta"></div>
@@ -1378,6 +1367,18 @@
                             </table>
                         </div>
                         <div id="officerModalSummary" class="modal-grade-bar"></div>
+                        <div id="officerAIAnalysis" style="display:none;margin-top:16px">
+                            <div style="background:linear-gradient(135deg,#f5f3ff,#eff6ff);border:1px solid #c4b5fd;border-radius:12px;overflow:hidden">
+                                <div style="display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:rgba(124,58,237,0.08);border-bottom:1px solid #c4b5fd">
+                                    <span style="font-weight:700;font-size:13px;color:#7c3aed;display:flex;align-items:center;gap:6px">
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" style="width:15px;height:15px"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                                        AI Attendance Analysis
+                                    </span>
+                                    <button onclick="document.getElementById('officerAIAnalysis').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:16px;color:#7c3aed;padding:2px 6px">&times;</button>
+                                </div>
+                                <div id="officerAIContent" style="padding:14px;font-size:13px;line-height:1.6;color:#1e1b4b;white-space:pre-wrap"></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1410,7 +1411,7 @@
                                 <svg viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" style="width:18px;height:18px"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
                                 AI Feedback Intelligence
                             </span>
-                            <button onclick="closeAIAnalysis('fbAIAnalysis')" style="background:none;border:none;cursor:pointer;font-size:18px;color:#7c3aed;padding:4px 8px">&times;</button>
+                            <button onclick="document.getElementById('fbAIAnalysis').style.display='none'" style="background:none;border:none;cursor:pointer;font-size:18px;color:#7c3aed;padding:4px 8px">&times;</button>
                         </div>
                         <div id="fbAIAnalysisContent" style="padding:16px;font-size:13px;line-height:1.6;color:#1e1b4b;white-space:pre-wrap"></div>
                     </div>
@@ -3342,23 +3343,21 @@
             }
         }
 
-        function closeAIAnalysis(panelId) {
-            document.getElementById(panelId).style.display = 'none';
-        }
-
-        async function analyzeAttendance() {
-            var btn = document.getElementById('attAnalyzeBtn');
-            var panel = document.getElementById('attAIAnalysis');
-            var content = document.getElementById('attAIAnalysisContent');
+        async function analyzeOfficer() {
+            var btn = document.getElementById('officerAnalyzeBtn');
+            var panel = document.getElementById('officerAIAnalysis');
+            var content = document.getElementById('officerAIContent');
             var week = document.getElementById('attWeek').value;
+            var officerId = btn.dataset.officerId;
+            if (!officerId) return;
 
             btn.disabled = true;
-            btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:14px;height:14px;animation:spin 1s linear infinite"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Analyzing...';
+            btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:13px;height:13px;animation:spin 1s linear infinite"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg> Analyzing...';
             panel.style.display = 'block';
-            content.textContent = 'Analyzing attendance data...';
+            content.textContent = 'Analyzing this officer\'s attendance...';
 
             try {
-                var res = await fetch(API_BASE_URL + '/api/admin/attendance/analyze', {
+                var res = await fetch(API_BASE_URL + '/api/admin/attendance/analyze/' + officerId, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ week: week })
@@ -3373,7 +3372,7 @@
                 content.textContent = 'Network error. Please try again.';
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:14px;height:14px"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Analyze Week';
+                btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" style="width:13px;height:13px"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg> Analyze';
             }
         }
 
@@ -3601,8 +3600,12 @@
             var meta = document.getElementById('officerModalMeta');
             var title = document.getElementById('officerModalTitle');
             var summary = document.getElementById('officerModalSummary');
+            var aiPanel = document.getElementById('officerAIAnalysis');
+            var aiBtn = document.getElementById('officerAnalyzeBtn');
             tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--text-muted)">Loading...</td></tr>';
             summary.textContent = '';
+            aiPanel.style.display = 'none';
+            aiBtn.dataset.officerId = officerId;
             modal.classList.add('open');
 
             var monthNames = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];

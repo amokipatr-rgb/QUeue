@@ -2245,26 +2245,30 @@ Makerere University Queue Management System (SMQSS)
             if sent:
                 logger.info(f"Reply email sent via Brevo to {email_to} for complaint #{complaint['id']}")
                 return True, None
-            logger.warning(f"Brevo API failed for complaint #{complaint['id']}: {err}")
+            logger.warning(f"Brevo API failed for complaint #{complaint['id']}: {err}, falling back to SMTP")
 
         if not SMTP_USER or not SMTP_PASS:
-            return False, 'No email service configured (set BREVO_API_KEY or SMTP credentials)'
+            return False, f'No email service configured. Brevo: {err if not BREVO_API_KEY else "failed"}'
 
-        msg = EmailMessage()
-        msg['Subject'] = subject
-        msg['From'] = SMTP_FROM
-        msg['To'] = email_to
-        msg.set_content(body)
-        msg.add_alternative(html_body, subtype='html')
-        smtp_ip = _resolve_ipv4(SMTP_HOST, SMTP_PORT)
-        with smtplib.SMTP(smtp_ip, SMTP_PORT, timeout=8) as s:
-            s.ehlo(SMTP_HOST)
-            s.starttls()
-            s.ehlo(SMTP_HOST)
-            s.login(SMTP_USER, SMTP_PASS)
-            s.send_message(msg)
-        logger.info(f"Reply email sent via SMTP to {email_to} for complaint #{complaint['id']}")
-        return True, None
+        try:
+            msg = EmailMessage()
+            msg['Subject'] = subject
+            msg['From'] = SMTP_FROM
+            msg['To'] = email_to
+            msg.set_content(body)
+            msg.add_alternative(html_body, subtype='html')
+            smtp_ip = _resolve_ipv4(SMTP_HOST, SMTP_PORT)
+            with smtplib.SMTP(smtp_ip, SMTP_PORT, timeout=20) as s:
+                s.ehlo(SMTP_HOST)
+                s.starttls()
+                s.ehlo(SMTP_HOST)
+                s.login(SMTP_USER, SMTP_PASS)
+                s.send_message(msg)
+            logger.info(f"Reply email sent via SMTP to {email_to} for complaint #{complaint['id']}")
+            return True, None
+        except Exception as smtp_err:
+            logger.error(f"SMTP fallback failed for complaint #{complaint['id']}: {smtp_err}")
+            return False, f'Both Brevo API and SMTP failed. SMTP error: {smtp_err}'
     except Exception as e:
         err = str(e)
         logger.error(f"Failed to send reply email for complaint #{complaint['id']}: {err}")
@@ -4021,6 +4025,103 @@ def admin_attendance_analyze():
 
     except Exception as e:
         logger.error(f"Error analyzing attendance: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+@app.route('/api/admin/attendance/analyze/<int:officer_id>', methods=['POST'])
+def admin_attendance_analyze_officer(officer_id):
+    """AI-powered attendance analysis for a single officer."""
+    try:
+        data = request.get_json(silent=True) or {}
+        week = data.get('week', '')
+        if not week:
+            today = datetime.now()
+            week = (today - timedelta(days=today.weekday())).strftime('%Y-%m-%d')
+
+        week_end = (datetime.strptime(week, '%Y-%m-%d') + timedelta(days=4)).strftime('%Y-%m-%d')
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Fetch this officer's info
+        cursor.execute("""
+            SELECT o.id, o.officer_number, o.officer_name, off.office_name
+            FROM officers o JOIN offices off ON o.office_id = off.id
+            WHERE o.id = %s
+        """, (officer_id,))
+        officer = cursor.fetchone()
+        if not officer:
+            cursor.close(); conn.close()
+            return jsonify({'success': False, 'message': 'Officer not found'}), 404
+
+        # Fetch this officer's sessions for the week
+        fmt_dt = '%Y-%m-%d %H:%i:%s'
+        cursor.execute("""
+            SELECT s.session_date,
+                   DATE_FORMAT(s.login_time, %s) AS login_time,
+                   DATE_FORMAT(s.logout_time, %s) AS logout_time,
+                   s.login_ip, s.login_location, s.device_info, s.tokens_served,
+                   TIMESTAMPDIFF(MINUTE, s.login_time, COALESCE(s.logout_time, NOW())) AS duration_minutes
+            FROM officer_sessions s
+            WHERE s.officer_id = %s AND s.session_date BETWEEN %s AND %s
+            ORDER BY s.login_time
+        """, (fmt_dt, fmt_dt, officer_id, week, week_end))
+        sessions = cursor.fetchall()
+        cursor.close()
+        conn.close()
+
+        # Group by day
+        by_date = {}
+        for s in sessions:
+            sd = str(s['session_date']) if s['session_date'] else None
+            if sd:
+                if sd not in by_date:
+                    by_date[sd] = []
+                by_date[sd].append({
+                    'login_time': s['login_time'], 'logout_time': s['logout_time'],
+                    'tokens_served': s['tokens_served'] or 0,
+                })
+
+        # Build single-officer attendance data
+        total_minutes = 0
+        total_served = 0
+        day_details = []
+        for d in range(5):
+            date_key = (datetime.strptime(week, '%Y-%m-%d') + timedelta(days=d)).strftime('%Y-%m-%d')
+            day_sessions = by_date.get(date_key, [])
+            daily = calc_daily_attendance(day_sessions) if day_sessions else None
+            if daily:
+                total_minutes += daily['duration_minutes']
+                total_served += daily['tokens_served']
+                day_details.append({
+                    'date': date_key, 'present': True,
+                    'total_minutes': daily['duration_minutes'],
+                    'effective_start': daily['effective_start'].isoformat(),
+                    'effective_end': daily['effective_end'].isoformat(),
+                })
+            else:
+                day_details.append({'date': date_key, 'present': False, 'total_minutes': 0})
+
+        WEEKLY_TARGET = 540 * 5
+        avail_pct = min(round(total_minutes / WEEKLY_TARGET * 100, 1), 100) if total_minutes else 0
+
+        attendance_data = [{
+            'officer_name': officer['officer_name'],
+            'officer_number': officer['officer_number'],
+            'office_name': officer['office_name'],
+            'availability_pct': avail_pct,
+            'tokens_served': total_served,
+            'days': day_details,
+        }]
+
+        analysis, err = analyze_attendance_with_groq(attendance_data, week, week_end)
+        if err:
+            return jsonify({'success': False, 'message': err}), 500
+
+        return jsonify({'success': True, 'analysis': analysis})
+
+    except Exception as e:
+        logger.error(f"Error analyzing officer attendance: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
