@@ -1175,9 +1175,8 @@
                 if (sig !== fetchAndDisplayMessages._lastSig) {
                     fetchAndDisplayMessages._lastSig = sig;
                     currentMessages = msgs;
-                    idleMessageIndex = 0;
                     buildTickerContent(currentUnavailNotices.concat(msgs));
-                    renderIdleState(currentMessages);
+                    renderNoticesGrid();
                 }
                 lastSuccessfulMessageFetch = Date.now();
             } catch(e) { console.error('Messages error:', e); }
@@ -1225,7 +1224,6 @@
 
         function renderIdleState(messages) {
             currentMessages = messages || [];
-            idleMessageIndex = 0;
             renderNoticesGrid();
         }
 
