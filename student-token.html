@@ -333,11 +333,12 @@ body.keyboard-open .header,body.input-mode .header{display:none!important;}
 
 @page{margin:0!important;}
 @media print{
-  body{background:white!important;padding:0!important;display:block!important;}
+  html,body{margin:0!important;padding:0!important;height:auto!important;overflow:hidden!important;}
+  body{background:white!important;display:block!important;}
   .container{max-width:100%!important;height:auto!important;}
   .card{box-shadow:none!important;border-radius:0!important;padding:6px!important;}
-  .header,  .step-indicator,.ai-panel,.error-bar,.loading-overlay,.rate-card,.mandatory-notice,.token-actions,.token-notice,.launch-center,.btn-row{display:none!important;}
-  .token-result{page-break-inside:avoid;padding:0!important;}
+  .header,.step-indicator,.ai-panel,.error-bar,.loading-overlay,.rate-card,.mandatory-notice,.token-actions,.token-notice,.launch-center,.btn-row,.offline-banner,.online-banner{display:none!important;}
+  #tokenDisplay,#printArea,.token-result{height:auto!important;max-height:none!important;page-break-inside:avoid!important;padding:0!important;}
   .token-badge{background:white!important;border:1px solid #155c30;border-radius:10px;padding:10px 20px 8px!important;box-shadow:none!important;margin-bottom:6px!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
   .token-number{font-size:30px!important;text-shadow:none!important;color:#d4aa00!important;}
   .token-label{margin-bottom:2px!important;opacity:1!important;color:#155c30!important;}
