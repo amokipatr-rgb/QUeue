@@ -580,12 +580,26 @@ body.keyboard-open .header,body.input-mode .header{display:none!important;}
 <script>
 const API_BASE_URL = window.location.origin;
 
+let serverTimeOffset = 0;
+async function syncServerTime() {
+  try {
+    const res = await fetch(API_BASE_URL + '/api/health');
+    const data = await res.json();
+    if (data.timestamp) {
+      serverTimeOffset = new Date(data.timestamp).getTime() - Date.now();
+    }
+  } catch(e) {}
+}
+function now() { return new Date(Date.now() + serverTimeOffset); }
+syncServerTime();
+setInterval(syncServerTime, 300000);
+
 let offices=[], services=[];
 let selectedOffice=null, selectedService=null;
 let currentStep=0;
 
 function checkOfficeHours(){
- var h=new Date().getHours();
+ var h=now().getHours();
  var open=h>=8&&h<17;
  var banner=document.getElementById('closedBanner');
  var btn=document.getElementById('getStartedBtn');
@@ -599,14 +613,14 @@ setInterval(function(){ checkOfficeHours(); buildHeaderTicker(); }, 30000);
 document.addEventListener('visibilitychange',function(){if(!document.hidden){checkOfficeHours();buildHeaderTicker();}});
 
 function liveClock() {
-try { var d = new Date(); var t = d.toLocaleTimeString('en-UG', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }).replace(/^0/, ''); document.getElementById('liveDateTime').textContent = t + ' EAT'; } catch(e) {}
+try { var d = now(); var t = d.toLocaleTimeString('en-UG', { timeZone: 'Africa/Nairobi', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }).replace(/^0/, ''); document.getElementById('liveDateTime').textContent = t + ' EAT'; } catch(e) {}
 }
 try { liveClock(); setInterval(liveClock, 1000); } catch(e) {}
 
 function buildHeaderTicker(){
  var inner=document.getElementById('headerTickerInner');
  if(!inner)return;
- var h=new Date().getHours();
+ var h=now().getHours();
  var open=h>=8&&h<17;
  var items=open
   ? ['👉 To get started, click "Get My Token"','◆ Select your preferred office and service','◆ Enter your name and student number and click get my token','◆ 🖥️ Watch the public display for your turn','◆ 🙏 Thank you for using our service']
@@ -968,9 +982,9 @@ async function doApiCall(name, studentNumber, parentPhone){
     loadingOverlay.style.display='none';
 
     if(data.success){
-      const now=new Date();
-      const timeStr=now.toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',hour12:true});
-      const dateStr=now.toLocaleDateString('en-UG',{day:'2-digit',month:'short',year:'numeric'});
+      const ts=now();
+      const timeStr=ts.toLocaleTimeString('en-UG',{timeZone:'Africa/Nairobi',hour:'2-digit',minute:'2-digit',hour12:true});
+      const dateStr=ts.toLocaleDateString('en-UG',{timeZone:'Africa/Nairobi',day:'2-digit',month:'short',year:'numeric'});
       const feedbackUrl = window.location.origin + '/r/' + data.token_number;
 
       document.getElementById('tokenDisplay').innerHTML=

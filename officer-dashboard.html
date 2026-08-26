@@ -800,6 +800,8 @@
   let notificationStatus = 'default'; // default, granted, denied
   let voiceQueue = [];
   let isVoicePlaying = false;
+  let lastReminderTime = 0;
+  const REMINDER_INTERVAL = 120000;
 
   function updateNotificationStatus() {
     const dot = document.getElementById('notifDot');
@@ -989,6 +991,42 @@
     previousWaitingCount = currentCount;
   }
 
+  async function playReminderVoice(waitingList) {
+    if (!soundEnabled || !waitingList.length) return;
+    const tokens = waitingList.map(s => s.token_number.split('').join(' ')).join(', and ');
+    const count = waitingList.length;
+    const text = count === 1
+      ? `Reminder. 1 student still waiting. Token ${tokens}. Please attend.`
+      : `Reminder. ${count} students still waiting. Tokens ${tokens}. Please attend.`;
+    try {
+      const res = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const audio = new Audio(URL.createObjectURL(blob));
+        voiceQueue.push(audio);
+        playNextVoice();
+      }
+    } catch (e) { console.error('Reminder voice error:', e); }
+  }
+
+  function checkWaitingReminder(waitingList) {
+    if (!waitingList || !waitingList.length) {
+      lastReminderTime = 0;
+      return;
+    }
+    const now = Date.now();
+    if (now - lastReminderTime >= REMINDER_INTERVAL) {
+      lastReminderTime = now;
+      playReminderVoice(waitingList);
+      showToast(`⏰ Reminder: ${waitingList.length} student(s) still waiting`, 'info');
+      addLog(`⏰ Reminder: ${waitingList.length} student(s) still waiting`, 'info');
+    }
+  }
+
   function checkLogin() {
     const loggedIn = sessionStorage.getItem('loggedInUser');
     if (!loggedIn) { window.location.href = '/'; return null; }
@@ -1149,6 +1187,7 @@
     const completedEl = document.getElementById('completedToday');
     if (completedEl) completedEl.textContent = result.completed_today || 0;
     checkAndNotifyNewTokens(waiting);
+    checkWaitingReminder(waiting);
     const qEl = document.getElementById('queueContainer');
     if (!waiting.length) {
       qEl.innerHTML = `<div class="empty"><div class="empty-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div class="empty-text">No students waiting</div></div>`;
