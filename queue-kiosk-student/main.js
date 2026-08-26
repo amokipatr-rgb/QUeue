@@ -195,6 +195,8 @@ ipcMain.on('print-receipt', async (event) => {
   mainWindow.webContents.print({
     silent: true,
     printBackground: true,
+    headerFooter: false,
+    margins: { marginType: 'none' },
     deviceName: deviceName || undefined
   }, (ok, err) => {
     if (!ok) console.warn('[StudentKiosk] Silent print failed:', err);
