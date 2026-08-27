@@ -847,7 +847,7 @@ def health_check():
         'tts': {'available': _TTS_AVAILABLE, 'voice': _TTS_VOICE},
         'uptime': uptime,
         'started_at': _SERVER_START.isoformat(),
-        'timestamp': datetime.now().isoformat(),
+        'timestamp': datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%SZ'),
         'error': db_error
     })
 

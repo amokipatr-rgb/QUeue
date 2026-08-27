@@ -580,17 +580,24 @@ body.keyboard-open .header,body.input-mode .header{display:none!important;}
 <script>
 const API_BASE_URL = window.location.origin;
 
-let serverTimeOffset = 0;
+let serverTimeMs = Date.now();
+let lastSyncLocal = Date.now();
+let serverSynced = false;
 async function syncServerTime() {
   try {
     const res = await fetch(API_BASE_URL + '/api/health');
     const data = await res.json();
     if (data.timestamp) {
-      serverTimeOffset = new Date(data.timestamp).getTime() - Date.now();
+      lastSyncLocal = Date.now();
+      serverTimeMs = new Date(data.timestamp).getTime();
+      serverSynced = true;
     }
   } catch(e) {}
 }
-function now() { return new Date(Date.now() + serverTimeOffset); }
+function now() {
+  if (serverSynced) return new Date(serverTimeMs + (Date.now() - lastSyncLocal));
+  return new Date();
+}
 syncServerTime();
 setInterval(syncServerTime, 300000);
 
