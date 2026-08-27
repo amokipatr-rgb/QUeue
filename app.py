@@ -22,7 +22,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # ── EMAIL (Brevo) ──
-BREVO_API_KEY = os.environ.get('BREVO_API_KEY', '')
+BREVO_API_KEY = os.environ.get('BREVO_API_KEY', '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')
 EMAIL_FROM = os.environ.get('EMAIL_FROM', 'SMQSS <smqss82@gmail.com>')
 # ── AI ──
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
