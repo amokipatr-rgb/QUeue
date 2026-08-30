@@ -832,16 +832,12 @@ function goToStep(step){
   clearError();
 
   if(step===2){
-    const pill=document.getElementById('officeSummary');
-    document.getElementById('officeSummaryText').textContent='Office: '+selectedOffice.name;
-    pill.style.display='flex';
+    document.getElementById('officeSummary').style.display='none';
     renderServices();
   }
 
   if(step===3){
-    const pill=document.getElementById('serviceSummary');
-    document.getElementById('serviceSummaryText').textContent=selectedOffice.name+' → '+selectedService.name;
-    pill.style.display='flex';
+    document.getElementById('serviceSummary').style.display='none';
 
     document.getElementById('step3Display').style.display='flex';
     document.getElementById('step3DisplayBtns').style.display='none';
