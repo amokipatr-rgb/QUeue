@@ -1,0 +1,1453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Student Token — SMQSS</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:opsz,wght@9..40,300;9..40,400;9..40,500;9..40,600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{--ink:#0c0e0b;--surface:#f7f6f2;--muted:#6b7280;--white:#fff;--mak-green:#155c30;--mak-green-mid:#1e7d43;--mak-green-light:#e8f4ed;--mak-gold:#b8890a;--mak-gold-light:#fdf3d8;--mak-gold-bright:#d4aa00;--border:#e2e0da;--shadow-sm:0 1px 3px rgba(0,0,0,.08);--shadow-md:0 4px 16px rgba(0,0,0,.10);--r:10px;--r-lg:16px}
+
+body{
+  font-family:'DM Sans','Inter','Segoe UI',system-ui,-apple-system,sans-serif;
+  min-height:100dvh;
+  display:flex;align-items:center;justify-content:center;
+  padding:16px;overflow:hidden;
+  background:var(--surface);position:relative;
+}
+body.keyboard-open{padding:8px;overflow-y:auto;}
+body.keyboard-open .card{padding:14px 14px 10px;overflow-y:auto;}
+body.keyboard-open .step-content.active{overflow-y:auto;}
+body.keyboard-open .step-indicator{margin-bottom:8px;flex-shrink:0;}
+body.keyboard-open .ai-panel{padding:8px 12px;margin-bottom:6px;flex-shrink:0;}
+body.keyboard-open .section-title{margin-bottom:6px;flex-shrink:0;}
+body.keyboard-open .select-grid{gap:5px;}
+body.keyboard-open .form-group{margin-bottom:4px;}
+body.keyboard-open .form-group label{font-size:10px;margin-bottom:1px;}
+body.keyboard-open .form-group input{padding:6px 10px;font-size:14px;scroll-margin-bottom:100px;}
+body.keyboard-open .btn-row{
+  position:sticky;bottom:0;
+  background:rgba(255,255,255,0.98);
+  padding:6px 0 4px;z-index:2;margin-top:8px;
+}
+
+.container{
+  width:100%;max-width:640px;position:relative;z-index:1;
+  height:calc(100dvh - 32px); /* 32px = body's 16px top+bottom padding — keeps the card fully inside the visible viewport instead of overflowing it */
+  max-height:820px;
+  display:flex;flex-direction:column;
+}
+body.keyboard-open .container{height:calc(100dvh - 16px);} /* body padding drops to 8px in keyboard-open mode */
+
+.header{display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--white);border-bottom:3px solid var(--mak-gold-bright);padding:12px 16px;flex-shrink:0;box-shadow:var(--shadow-sm)}
+.header .brand{display:flex;align-items:center;gap:8px;text-decoration:none;flex-shrink:1;min-width:0}
+.header .brand-shield{width:34px;height:34px;background:linear-gradient(145deg,var(--mak-gold-bright),var(--mak-gold));border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.header .brand-shield svg{width:17px;height:17px;fill:var(--mak-green)}
+.header .brand-name{font-family:'DM Serif Display',serif;font-size:clamp(14px,3vw,18px);color:var(--mak-green);white-space:nowrap}
+.header .header-clock{text-align:right;flex-shrink:0}
+.header .clock-time{font-family:'JetBrains Mono',monospace;font-size:clamp(10px,2vw,12px);font-weight:500;color:var(--mak-green);white-space:nowrap}
+body.keyboard-open .header,body.input-mode .header{display:none!important;}
+
+.header .header-ticker-inner{flex:1;overflow:hidden;white-space:nowrap;min-width:0;font-size:13px;font-weight:500;color:var(--mak-green)}
+.header .header-ticker-inner>div{display:inline-flex;align-items:center;animation:headerTickerScroll 35s linear infinite;will-change:transform}
+@keyframes headerTickerScroll{0%{transform:translateX(0)}100%{transform:translateX(-50%)}}
+
+.card{
+  background:var(--white);
+  border-radius:24px;padding:20px 20px 14px;
+  box-shadow:var(--shadow-md);
+  flex:1;display:flex;flex-direction:column;
+  min-height:0;
+  overflow:hidden;position:relative;
+  transition:padding 0.2s;
+}
+
+.step-indicator{display:flex;align-items:center;margin-bottom:16px;height:32px;flex-shrink:0;}
+.step-item{display:flex;align-items:center;gap:6px;flex:1;}
+.step-item:last-child{flex:none;}
+.step-dot{
+  width:12px;height:12px;border-radius:50%;
+  background:var(--border);flex-shrink:0;
+  transition:all 0.4s cubic-bezier(.34,1.56,.64,1);
+  display:flex;align-items:center;justify-content:center;
+  font-size:7px;font-weight:800;color:transparent;line-height:0;
+}
+.step-dot.active{
+  width:14px;height:14px;
+  background:var(--mak-green);
+  box-shadow:0 0 0 4px rgba(21,92,48,0.15);
+  transform:scale(1);
+  color:white;
+}
+.step-dot.done{
+  background:var(--mak-green-mid);
+  color:white;
+}
+.step-label{
+  font-size:9px;font-weight:500;color:var(--muted);white-space:nowrap;transition:color 0.3s;display:block;
+}
+.step-label.active{color:var(--mak-green);font-weight:700;}
+.step-line{flex:1;height:2px;background:var(--border);border-radius:2px;margin:0 8px;transition:background 0.5s;}
+.step-line.done{background:var(--mak-green-mid);}
+
+.error-bar{
+  background:#fff0f0;border:1px solid #ffc9c9;
+  color:#c62828;padding:9px 12px;border-radius:10px;
+  font-size:12px;margin-bottom:10px;display:none;flex-shrink:0;
+  animation:slideDown 0.2s ease;
+}
+@keyframes slideDown{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+
+.ai-panel{
+  display:flex;align-items:center;gap:10px;
+  background:var(--mak-green-light);
+  border:1.5px solid rgba(21,92,48,0.18);
+  border-left:3px solid var(--mak-green);
+  border-radius:14px;padding:10px 14px;
+  margin-bottom:12px;flex-shrink:0;
+  animation:floatBreath 4s ease-in-out infinite;
+  transition:opacity 0.3s;overflow:visible;
+}
+@keyframes floatBreath{
+  0%,100%{transform:translateY(0)}
+  50%{transform:translateY(-2px)}
+}
+.ai-avatar{display:flex;align-items:center;gap:8px;margin-bottom:0;flex-shrink:0;}
+.ai-dot{
+  width:10px;height:10px;border-radius:50%;
+  background:var(--mak-green-mid);flex-shrink:0;position:relative;
+  box-shadow:0 0 0 2px rgba(30,125,67,0.25);
+  animation:pulse 2s ease-in-out infinite;
+}
+@keyframes pulse{
+  0%,100%{box-shadow:0 0 0 2px rgba(30,125,67,0.25)}
+  50%{box-shadow:0 0 0 5px rgba(30,125,67,0.08)}
+}
+.ai-name{font-size:11px;font-weight:700;color:var(--mak-green);white-space:nowrap;}
+.ai-name span{font-weight:400;color:var(--muted);margin-left:2px;}
+.ai-bubble{
+  flex:1;min-width:0;
+  background:transparent;border:none;
+  padding:0;font-size:13px;color:var(--mak-green);line-height:1.45;
+  min-height:0;position:relative;
+}
+.ai-typing{display:inline-flex;align-items:center;gap:4px;height:16px}
+.ai-typing span{width:6px;height:6px;border-radius:50%;background:var(--mak-green-mid);animation:blink 1s infinite ease-in-out}
+.ai-typing span:nth-child(2){animation-delay:.15s}
+.ai-typing span:nth-child(3){animation-delay:.3s}
+@keyframes blink{0%,80%,100%{opacity:.3;transform:translateY(0)}40%{opacity:1;transform:translateY(-2px)}}
+.ai-cursor{display:inline-block;width:1.5px;height:1em;background:var(--mak-green);margin-left:2px;vertical-align:-2px;animation:cursorBlink .9s steps(1) infinite}
+@keyframes cursorBlink{50%{opacity:0}}
+
+.step-content{display:none;}
+.step-content.active{
+  display:flex;flex-direction:column;flex:1;
+  min-height:0; /* required so this flex child can actually shrink and scroll, not just grow */
+  overflow-y:auto;overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:thin;
+  scrollbar-color:var(--border) transparent;
+}
+.step-content.active::-webkit-scrollbar{width:6px;}
+.step-content.active::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+#step0.active{align-items:center;justify-content:center;}
+.step-content.active:not(#step0){animation:fadeUp 0.35s ease;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.section-title{font-size:13px;font-weight:700;color:var(--ink);margin-bottom:10px;flex-shrink:0;}
+
+.launch-center{
+  display:flex;flex-direction:column;align-items:center;
+  text-align:center;gap:10px;width:100%;max-width:300px;
+}
+.closed-banner{display:none;flex-direction:column;align-items:center;gap:7px;padding:28px 20px;color:var(--muted);}
+
+.closed-icon-wrap{
+  position:relative;width:64px;height:64px;
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:2px;
+  animation:closedFade .5s ease backwards;
+}
+.closed-icon-ring{
+  position:absolute;inset:0;border-radius:50%;
+  background:radial-gradient(circle, rgba(184,137,10,.22), transparent 70%);
+  animation:closedPulseRing 2.6s ease-in-out infinite;
+}
+@keyframes closedPulseRing{0%,100%{transform:scale(.82);opacity:.55}50%{transform:scale(1.18);opacity:1}}
+.closed-icon{
+  position:relative;width:50px;height:50px;
+  background:linear-gradient(150deg,var(--mak-gold-light),#fff);
+  border:1.5px solid rgba(184,137,10,.28);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--mak-gold-bright);
+  box-shadow:0 6px 16px rgba(184,137,10,.18);
+}
+.closed-icon svg{width:24px;height:24px;}
+.closed-status-dot{
+  position:absolute;top:2px;right:2px;width:11px;height:11px;
+  background:#e05a2b;border:2px solid var(--white);border-radius:50%;
+  box-shadow:0 0 0 0 rgba(224,90,43,.5);
+  animation:closedDotPulse 2s ease-in-out infinite;
+}
+@keyframes closedDotPulse{0%,100%{box-shadow:0 0 0 0 rgba(224,90,43,.45)}50%{box-shadow:0 0 0 5px rgba(224,90,43,0)}}
+
+.closed-status-label{
+  font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;
+  color:#c05621;background:#fff1e6;border:1px solid #ffd9b8;
+  padding:3px 10px;border-radius:20px;
+  animation:closedFade .5s ease .08s backwards;
+}
+.closed-title{
+  font-size:18px;font-weight:700;color:var(--ink);
+  animation:closedFade .5s ease .16s backwards;
+}
+.closed-hours-pill{
+  display:inline-flex;align-items:center;gap:6px;
+  font-family:'JetBrains Mono',monospace;font-size:12px;font-weight:600;
+  color:var(--mak-green);background:var(--mak-green-light);
+  border:1px solid rgba(21,92,48,.18);border-radius:20px;
+  padding:6px 14px;margin:2px 0 2px;
+  animation:closedFade .5s ease .24s backwards;
+}
+.closed-desc{
+  font-size:13px;line-height:1.55;
+  animation:closedFade .5s ease .32s backwards;
+}
+@keyframes closedFade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@media (prefers-reduced-motion:reduce){
+  .closed-icon-wrap,.closed-status-label,.closed-title,.closed-hours-pill,.closed-desc,.closed-icon-ring,.closed-status-dot{animation:none;}
+}
+.launch-icon{
+  width:56px;height:56px;border-radius:16px;
+  background:var(--mak-green);
+  display:flex;align-items:center;justify-content:center;
+  margin-bottom:2px;
+  box-shadow:0 8px 24px rgba(21,92,48,0.2);
+}
+.launch-icon svg{width:26px;height:26px;fill:var(--mak-gold-bright);}
+.launch-title{font-size:20px;font-weight:800;color:var(--ink);}
+.launch-sub{font-size:12.5px;color:var(--muted);line-height:1.5;max-width:300px;}
+.btn-launch{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;padding:14px 28px;
+  background:var(--mak-green);color:white;
+  border:none;border-radius:40px;
+  font-size:14px;font-weight:700;cursor:pointer;
+  transition:all 0.25s cubic-bezier(.34,1.56,.64,1);
+  box-shadow:0 6px 20px rgba(21,92,48,0.22);
+}
+.btn-launch:hover{transform:translateY(-1px);box-shadow:0 10px 28px rgba(21,92,48,0.3);}
+.btn-launch:active{transform:scale(0.97);}
+.btn-launch svg{width:16px;height:16px;fill:white;}
+.btn-desc{font-size:11px;color:var(--muted);line-height:1.4;margin-top:-4px;max-width:260px;}
+
+.select-grid{
+  display:grid;grid-template-columns:1fr 1fr;gap:8px;
+}
+.select-card{
+  border:1.5px solid var(--border);border-radius:12px;
+  padding:11px 10px;cursor:pointer;
+  transition:all 0.22s cubic-bezier(.34,1.56,.64,1);
+  background:var(--white);
+  animation:cardPop 0.35s ease backwards;
+}
+@keyframes cardPop{from{opacity:0;transform:scale(0.92)}to{opacity:1;transform:scale(1)}}
+.select-card:hover{border-color:var(--mak-green-mid);background:var(--mak-green-light);transform:translateY(-1px);box-shadow:0 4px 12px rgba(21,92,48,0.08);}
+.select-card.selected{
+  border-color:var(--mak-green);background:var(--mak-green-light);
+  box-shadow:0 0 0 2.5px rgba(21,92,48,0.1);
+  transform:translateY(-1px);
+}
+.select-card:active{transform:scale(0.96);}
+.card-icon{
+  width:32px;height:32px;border-radius:8px;
+  background:var(--mak-green-light);margin-bottom:7px;
+  display:flex;align-items:center;justify-content:center;
+}
+.select-card.selected .card-icon{background:rgba(21,92,48,0.12);}
+.card-icon svg{width:15px;height:15px;fill:var(--mak-green);}
+.card-label{font-size:12px;font-weight:700;color:var(--mak-green);}
+.card-sub{font-size:10px;color:var(--muted);margin-top:2px;}
+.select-card.unavailable{background:#fff5f5;border-color:#fcc;cursor:not-allowed;opacity:0.8;}
+.select-card.unavailable:hover{border-color:#fcc;background:#fff5f5;transform:none;box-shadow:none;}
+.select-card.unavailable .card-icon{background:#ffe0e0;}
+.select-card.unavailable .card-icon svg{fill:#c62828;}
+.select-card.unavailable .card-label{color:#c62828;}
+.select-card.unavailable .card-sub{color:#e57373;}
+.unavail-badge{display:inline-block;background:#c62828;color:white;font-size:8px;font-weight:700;padding:2px 6px;border-radius:3px;align-self:flex-start;}
+
+.summary-pill{
+  background:var(--mak-green-light);border:1px solid rgba(21,92,48,0.2);
+  border-radius:10px;padding:8px 12px;margin-bottom:10px;
+  font-size:12px;color:var(--mak-green);display:flex;align-items:center;gap:7px;flex-shrink:0;
+  animation:slideDown 0.2s ease;
+}
+.summary-pill .check{
+  width:16px;height:16px;background:var(--mak-green-mid);
+  border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+}
+.summary-pill .check svg{width:9px;height:9px;}
+
+.form-group{margin-bottom:14px;}
+.form-label{display:block;font-size:12px;font-weight:600;color:var(--ink);margin-bottom:5px;}
+.form-input{
+  width:100%;padding:10px 14px;
+  border:1.5px solid var(--border);border-radius:10px;
+  font-size:14px;font-family:inherit;outline:none;
+  transition:all 0.2s;background:var(--white);color:var(--ink);
+}
+.form-input:focus{border-color:var(--mak-green);background:white;box-shadow:0 0 0 3px rgba(21,92,48,0.08);}
+.form-input.valid{border-color:var(--mak-green);box-shadow:0 0 0 3px rgba(21,92,48,0.08)}
+.form-input.invalid{border-color:#dc3545;box-shadow:0 0 0 3px rgba(220,53,69,0.08)}
+.num-hint{font-size:11px;color:var(--muted);margin-top:4px;display:none}
+.num-hint.show{display:block}
+.num-hint.error{color:#dc3545}
+
+.btn-row{
+  display:flex;justify-content:center;gap:10px;
+  margin-top:10px;padding-top:10px;flex-shrink:0;
+  position:sticky;bottom:0;
+  background:var(--white);
+  z-index:2;
+}
+.btn-back{
+  padding:10px 18px;border:1.5px solid var(--border);
+  background:white;color:var(--muted);border-radius:40px;
+  cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap;
+  transition:all 0.2s;
+}
+.btn-back:hover{background:var(--surface);border-color:#ccc;}
+.btn-next{
+  padding:10px 22px;
+  background:var(--mak-green);color:white;
+  border:none;border-radius:40px;
+  font-size:13px;font-weight:700;cursor:pointer;
+  transition:all 0.25s cubic-bezier(.34,1.56,.64,1);
+  box-shadow:0 4px 14px rgba(21,92,48,0.18);
+}
+.btn-next:hover:not(:disabled){opacity:0.9;transform:translateY(-1px);box-shadow:0 6px 20px rgba(21,92,48,0.22);}
+.btn-next:active:not(:disabled){transform:scale(0.97);}
+.btn-next:disabled{background:var(--border);cursor:not-allowed;box-shadow:none;}
+
+.loading-overlay{
+  text-align:center;padding:30px 0;
+  animation:fadeUp 0.3s ease;
+  flex-shrink:0;
+}
+#tokenDisplay:not(:empty){
+  flex:1;min-height:0;
+  overflow-y:auto;overflow-x:hidden;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:thin;
+  scrollbar-color:var(--border) transparent;
+}
+#tokenDisplay:not(:empty)::-webkit-scrollbar{width:6px;}
+#tokenDisplay:not(:empty)::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+.spinner{
+  width:36px;height:36px;
+  border:3px solid var(--border);border-top-color:var(--mak-green);
+  border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 14px;
+}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-overlay p{font-size:13px;color:var(--muted);}
+
+.token-result{text-align:center;padding:4px 0;animation:fadeUp 0.5s ease;}
+
+.token-badge{
+  display:inline-block;background:var(--mak-green);color:white;
+  border-radius:12px;padding:14px 24px 12px;margin-bottom:10px;
+  min-width:120px;
+  box-shadow:0 6px 24px rgba(21,92,48,0.22);
+  animation:tokenPop 0.6s cubic-bezier(.34,1.56,.64,1) 0.1s backwards;
+}
+@keyframes tokenPop{from{opacity:0;transform:scale(0.7)}to{opacity:1;transform:scale(1)}}
+.token-label{font-size:8px;letter-spacing:2px;text-transform:uppercase;opacity:0.6;margin-bottom:3px;}
+.token-number{font-size:30px;font-weight:900;letter-spacing:4px;line-height:1;color:var(--mak-gold-bright);text-shadow:0 2px 8px rgba(212,170,0,0.3);}
+.token-meta{margin-top:3px;font-size:9px;opacity:0.7;}
+.token-details{background:#f8f9fa;border-radius:10px;padding:10px 12px;text-align:left;}
+.token-row{display:flex;justify-content:space-between;font-size:11.5px;padding:4px 0;border-bottom:1px solid var(--border);}
+.token-row:last-child{border-bottom:none;}
+.token-row .lbl{color:var(--muted);}
+.token-row .val{font-weight:700;color:var(--mak-green);}
+.token-notice{
+  margin-top:10px;font-size:10px;color:#7a5c00;text-align:center;
+  padding:7px 10px;background:#fffbea;border-radius:8px;border:1px solid #ffe97a;
+}
+.mandatory-notice{
+  display:flex;align-items:center;gap:8px;
+  margin-top:8px;padding:9px 12px;border-radius:10px;
+  background:#fff3e0;border:1px solid #ffcc80;
+  font-size:10px;color:#bf360c;line-height:1.5;
+}
+.mandatory-icon{font-size:14px;flex-shrink:0;}
+.token-actions{
+  display:flex;justify-content:center;gap:10px;
+  margin-top:10px;padding-top:10px;flex-shrink:0;
+  position:sticky;bottom:0;
+  background:linear-gradient(to top, var(--white) 70%, rgba(255,255,255,0));
+  z-index:2;
+}
+.btn-print{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:10px 22px;
+  background:var(--mak-green);color:white;
+  border:none;border-radius:40px;
+  font-size:13px;font-weight:700;cursor:pointer;
+  transition:all 0.25s cubic-bezier(.34,1.56,.64,1);
+  box-shadow:0 4px 14px rgba(21,92,48,0.18);
+}
+.btn-print:hover{opacity:0.9;transform:translateY(-1px);box-shadow:0 6px 20px rgba(21,92,48,0.22);}
+.btn-print:active{transform:scale(0.97);}
+.btn-print svg{width:13px;height:13px;fill:white;}
+.btn-new{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:10px 18px;border:1.5px solid var(--border);
+  background:white;color:var(--muted);border-radius:40px;
+  cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap;
+  transition:all 0.2s;
+}
+.btn-new:hover{background:var(--surface);border-color:#ccc;}
+
+.loading-cards{text-align:center;padding:24px 0;}
+.loading-cards .spinner{margin:0 auto 10px;}
+.loading-cards p{font-size:12px;color:var(--muted);}
+
+.receipt-header{display:block;text-align:center;margin-bottom:12px;border-bottom:2px solid var(--mak-gold-bright);padding-bottom:10px;}
+.receipt-header .rh-brand{font-size:15px;font-weight:700;color:var(--mak-green);}
+.receipt-header .rh-brand svg{width:16px;height:16px;fill:var(--mak-green);vertical-align:middle;margin-right:4px;}
+.receipt-header p{font-size:10px;color:var(--muted);margin-top:2px;}
+.receipt-footer{text-align:center;font-size:9px;color:var(--muted);margin-top:10px;padding-top:8px;border-top:1px solid var(--border);}
+.qr-wrap{text-align:center;margin:10px 0 6px;}
+.qr-img{display:inline-block;border-radius:8px;}
+.qr-label{font-size:9px;color:var(--muted);margin-top:4px;}
+
+@page{margin:0!important;}
+@media print{
+  html,body{margin:0!important;padding:0!important;height:auto!important;overflow:hidden!important;}
+  body{background:white!important;display:block!important;}
+  .container{max-width:100%!important;height:auto!important;}
+  .card{box-shadow:none!important;border-radius:0!important;padding:6px!important;}
+  .header,.step-indicator,.ai-panel,.error-bar,.loading-overlay,.rate-card,.mandatory-notice,.token-actions,.token-notice,.launch-center,.btn-row,.offline-banner,.online-banner{display:none!important;}
+  #tokenDisplay,#printArea,.token-result{height:auto!important;max-height:none!important;page-break-inside:avoid!important;padding:0!important;}
+  .token-badge{background:white!important;border:1px solid #155c30;border-radius:10px;padding:10px 20px 8px!important;box-shadow:none!important;margin-bottom:6px!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .token-number{font-size:30px!important;text-shadow:none!important;color:#d4aa00!important;}
+  .token-label{margin-bottom:2px!important;opacity:1!important;color:#155c30!important;}
+  .token-meta{margin-top:2px!important;font-size:9px!important;opacity:1!important;color:#155c30!important;}
+  .token-details{background:white!important;border:1px solid #e2e0da;border-radius:6px;padding:6px 10px!important;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+  .token-row{font-size:10px!important;padding:2px 0!important;}
+  .token-row .lbl{color:#6b7280!important;}
+  .token-row .val{color:#155c30!important;}
+  .receipt-header{display:block!important;margin-bottom:6px!important;padding-bottom:6px!important;border-bottom-width:1.5px!important;}
+  .receipt-header .rh-brand{font-size:13px!important;color:#155c30!important;}
+  .receipt-header .rh-brand svg{width:13px!important;height:13px!important;fill:#155c30!important;}
+  .receipt-header p{font-size:9px!important;margin-top:1px!important;color:#6b7280!important;}
+  .qr-wrap{margin:4px 0 2px!important;}
+  .qr-img{width:100px!important;height:100px!important;border-radius:4px!important;}
+  .qr-label{font-size:8px!important;margin-top:2px!important;color:#6b7280!important;}
+  .qr-fallback{display:none!important;}
+  .receipt-footer{display:block!important;margin-top:4px!important;padding-top:4px!important;font-size:9px!important;color:#6b7280!important;border-top-width:.5px!important;}
+}
+
+@media(max-width:480px){
+  .card{padding:16px 14px 10px;}
+}
+.offline-banner{position:fixed;bottom:0;left:0;right:0;z-index:9999;background:rgba(230,81,0,0.92);backdrop-filter:blur(8px);color:#fff;font-size:15px;font-weight:600;padding:14px 24px;display:flex;align-items:center;justify-content:center;gap:10px;transform:translateY(100%);transition:transform .4s cubic-bezier(.4,0,.2,1);box-shadow:0 -4px 20px rgba(0,0,0,0.3);letter-spacing:0.3px}
+.offline-banner.show{transform:translateY(0)}
+.offline-banner svg{width:20px;height:20px;flex-shrink:0}
+.offline-dot{display:inline-block;width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,0.7);margin:0 1px;animation:offlineDot 1.2s infinite}
+.offline-dot:nth-child(2){animation-delay:.2s}
+.offline-dot:nth-child(3){animation-delay:.4s}
+@keyframes offlineDot{0%,80%,100%{opacity:.3;}40%{opacity:1;}}
+.online-banner{position:fixed;bottom:0;left:0;right:0;z-index:9999;background:rgba(0,200,83,0.95);backdrop-filter:blur(8px);color:#fff;font-size:15px;font-weight:600;padding:14px 24px;display:flex;align-items:center;justify-content:center;gap:10px;transform:translateY(100%);transition:transform .4s cubic-bezier(.4,0,.2,1);box-shadow:0 -4px 20px rgba(0,0,0,0.3);letter-spacing:0.3px}
+.online-banner.show{transform:translateY(0)}
+.online-banner svg{width:20px;height:20px;flex-shrink:0}
+.online-dot{display:inline-block;width:4px;height:4px;border-radius:50%;background:rgba(255,255,255,0.7);margin:0 1px;animation:offlineDot 1.2s infinite}
+.online-dot:nth-child(2){animation-delay:.2s}
+.online-dot:nth-child(3){animation-delay:.4s}
+
+/* ═══════════════════════════════════════════════════════════════
+   DESKTOP MODERNIZATION LAYER
+   Additive only — every rule above still applies as-is on mobile
+   and kiosk widths. Nothing here touches an id/class the JS reads
+   or toggles; it only changes how things look on wide viewports.
+   ═══════════════════════════════════════════════════════════════ */
+@media (min-width:900px){
+
+  body{
+    padding:40px;
+    background:
+      radial-gradient(circle at 14% 12%, rgba(21,92,48,0.10), transparent 42%),
+      radial-gradient(circle at 88% 82%, rgba(212,170,0,0.12), transparent 46%),
+      linear-gradient(180deg,#f7f6f2 0%,#efece3 100%);
+  }
+  /* faint dot-grid texture behind the card, purely decorative */
+  body::before{
+    content:'';position:fixed;inset:0;z-index:0;pointer-events:none;
+    background-image:radial-gradient(rgba(21,92,48,0.10) 1px, transparent 1px);
+    background-size:26px 26px;
+    -webkit-mask-image:radial-gradient(circle at 50% 40%, black, transparent 72%);
+    mask-image:radial-gradient(circle at 50% 40%, black, transparent 72%);
+  }
+
+  .container{
+    max-width:900px;
+    height:calc(100dvh - 80px); /* 80px = desktop body's 40px top+bottom padding */
+    max-height:860px;
+    filter:drop-shadow(0 30px 60px rgba(12,14,11,0.14));
+  }
+
+  .header{
+    padding:18px 30px;
+    border-radius:20px 20px 0 0;
+  }
+  .header .brand-shield{width:40px;height:40px;}
+  .header .brand-shield svg{width:20px;height:20px;}
+  .header .header-ticker-inner{font-size:14px;}
+
+  .card{
+    border-radius:0 0 20px 20px;
+    padding:36px 44px 26px;
+    box-shadow:none;
+  }
+
+  .step-indicator{height:40px;margin-bottom:26px;max-width:520px;margin-left:auto;margin-right:auto;}
+  .step-dot{width:15px;height:15px;font-size:8px;}
+  .step-dot.active{width:18px;height:18px;box-shadow:0 0 0 5px rgba(21,92,48,0.15);}
+  .step-label{font-size:11px;}
+
+  .section-title{font-size:16px;margin-bottom:16px;}
+
+  .ai-panel{padding:16px 20px;margin-bottom:20px;border-radius:16px;gap:14px;}
+  .ai-dot{width:12px;height:12px;}
+  .ai-name{font-size:12.5px;}
+  .ai-bubble{font-size:14.5px;line-height:1.6;}
+
+  .launch-center{max-width:380px;gap:14px;}
+  .launch-icon{width:68px;height:68px;border-radius:20px;}
+  .launch-icon svg{width:32px;height:32px;}
+  .launch-title{font-size:24px;}
+  .btn-launch{padding:16px 30px;font-size:15px;border-radius:44px;}
+  .btn-desc{font-size:12px;}
+
+  .select-grid{grid-template-columns:repeat(3,1fr);gap:14px;}
+  .select-card{padding:18px 16px;border-radius:16px;}
+  .card-icon{width:40px;height:40px;border-radius:11px;margin-bottom:12px;}
+  .card-icon svg{width:19px;height:19px;}
+  .card-label{font-size:14px;}
+  .card-sub{font-size:11.5px;margin-top:4px;}
+
+  .summary-pill{padding:11px 16px;font-size:13px;border-radius:12px;}
+
+  .form-group{margin-bottom:20px;}
+  .form-label{font-size:13px;margin-bottom:7px;}
+  .form-input{padding:13px 16px;font-size:15px;border-radius:12px;}
+
+  .btn-row{gap:14px;margin-top:18px;}
+  .btn-back{padding:12px 22px;font-size:13px;}
+  .btn-next{padding:12px 28px;font-size:14px;border-radius:44px;}
+
+  .token-badge{padding:20px 34px 18px;border-radius:16px;min-width:170px;}
+  .token-number{font-size:38px;letter-spacing:5px;}
+  .token-details{padding:14px 18px;border-radius:12px;}
+  .token-row{font-size:13px;padding:6px 0;}
+  .mandatory-notice{font-size:11.5px;padding:11px 16px;}
+  .btn-print{padding:12px 28px;font-size:14px;border-radius:44px;}
+  .btn-new{padding:12px 22px;font-size:13px;}
+
+  /* step-3 name/number/phone form reads better as two columns on desktop
+     when both fields are visible at once; harmless when one is hidden
+     via JS since display:none simply removes it from the flow. */
+  #step3Input{max-width:520px;margin:0 auto;width:100%;}
+  #step1 .section-title,#step2 .section-title,#step3Input .section-title{text-align:left;}
+
+  .closed-banner{padding:38px 26px;gap:10px;}
+  .closed-icon-wrap{width:80px;height:80px;}
+  .closed-icon{width:64px;height:64px;}
+  .closed-icon svg{width:30px;height:30px;}
+  .closed-status-dot{width:14px;height:14px;}
+  .closed-status-label{font-size:11px;padding:4px 12px;}
+  .closed-title{font-size:22px;}
+  .closed-hours-pill{font-size:13.5px;padding:8px 18px;}
+  .closed-desc{font-size:14px;max-width:320px;}
+}
+
+@media (min-width:1200px){
+  .container{max-width:980px;}
+}
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="header">
+    <a class="brand" href="#">
+      <div class="brand-shield" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg></div>
+      <div class="brand-name">SMQSS</div>
+    </a>
+    <div class="header-ticker-inner" id="headerTickerInner"></div>
+    <div class="header-clock">
+      <div class="clock-time" id="liveDateTime">Loading&hellip;</div>
+    </div>
+  </div>
+
+  <div class="card">
+
+    <div class="step-indicator" id="stepIndicator" style="display:none;">
+      <div class="step-item">
+        <div class="step-dot" id="dot1">1</div>
+        <div class="step-label" id="lbl1">Select Office</div>
+      </div>
+      <div class="step-line" id="line1"></div>
+      <div class="step-item">
+        <div class="step-dot" id="dot2">2</div>
+        <div class="step-label" id="lbl2">Select Service</div>
+      </div>
+      <div class="step-line" id="line2"></div>
+      <div class="step-item">
+        <div class="step-dot" id="dot3">3</div>
+        <div class="step-label" id="lbl3">Your Details</div>
+      </div>
+    </div>
+
+    <div class="error-bar" id="errorBar"></div>
+
+    <!-- ══ WELCOME SCREEN ══ -->
+    <div class="step-content active" id="step0">
+      <div class="ai-panel" id="welcomePanel" style="display:none;">
+        <div class="ai-avatar">
+          <div class="ai-dot">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+          </div>
+          <div>
+            <div class="ai-name">Queue Assistant <span>Makerere University</span></div>
+          </div>
+        </div>
+        <div class="ai-bubble" id="aiBubble0">
+          <div class="ai-typing"><span></span><span></span><span></span></div>
+        </div>
+      </div>
+      <div class="launch-center">
+        <div class="closed-banner" id="closedBanner">
+          <div class="closed-icon-wrap">
+            <div class="closed-icon-ring"></div>
+            <div class="closed-icon">
+              <svg viewBox="0 0 24 24" fill="none">
+                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.6"/>
+                <path d="M12 7v5l3.5 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </div>
+            <span class="closed-status-dot"></span>
+          </div>
+          <div class="closed-status-label">Currently Closed</div>
+          <div class="closed-title">Offices are Closed</div>
+          <div class="closed-hours-pill">
+            <svg viewBox="0 0 24 24" width="12" height="12" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M12 7v5l3 2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+            8:00 AM – 5:00 PM
+          </div>
+          <div class="closed-desc">Please come back during office hours.<br>You can only rate service for now.</div>
+        </div>
+        <div class="section-title" style="margin-bottom:4px;font-size:14px;">What would you like to do?</div>
+        <button class="btn-launch" id="getStartedBtn" onclick="showWelcome()">
+          <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+          Get my Token
+        </button>
+        <div class="btn-desc">Click to get access to your preferred office</div>
+        <div id="rateWelcomeWrap" style="width:100%;display:flex;flex-direction:column;align-items:center;">
+          <div style="margin:8px 0;width:200px;height:1px;background:var(--border);"></div>
+          <a href="javascript:void(0)" onclick="goToFeedback()" style="text-decoration:none;width:100%;max-width:260px;">
+            <button class="btn-launch" style="justify-content:center;font-size:14px;padding:12px 30px;background:#b8860b;">
+              <svg viewBox="0 0 24 24" width="17" height="17" fill="#ffd700"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+              <span style="color:#ffd700">Rate Your Service</span>
+            </button>
+          </a>
+          <div class="btn-desc" style="margin-top:6px;">Already visited an office? Share your experience</div>
+        </div>
+
+        <div style="display:flex;gap:8px;">
+          <button class="btn-launch" id="launchBtn" onclick="startFlow()" style="display:none;">
+            <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            Select an Office
+          </button>
+          <button class="btn-back" id="step0BackBtn" onclick="goToStep(0)" style="display:none;">← Back</button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ══ STEP 1: SELECT OFFICE ══ -->
+    <div class="step-content" id="step1">
+      <div class="ai-panel">
+        <div class="ai-avatar">
+          <div class="ai-dot">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+          </div>
+          <div>
+            <div class="ai-name">Queue Assistant <span>Makerere University</span></div>
+          </div>
+        </div>
+        <div class="ai-bubble" id="aiBubble1">
+          <div class="ai-typing"><span></span><span></span><span></span></div>
+        </div>
+      </div>
+      <div class="section-title">Choose an Office</div>
+      <div id="officeGrid">
+        <div class="loading-cards"><div class="spinner"></div><p>Loading offices…</p></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn-back" onclick="goToStep(0)">← Back</button>
+        <button class="btn-next" id="nextToStep2Btn" disabled onclick="goToStep(2)">Continue →</button>
+      </div>
+    </div>
+
+    <!-- ══ STEP 2: SELECT SERVICE ══ -->
+    <div class="step-content" id="step2">
+      <div class="summary-pill" id="officeSummary" style="display:none;">
+        <div class="check"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/></svg></div>
+        <span id="officeSummaryText"></span>
+      </div>
+      <div class="ai-panel">
+        <div class="ai-avatar">
+          <div class="ai-dot">
+            <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+          </div>
+          <div>
+            <div class="ai-name">Queue Assistant <span>Makerere University</span></div>
+          </div>
+        </div>
+        <div class="ai-bubble" id="aiBubble2">
+          <div class="ai-typing"><span></span><span></span><span></span></div>
+        </div>
+      </div>
+      <div class="section-title" id="serviceTitle">Choose a Service</div>
+      <div id="serviceGrid">
+        <div class="loading-cards"><div class="spinner"></div><p>Loading services…</p></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn-back" onclick="goToStep(1)">← Back</button>
+        <button class="btn-next" id="nextToStep3Btn" disabled onclick="goToStep(3)">Continue →</button>
+      </div>
+    </div>
+
+    <!-- ══ STEP 3: NAME ══ -->
+    <div class="step-content" id="step3">
+      <div class="summary-pill" id="serviceSummary" style="display:none;">
+        <div class="check"><svg viewBox="0 0 12 12"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/></svg></div>
+        <span id="serviceSummaryText"></span>
+      </div>
+
+      <!-- Phase A: display only (AI message + Continue) -->
+      <div id="step3Display" style="display:none;flex-direction:column;flex:1;">
+        <div class="ai-panel">
+          <div class="ai-avatar">
+            <div class="ai-dot">
+              <svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg>
+            </div>
+            <div>
+              <div class="ai-name">Queue Assistant <span>Makerere University</span></div>
+            </div>
+          </div>
+          <div class="ai-bubble" id="aiBubble3">
+            <div class="ai-typing"><span></span><span></span><span></span></div>
+          </div>
+        </div>
+        <div class="btn-row" id="step3DisplayBtns" style="display:none;">
+          <button class="btn-back" onclick="goToStep(2)">← Back</button>
+          <button class="btn-next" id="fillDetailsBtn" onclick="showStep3Inputs()">Fill Details →</button>
+        </div>
+      </div>
+
+      <!-- Phase B: input only (form fields) -->
+      <div id="step3Input" style="display:none;flex-direction:column;flex:1;">
+        <div class="section-title" id="nameTitle">Enter Your Details</div>
+        <div class="form-group" id="nameFieldWrap">
+          <label class="form-label" id="nameLabel">Full Name *</label>
+          <input type="text" class="form-input" id="studentName" placeholder="e.g. Nakato Sarah" autocomplete="off">
+        </div>
+        <div class="form-group" id="studentNumFieldWrap" style="display:none;">
+          <label class="form-label" id="studentNumLabel">Student Number *</label>
+          <input type="text" class="form-input" id="studentNumber" placeholder="e.g. 2300716574" autocomplete="off" maxlength="10" inputmode="numeric" pattern="[0-9]*" oninput="validateStudentNumber(this)">
+          <div class="num-hint" id="numHint"></div>
+        </div>
+        <div class="form-group" id="parentPhoneFieldWrap" style="display:none;">
+          <label class="form-label">Phone Number *</label>
+          <input type="tel" class="form-input" id="parentPhone" placeholder="e.g. 0772123456" autocomplete="off">
+        </div>
+        <div class="btn-row" id="step3Btns" style="display:none;">
+          <button class="btn-back" onclick="goToStep(2)">← Back</button>
+          <button class="btn-next" id="getTokenBtn" onclick="generateToken()">Get My Token →</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ LOADING ══ -->
+    <div class="loading-overlay" id="loadingOverlay" style="display:none;">
+      <div class="spinner"></div>
+      <p id="loadingMsg">Generating your token…</p>
+    </div>
+
+    <!-- ══ TOKEN RESULT ══ -->
+    <div id="tokenDisplay"></div>
+
+  </div>
+</div>
+
+<script>
+const API_BASE_URL = window.location.origin;
+
+let serverTimeMs = Date.now();
+let lastSyncLocal = Date.now();
+let serverSynced = false;
+async function syncServerTime() {
+  try {
+    const res = await fetch(API_BASE_URL + '/api/health');
+    const data = await res.json();
+    if (data.timestamp) {
+      lastSyncLocal = Date.now();
+      serverTimeMs = new Date(data.timestamp).getTime();
+      serverSynced = true;
+    }
+  } catch(e) {}
+}
+function now() {
+  if (serverSynced) return new Date(serverTimeMs + (Date.now() - lastSyncLocal));
+  return new Date();
+}
+syncServerTime();
+setInterval(syncServerTime, 300000);
+
+let offices=[], services=[];
+let selectedOffice=null, selectedService=null;
+let currentStep=0;
+
+async function loadOffices(){
+  try{
+    const res = await fetch(API_BASE_URL+'/api/offices');
+    const data = await res.json();
+    if(data.success){ offices=data.offices; renderOffices(); }
+    else{ showGridError('officeGrid','Could not load offices. Please refresh.'); }
+  } catch(e){
+    showGridError('officeGrid','Failed to connect. Please check your network.');
+  }
+}
+let serviceRequestId = 0;
+async function loadServicesForOffice(officeId){
+  const reqId = ++serviceRequestId;
+  document.getElementById('serviceGrid').innerHTML='<div class="loading-cards"><div class="spinner"></div><p>Loading services…</p></div>';
+  selectedService=null;
+  document.getElementById('nextToStep3Btn').disabled=true;
+  try{
+    const res = await fetch(API_BASE_URL+'/api/offices/'+officeId+'/services');
+    const data = await res.json();
+    if(reqId !== serviceRequestId) return;
+    if(data.success){ services=data.services; }
+    else{ services=[]; }
+  } catch(e){ services=[]; }
+  if(currentStep===2){ renderServices(); }
+}
+
+/* ── OFFICE HOURS GATE ──
+   Decides, every time it runs, whether the office is "open" and toggles
+   the welcome screen between the closed-banner and the "Get my Token" flow.
+   Runs once on load, then every 30s (via the setInterval below) and again
+   whenever the tab regains focus (visibilitychange), so it self-corrects
+   if the page is left open across the 8:00 / 17:00 boundary. */
+function checkOfficeHours(){
+ // Current hour (0–23) from the server-synced clock (now()), not the
+ // device clock, so a wrong local time on a kiosk can't fake "open".
+ var h=now().getHours();
+
+ // Operating window: 8:00 AM (h===8) up to, but not including, 5:00 PM (h===17).
+ // ── TESTING OVERRIDE ── real check commented out below so "Get my Token"
+ // stays visible for testing even though it's currently past office hours.
+ // Uncomment the line below and delete the `var open=true;` line to restore
+ // normal 8–5 gating.
+ // var open=h>=8&&h<17;
+ var open=h>=8&&h<17;
+
+ var banner=document.getElementById('closedBanner');   // "Offices are Closed" panel
+ var btn=document.getElementById('getStartedBtn');      // "Get my Token" launch button
+ var desc=btn?btn.nextElementSibling:null;               // the .btn-desc line right under that button
+
+ // Closed banner is the inverse of "open": shown when the office is closed, hidden when open.
+ if(banner)banner.style.display=open?'none':'flex';
+
+ // "Get my Token" button (and its helper text) only appear during open hours;
+ // outside hours the person can still reach "Rate Your Service" from the same screen.
+ if(btn)btn.style.display=open?'':'none';
+ if(desc&&desc.classList.contains('btn-desc'))desc.style.display=open?'':'none';
+}
+checkOfficeHours();
+setInterval(function(){ checkOfficeHours(); buildHeaderTicker(); }, 30000);
+document.addEventListener('visibilitychange',function(){if(!document.hidden){checkOfficeHours();buildHeaderTicker();}});
+
+function liveClock() {
+try { var d = now(); var t = d.toLocaleTimeString('en-UG', { timeZone: 'Africa/Nairobi', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }).replace(/^0/, ''); document.getElementById('liveDateTime').textContent = t + ' EAT'; } catch(e) {}
+}
+try { liveClock(); setInterval(liveClock, 1000); } catch(e) {}
+
+function buildHeaderTicker(){
+ var inner=document.getElementById('headerTickerInner');
+ if(!inner)return;
+ var h=now().getHours();
+ var open=h>=8&&h<17;
+ var items=open
+  ? ['👉 To get started, click "Get My Token"','◆ Select your preferred office and service','◆ Enter your name and student number and click get my token','◆ 🖥️ Watch the public display for your turn','◆ 🙏 Thank you for using our service']
+  : ['🕒 Offices are currently closed','◆ Operating hours: 8:00 AM – 5:00 PM','◆ You can only rate service for now','◆ 🙏 Thank you for your understanding'];
+ var sep=' <span style="padding:0 14px;opacity:0.5">◆</span> ';
+ var content=items.join(sep);
+ inner.innerHTML='<div>'+content+sep+content+'</div>';
+}
+try{ buildHeaderTicker(); }catch(e){}
+
+/* ── TYPEWRITER ──
+   Reveals a few characters per tick on a short interval so messages
+   appear quickly (fast enough not to slow the user down) while still
+   keeping a light typing animation rather than popping in instantly. */
+function typeMessage(bubbleId, text, onDone, delay){
+  delay = (delay===undefined) ? 0 : delay;
+  const bubble = document.getElementById(bubbleId);
+  bubble.innerHTML = '<div class="ai-typing"><span></span><span></span><span></span></div>';
+  setTimeout(function(){
+    bubble.innerHTML = '';
+    let i=0;
+    const charsPerTick = 3; // reveal 3 characters per tick instead of 1
+    const cursor = document.createElement('span');
+    cursor.className='ai-cursor';
+    bubble.appendChild(cursor);
+    const iv = setInterval(function(){
+      if(i < text.length){
+        const chunk = text.slice(i, i+charsPerTick);
+        bubble.insertBefore(document.createTextNode(chunk), cursor);
+        i += charsPerTick;
+      } else {
+        clearInterval(iv);
+        cursor.remove();
+        if(onDone) onDone();
+      }
+    }, 6); // was 8ms per single character — now 6ms per 3-character chunk, ~4x faster overall
+  }, delay);
+}
+
+/* ── STUDENT NUMBER VALIDATION ── */
+function validateStudentNumber(el){
+  el.value = el.value.replace(/\D/g,'').slice(0,10);
+  var v = el.value, hint = document.getElementById('numHint');
+  el.classList.remove('valid','invalid');
+  hint.classList.remove('show','error');
+  if(v.length===0) return;
+  if(v.length===10){ el.classList.add('valid'); hint.textContent='\u2713 Valid student number'; hint.className='num-hint show'; }
+  else{ el.classList.add('invalid'); hint.textContent='Exactly 10 digits required ('+v.length+'/10)'; hint.className='num-hint show error'; }
+}
+
+/* ── SHOW WELCOME ── */
+function goToFeedback(){
+  fetch('/api/admin/feedback-token').then(function(r){return r.json()}).then(function(d){window.location.href=d.url_prefix}).catch(function(){window.location.href='/'});
+}
+function showWelcome(){
+  document.getElementById('getStartedBtn').style.display='none';
+  document.getElementById('rateWelcomeWrap').style.display='none';
+  document.getElementById('welcomePanel').style.display='block';
+  typeMessage('aiBubble0',
+    "Hello! 👋 Welcome to Makerere University's Queue System. I'll help you get your token quickly. Click the button below to get started it only takes about a minute.",
+    function(){
+      document.getElementById('launchBtn').style.display='inline-flex';
+      document.getElementById('step0BackBtn').style.display='inline-flex';
+    },
+    0
+  );
+}
+
+document.getElementById('studentName').addEventListener('keydown', function(e){
+  if(e.key==='Enter') generateToken();
+});
+document.getElementById('studentNumber').addEventListener('keydown', function(e){
+  if(e.key==='Enter') generateToken();
+});
+document.getElementById('parentPhone').addEventListener('keydown', function(e){
+  if(e.key==='Enter') generateToken();
+});
+
+/* ── START FLOW ── */
+function startFlow(){
+  document.getElementById('step0').classList.remove('active');
+  document.getElementById('step1').classList.add('active');
+  document.getElementById('stepIndicator').style.display='flex';
+  currentStep=1;
+  updateStepIndicator(1);
+  typeMessage('aiBubble1',
+    "Great, let's get started! Which office are you visiting today? Select the one that matches your purpose.",
+    null, 300
+  );
+  loadOffices();
+}
+
+function renderOffices(){
+  const grid = document.getElementById('officeGrid');
+  if(!offices.length){ grid.innerHTML='<p style="color:#999;font-size:13px;padding:10px 0;">No offices available right now.</p>'; return; }
+  const html = '<div class="select-grid">'+offices.map(function(o,idx){
+    const isAvail = (o.availability_status||'available') === 'available';
+    const cls = isAvail ? 'select-card' : 'select-card unavailable';
+    const notice = o.unavailability_notice ? escapeHtml(o.unavailability_notice) : 'Temporarily unavailable';
+    return '<div class="'+cls+'" data-id="'+o.id+'" data-code="'+o.office_code+'" data-name="'+o.office_name+'" data-loc="'+(o.location||'')+'" data-avail="'+(isAvail?'1':'0')+'" style="animation-delay:'+(idx*0.06)+'s">'+
+      '<div class="card-icon"><svg viewBox="0 0 24 24"><path d="M12 7V3H2v18h20V7H12zm-2 12H4v-2h6v2zm0-4H4v-2h6v2zm0-4H4V9h6v2zm0-4H4V5h6v2zm8 12h-6v-2h6v2zm0-4h-6v-2h6v2zm0-4h-6V9h6v2z"/></svg></div>'+
+      '<div class="card-label">'+o.office_name+'</div>'+
+      '<div class="card-sub">'+(o.location||'Main Campus')+'</div>'+
+      (!isAvail ? '<div class="unavail-badge">UNAVAILABLE</div>' : '')+
+    '</div>';
+  }).join('')+'</div>';
+  grid.innerHTML=html;
+  grid.querySelectorAll('.select-card').forEach(function(card){
+    card.addEventListener('click', function(){
+      if(card.dataset.avail === '0'){
+        showError('This office is currently unavailable. Please select a different office.');
+        return;
+      }
+      grid.querySelectorAll('.select-card').forEach(function(c){ c.classList.remove('selected'); });
+      card.classList.add('selected');
+      selectedOffice={
+        id:+card.dataset.id, code:card.dataset.code,
+        name:card.dataset.name, location:card.dataset.loc
+      };
+      document.getElementById('nextToStep2Btn').disabled=false;
+      loadServicesForOffice(selectedOffice.id);
+    });
+  });
+}
+
+function renderServices(){
+  const grid = document.getElementById('serviceGrid');
+  const title = document.getElementById('serviceTitle');
+  if(!services.length){
+    grid.innerHTML='';
+    title.style.display='none';
+    typeMessage('aiBubble2',
+      "Hmm, it looks like "+selectedOffice.name+" doesn't have any services listed right now. Please go back and try a different office.",
+      null, 0
+    );
+    return;
+  }
+  title.style.display='block';
+  typeMessage('aiBubble2',
+    "You've selected "+selectedOffice.name+". Now, which service do you need today? Pick the one that best matches your visit.",
+    null, 0
+  );
+  const html = '<div class="select-grid">'+services.map(function(s,idx){
+    return '<div class="select-card" data-id="'+s.id+'" data-code="'+s.service_code+'" data-name="'+s.service_name+'" data-time="'+(s.estimated_time_minutes||0)+'" style="animation-delay:'+(idx*0.06)+'s">'+
+      '<div class="card-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm2 16H8v-2h8v2zm0-4H8v-2h8v2zm-3-5V3.5L18.5 9H13z"/></svg></div>'+
+      '<div class="card-label">'+s.service_name+'</div>'+
+      (s.estimated_time_minutes?'<div class="card-sub">~'+s.estimated_time_minutes+' min</div>':'')+
+    '</div>';
+  }).join('')+'</div>';
+  grid.innerHTML=html;
+  grid.querySelectorAll('.select-card').forEach(function(card){
+    card.addEventListener('click', function(){
+      grid.querySelectorAll('.select-card').forEach(function(c){ c.classList.remove('selected'); });
+      card.classList.add('selected');
+      selectedService={
+        id:+card.dataset.id, code:card.dataset.code,
+        name:card.dataset.name, estimated_time:+card.dataset.time
+      };
+      document.getElementById('nextToStep3Btn').disabled=false;
+    });
+  });
+}
+
+/* ── STEP NAVIGATION ── */
+function goToStep(step){
+  document.body.classList.remove('input-mode');
+  if(step===0){
+    checkOfficeHours();
+    document.getElementById('rateWelcomeWrap').style.display='';
+    document.getElementById('welcomePanel').style.display='none';
+    document.getElementById('launchBtn').style.display='none';
+    document.getElementById('step0BackBtn').style.display='none';
+    document.getElementById('stepIndicator').style.display='none';
+    var b=document.getElementById('aiBubble0');
+    if(b) b.innerHTML='<div class="ai-typing"><span></span><span></span><span></span></div>';
+  }
+  if(step===2 && !selectedOffice){ showError('Please select an office first.'); return; }
+  if(step===3 && !selectedService){ showError('Please select a service first.'); return; }
+
+  document.querySelectorAll('.step-content').forEach(function(el){ el.classList.remove('active'); });
+  document.getElementById('step'+step).classList.add('active');
+  currentStep=step;
+  updateStepIndicator(step);
+  clearError();
+
+  if(step===2){
+    const pill=document.getElementById('officeSummary');
+    document.getElementById('officeSummaryText').textContent='Office: '+selectedOffice.name;
+    pill.style.display='flex';
+    renderServices();
+  }
+
+  if(step===3){
+    // Office → Service summary pill removed from this step per request —
+    // left commented here in case it's wanted back later.
+    // const pill=document.getElementById('serviceSummary');
+    // document.getElementById('serviceSummaryText').textContent=selectedOffice.name+' → '+selectedService.name;
+    // pill.style.display='flex';
+
+    document.getElementById('step3Display').style.display='flex';
+    document.getElementById('step3DisplayBtns').style.display='none';
+    document.getElementById('step3Input').style.display='none';
+
+    const isPs = selectedService.code && selectedService.code.toUpperCase() === 'PS';
+    var msg = isPs
+      ? "Almost there! You've chosen "+selectedService.name+" at "+selectedOffice.name+". Since you're a parent, please enter your full name and phone number."
+      : "Almost there! You've chosen "+selectedService.name+" at "+selectedOffice.name+". Just one last thing what's your full name and student number?";
+
+    typeMessage('aiBubble3', msg, function(){
+      document.getElementById('step3DisplayBtns').style.display='flex';
+    }, 0);
+  }
+}
+
+/* SHOW STEP 3 INPUTS */
+function showStep3Inputs(){
+  document.body.classList.add('input-mode');
+  document.getElementById('step3Display').style.display='none';
+  document.getElementById('step3Input').style.display='flex';
+
+  const isPs = selectedService.code && selectedService.code.toUpperCase() === 'PS';
+  const nameTitle=document.getElementById('nameTitle');
+  nameTitle.textContent = isPs ? 'Parent Details' : 'Enter Your Details';
+  document.getElementById('nameLabel').textContent = isPs ? 'Your Name *' : 'Full Name *';
+  document.getElementById('nameFieldWrap').style.display='block';
+  document.getElementById('step3Btns').style.display='flex';
+  document.getElementById('getTokenBtn').disabled=false;
+
+  if (isPs) {
+    document.getElementById('parentPhoneFieldWrap').style.display='block';
+  } else {
+    document.getElementById('studentNumLabel').textContent = 'Student Number *';
+    document.getElementById('studentNumFieldWrap').style.display='block';
+  }
+
+  setTimeout(function(){
+    document.getElementById('studentName').focus();
+    if(typeof scrollInputIntoView==='function'){
+      setTimeout(scrollInputIntoView, 400);
+    }
+  }, 300);
+}
+
+function updateStepIndicator(active){
+  for(let i=1;i<=3;i++){
+    const dot=document.getElementById('dot'+i);
+    const lbl=document.getElementById('lbl'+i);
+    dot.className='step-dot';
+    lbl.className='step-label';
+    if(i<active){
+      dot.classList.add('done');
+      dot.innerHTML='<svg viewBox="0 0 12 12" width="12" height="12"><polyline points="2,6 5,9 10,3" stroke="white" stroke-width="2" fill="none" stroke-linecap="round"/></svg>';
+    } else if(i===active){
+      dot.classList.add('active');
+      dot.textContent=i;
+      lbl.classList.add('active');
+    } else {
+      dot.textContent=i;
+    }
+  }
+  document.getElementById('line1').className='step-line'+(active>1?' done':'');
+  document.getElementById('line2').className='step-line'+(active>2?' done':'');
+}
+
+/* ── GENERATE TOKEN (demo: fabricates a token instead of calling /api) ── */
+async function generateToken(){
+  const name = document.getElementById('studentName').value.trim();
+  if(!name){ showError('Please enter your full name.'); document.getElementById('studentName').focus(); return; }
+
+  const isPs = selectedService.code && selectedService.code.toUpperCase() === 'PS';
+  var studentNumber, parentPhone;
+
+  if (isPs) {
+    parentPhone = document.getElementById('parentPhone').value.trim();
+    if(!parentPhone){ showError('Please enter your phone number.'); document.getElementById('parentPhone').focus(); return; }
+    studentNumber = '';
+  } else {
+    studentNumber = document.getElementById('studentNumber').value.trim();
+    if(!studentNumber){ showError('Please enter your student number.'); document.getElementById('studentNumber').focus(); return; }
+    if(studentNumber.length !== 10){ showError('Student number must be exactly 10 digits.'); document.getElementById('studentNumber').focus(); return; }
+    parentPhone = '';
+  }
+
+  const btn=document.getElementById('getTokenBtn');
+  btn.disabled=true;
+
+  document.body.classList.remove('input-mode');
+  document.getElementById('step3').classList.remove('active');
+  const loadingOverlay=document.getElementById('loadingOverlay');
+  document.getElementById('stepIndicator').style.display='none';
+
+  const tempPanel=document.createElement('div');
+  tempPanel.innerHTML=
+    '<div class="ai-panel" style="margin-bottom:24px;">'+
+      '<div class="ai-avatar">'+
+        '<div class="ai-dot"><svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z"/></svg></div>'+
+        '<div><div class="ai-name">Queue Assistant <span>Makerere University</span></div></div>'+
+      '</div>'+
+      '<div class="ai-bubble" id="aiBubbleGen"><div class="ai-typing"><span></span><span></span><span></span></div></div>'+
+    '</div>';
+  document.querySelector('.card').insertBefore(tempPanel, loadingOverlay);
+  tempPanel.style.animation='fadeUp 0.3s ease';
+
+  clearError();
+
+  typeMessage('aiBubbleGen',
+    "You're almost done, "+name.split(' ')[0]+"! I'm now generating your queue token this will only take a moment…",
+    function(){
+      setTimeout(function(){
+        tempPanel.remove();
+        loadingOverlay.style.display='block';
+        doApiCall(name, studentNumber, parentPhone);
+      }, 800);
+    },
+    0
+  );
+}
+
+async function doApiCall(name, studentNumber, parentPhone){
+  const loadingOverlay=document.getElementById('loadingOverlay');
+  const isPs = selectedService.code && selectedService.code.toUpperCase() === 'PS';
+  const payload = {
+    office_id: selectedOffice.id,
+    service_id: selectedService.id,
+    service_code: selectedService.code,
+    student_name: name,
+    student_id: studentNumber,
+    student_phone: null
+  };
+  if (isPs) {
+    payload.parent_name = name;
+    payload.parent_phone = parentPhone;
+  }
+  try{
+    const res=await fetch(API_BASE_URL+'/api/student/token',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(payload)
+    });
+    const data=await res.json();
+    loadingOverlay.style.display='none';
+
+    if(data.success){
+      const ts=now();
+      const timeStr=ts.toLocaleTimeString('en-UG',{timeZone:'Africa/Nairobi',hour:'2-digit',minute:'2-digit',hour12:true});
+      const dateStr=ts.toLocaleDateString('en-UG',{timeZone:'Africa/Nairobi',day:'2-digit',month:'short',year:'numeric'});
+      const feedbackUrl = window.location.origin + '/r/' + data.token_number;
+
+      document.getElementById('tokenDisplay').innerHTML=
+        '<div class="token-result" id="printArea">'+
+          '<div class="receipt-header">'+
+            '<div class="rh-brand"><svg viewBox="0 0 24 24"><path d="M12 3L1 9l4 2.18v6L12 21l7-3.82v-6l2-1.09V17h2V9L12 3zm6.82 6L12 12.72 5.18 9 12 5.28 18.82 9zM17 15.99l-5 2.73-5-2.73v-3.72L12 15l5-2.73v3.72z"/></svg>SMQSS</div>'+
+            '<p>Smart Queue Management System &nbsp;|&nbsp; '+dateStr+' '+timeStr+'</p>'+
+          '</div>'+
+          '<div class="token-badge">'+
+            '<div class="token-label">Queue Token'+(isPs?' <span style="background:var(--mak-gold-bright);color:var(--mak-green);font-size:9px;font-weight:800;padding:2px 8px;border-radius:4px;letter-spacing:0.5px">PRIORITY</span>':'')+'</div>'+
+            '<div class="token-number">'+escapeHtml(data.token_number)+'</div>'+
+            '<div class="token-meta">'+escapeHtml(data.office_name)+' &middot; '+escapeHtml(data.location)+'</div>'+
+          '</div>'+
+          '<div class="token-details">'+
+            '<div class="token-row"><span class="lbl">Estimated wait</span><span class="val">'+data.estimated_wait+' min</span></div>'+
+            '<div class="token-row"><span class="lbl">Issued at</span><span class="val">'+dateStr+', '+timeStr+'</span></div>'+
+          '</div>'+
+          '<div class="qr-wrap">'+
+            '<img src="https://api.qrserver.com/v1/create-qr-code/?size=120x120&data='+encodeURIComponent(feedbackUrl)+'" alt="QR" width="120" height="120" class="qr-img" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'block\'">'+
+            '<div class="qr-label">Scan to rate your service</div>'+
+            '<a href="'+feedbackUrl+'" class="qr-fallback" style="display:none;font-size:10px;color:var(--mak-green);text-decoration:underline">Tap to rate on your phone</a>'+
+          '</div>'+
+          '<div class="mandatory-notice">'+
+            '<span class="mandatory-icon">&#9888;</span>'+
+            '<span>Kindly rate this service after your visit. You will not be able to request a new token until this service has been rated.</span>'+
+          '</div>'+
+          '<div class="token-notice">Please remain nearby and listen for your token number to be called.</div>'+
+          '<div class="token-actions">'+
+            '<button class="btn-print" onclick="printReceipt()">'+
+              '<svg viewBox="0 0 24 24"><path d="M19 8H5c-1.66 0-3 1.34-3 3v6h4v4h12v-4h4v-6c0-1.66-1.34-3-3-3zm-3 11H8v-5h8v5zm3-7c-.55 0-1-.45-1-1s.45-1 1-1 1 .45 1 1-.45 1-1 1zm-1-9H6v4h12V3z"/></svg>'+
+              'Proceed to Print'+
+            '</button>'+
+            '<button class="btn-new" onclick="resetApp()">New Token</button>'+
+          '</div>'+
+          '<div class="receipt-footer">SMQSS. Innovated by Richard Ogwal</div>'+
+        '</div>';
+    } else if(data.blocked){
+      loadingOverlay.style.display='none';
+      document.getElementById('stepIndicator').style.display='none';
+      const fbRes = await fetch('/api/admin/feedback-token');
+      const fbData = await fbRes.json();
+      const blkUrl = window.location.origin + fbData.url_prefix + '/' + data.unrated_token;
+      document.getElementById('tokenDisplay').innerHTML=
+        '<div class="token-result" style="padding:20px 0;animation:fadeUp 0.35s ease">'+
+          '<div style="background:#fff0f0;border:2px solid #ffc9c9;border-radius:16px;padding:28px 20px;text-align:center">'+
+            '<div style="font-size:36px;margin-bottom:10px;line-height:1">&#9888;</div>'+
+            '<div style="font-size:17px;font-weight:800;color:#c62828;margin-bottom:6px">Rate Required</div>'+
+            '<p style="font-size:13.5px;color:#555;margin-bottom:8px;line-height:1.6">'+data.message+'</p>'+
+            '<p style="font-size:12px;color:#999;margin-bottom:18px">Rating is mandatory before you can get a new token.</p>'+
+            '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">'+
+              '<a href="'+blkUrl+'" class="btn-print" style="text-decoration:none;font-size:13px">Rate Now &rarr;</a>'+
+              '<button class="btn-new" onclick="resetApp()" style="font-size:13px">Back</button>'+
+            '</div>'+
+          '</div>'+
+        '</div>';
+    } else {
+      restoreStep3(data.message||'Failed to generate token. Please try again.');
+    }
+  } catch(err){
+    loadingOverlay.style.display='none';
+    restoreStep3('Network error. Please check your connection and try again.');
+  }
+}
+
+/* ── SOFT RESET ──
+   Was: onclick="location.reload()" — a full page reload causes a white
+   flash and re-fetches everything (server time, offices, etc.) from
+   scratch. This instead clears state in-place and animates back to the
+   welcome screen, matching the smoothness of the rest of the flow. */
+function resetApp(){
+  selectedOffice=null;
+  selectedService=null;
+  currentStep=0;
+
+  // clear the printed receipt / any stray loading state
+  document.getElementById('tokenDisplay').innerHTML='';
+  document.getElementById('loadingOverlay').style.display='none';
+
+  // clear form inputs and their validation styling
+  var nameEl=document.getElementById('studentName'); if(nameEl) nameEl.value='';
+  var numEl=document.getElementById('studentNumber');
+  if(numEl){ numEl.value=''; numEl.classList.remove('valid','invalid'); }
+  var hint=document.getElementById('numHint'); if(hint){ hint.className='num-hint'; hint.textContent=''; }
+  var phoneEl=document.getElementById('parentPhone'); if(phoneEl) phoneEl.value='';
+
+  // collapse step 3 back to its default (nothing shown until reached again)
+  document.getElementById('step3Display').style.display='none';
+  document.getElementById('step3DisplayBtns').style.display='none';
+  document.getElementById('step3Input').style.display='none';
+  document.getElementById('nameFieldWrap').style.display='none';
+  document.getElementById('studentNumFieldWrap').style.display='none';
+  document.getElementById('parentPhoneFieldWrap').style.display='none';
+  document.getElementById('step3Btns').style.display='none';
+
+  // reset office/service pickers to their initial loading placeholders so
+  // the next person sees a fresh state (startFlow() re-fetches the data)
+  document.getElementById('officeGrid').innerHTML='<div class="loading-cards"><div class="spinner"></div><p>Loading offices…</p></div>';
+  document.getElementById('serviceGrid').innerHTML='<div class="loading-cards"><div class="spinner"></div><p>Loading services…</p></div>';
+  document.getElementById('nextToStep2Btn').disabled=true;
+  document.getElementById('nextToStep3Btn').disabled=true;
+  document.getElementById('officeSummary').style.display='none';
+  document.getElementById('serviceSummary').style.display='none';
+
+  document.body.classList.remove('keyboard-open','input-mode');
+
+  goToStep(0);
+}
+/* ── HELPERS ── */
+function restoreStep3(errMsg){
+  document.getElementById('stepIndicator').style.display='flex';
+  document.getElementById('step3').classList.add('active');
+  const btn=document.getElementById('getTokenBtn');
+  btn.disabled=false;
+  showError(errMsg);
+}
+
+function showGridError(gridId, msg){
+  document.getElementById(gridId).innerHTML='<p style="color:#f44336;font-size:13px;padding:8px 0;">'+msg+'</p>';
+}
+
+function escapeHtml(text){
+  if(!text) return '';
+  const d=document.createElement('div');
+  d.textContent=text;
+  return d.innerHTML;
+}
+
+function printReceipt(){
+  if(window.kiosk && window.kiosk.printReceipt) window.kiosk.printReceipt();
+  else window.print();
+}
+
+function showError(msg){
+  const bar=document.getElementById('errorBar');
+  bar.textContent=msg;
+  bar.style.display='block';
+  clearTimeout(showError._t);
+  showError._t=setTimeout(function(){ bar.style.display='none'; }, 5000);
+}
+
+function clearError(){
+  document.getElementById('errorBar').style.display='none';
+}
+
+/* VIRTUAL KEYBOARD */
+if(window.visualViewport){
+  var _keyboardOpen=false;
+  window.visualViewport.addEventListener('resize',function(){
+    var vh=window.visualViewport.height;
+    var fullH=window.screen.availHeight;
+    var kbH=fullH-vh;
+    if(kbH>150 && !_keyboardOpen){
+      _keyboardOpen=true;
+      document.body.classList.add('keyboard-open');
+      scrollInputIntoView();
+    } else if(kbH<=150 && _keyboardOpen){
+      _keyboardOpen=false;
+      document.body.classList.remove('keyboard-open');
+      var card=document.querySelector('.card');
+      if(card) card.scrollTo({top:0,behavior:'smooth'});
+    }
+  });
+  function scrollInputIntoView(){
+    var el=document.activeElement;
+    if(!el || (el.tagName!=='INPUT'&&el.tagName!=='TEXTAREA'&&el.tagName!=='SELECT')) return;
+    var card=document.querySelector('.card');
+    if(!card) return;
+    requestAnimationFrame(function(){
+      var kbH=window.screen.availHeight-window.visualViewport.height;
+      var rect=el.getBoundingClientRect();
+      var cardRect=card.getBoundingClientRect();
+      var visibleBottom=cardRect.bottom-kbH-32;
+      if(rect.bottom>visibleBottom){
+        card.scrollBy({top:rect.bottom-visibleBottom+24,behavior:'smooth'});
+      }
+    });
+  }
+  document.addEventListener('focusin',function(e){
+    if(_keyboardOpen && e.target && (e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA')){
+      scrollInputIntoView();
+    }
+  });
+}
+</script>
+<div class="offline-banner" id="offlineBanner">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+    <line x1="1" y1="1" x2="23" y2="23"/><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"/>
+    <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.56 9"/>
+    <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+    <line x1="12" y1="20" x2="12.01" y2="20"/>
+  </svg>
+  <span>No internet connection, reconnecting<span class="offline-dot"></span><span class="offline-dot"></span><span class="offline-dot"></span></span>
+</div>
+<div class="online-banner" id="onlineBanner">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+    <path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"/><path d="M10.71 5.05A16 16 0 0 1 22.56 9"/>
+    <path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"/><path d="M8.53 16.11a6 6 0 0 1 6.95 0"/>
+    <line x1="12" y1="20" x2="12.01" y2="20"/>
+  </svg>
+  <span>SMQSS Back Online<span class="online-dot"></span><span class="online-dot"></span><span class="online-dot"></span></span>
+</div>
+<script>
+(function(){
+  var isOffline = false;
+  var onlineBannerTimer = null;
+  function showOfflineBanner(){ if(isOffline) return; isOffline = true; document.getElementById('offlineBanner').classList.add('show'); }
+  function hideOfflineBanner(){ if(!isOffline) return; isOffline = false; document.getElementById('offlineBanner').classList.remove('show'); var b=document.getElementById('onlineBanner'); b.classList.add('show'); if(onlineBannerTimer) clearTimeout(onlineBannerTimer); onlineBannerTimer=setTimeout(function(){b.classList.remove('show');},3000); }
+  window.addEventListener('online', function(){ hideOfflineBanner(); });
+  window.addEventListener('offline', function(){ showOfflineBanner(); });
+  if(!navigator.onLine) showOfflineBanner();
+})();
+</script>
+</body>
+</html>
