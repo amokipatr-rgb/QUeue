@@ -1077,9 +1077,7 @@ function goToStep(step){
   clearError();
 
   if(step===2){
-    const pill=document.getElementById('officeSummary');
-    document.getElementById('officeSummaryText').textContent='Office: '+selectedOffice.name;
-    pill.style.display='flex';
+    document.getElementById('officeSummary').style.display='none';
     renderServices();
   }
 
