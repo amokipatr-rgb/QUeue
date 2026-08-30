@@ -21,5 +21,8 @@
     "ios": "expo start --ios",
     "web": "expo start --web"
   },
-  "private": true
+  "private": true,
+  "devDependencies": {
+    "eas-cli": "^22.6.0"
+  }
 }
