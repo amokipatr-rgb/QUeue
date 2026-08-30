@@ -1235,7 +1235,7 @@ async function doApiCall(name, studentNumber, parentPhone){
       const ts=now();
       const timeStr=ts.toLocaleTimeString('en-UG',{timeZone:'Africa/Nairobi',hour:'2-digit',minute:'2-digit',hour12:true});
       const dateStr=ts.toLocaleDateString('en-UG',{timeZone:'Africa/Nairobi',day:'2-digit',month:'short',year:'numeric'});
-      const feedbackUrl = window.location.origin + '/r/' + data.token_number;
+      const feedbackUrl = window.location.origin + '/r/' + data.token_number + '?from=kiosk-B';
 
       document.getElementById('tokenDisplay').innerHTML=
         '<div class="token-result" id="printArea">'+
@@ -1276,7 +1276,7 @@ async function doApiCall(name, studentNumber, parentPhone){
       document.getElementById('stepIndicator').style.display='none';
       const fbRes = await fetch('/api/admin/feedback-token');
       const fbData = await fbRes.json();
-      const blkUrl = window.location.origin + fbData.url_prefix + '/' + data.unrated_token;
+      const blkUrl = window.location.origin + fbData.url_prefix + '/' + data.unrated_token + '?from=kiosk-B';
       document.getElementById('tokenDisplay').innerHTML=
         '<div class="token-result" style="padding:20px 0;animation:fadeUp 0.35s ease">'+
           '<div style="background:#fff0f0;border:2px solid #ffc9c9;border-radius:16px;padding:28px 20px;text-align:center">'+

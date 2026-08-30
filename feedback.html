@@ -246,6 +246,9 @@ body{font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--ink)
 
 <script>
 const isElectron = navigator.userAgent.toLowerCase().includes('electron');
+const urlParams = new URLSearchParams(window.location.search);
+const fromKiosk = urlParams.get('from');
+const KIOSK_URL = fromKiosk === 'kiosk-B' ? '/student-kiosk-B.html' : '/student-token.html';
 if (!isElectron) {
   document.querySelectorAll('.btn-back').forEach(function(el) {
     el.style.display = 'none';
@@ -254,8 +257,11 @@ if (!isElectron) {
 
 const backLink = document.getElementById('backLink');
 if (backLink) {
-  backLink.href = '/student-token.html';
+  backLink.href = KIOSK_URL;
 }
+document.querySelectorAll('.btn-back').forEach(function(el) {
+  if (el.id !== 'backLink') el.href = KIOSK_URL;
+});
 const API_BASE = window.location.origin;
 let currentToken = null;
 let selectedRating = 0;
@@ -343,7 +349,7 @@ async function lookupToken(){
       });
       document.getElementById('submitBtn').style.display='none';
       if (isElectron) {
-        setTimeout(function(){ window.location.href = '/student-token'; }, 3000);
+        setTimeout(function(){ window.location.href = KIOSK_URL; }, 3000);
       }
       return;
     }
@@ -425,7 +431,7 @@ async function submitRating(){
         : 'Your feedback has been recorded. It helps us improve our service delivery for everyone at Makerere University.';
       showStep('step2');
       if (isElectron) {
-        setTimeout(function(){ window.location.href = '/student-token'; }, 3000);
+        setTimeout(function(){ window.location.href = KIOSK_URL; }, 3000);
       }
     } else {
       showStep('step1');

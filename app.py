@@ -1788,7 +1788,8 @@ def get_token_info():
 # ============================================
 @app.route('/r/<token>')
 def rate_redirect(token):
-    return redirect('/feedback.html/' + FEEDBACK_TOKEN + '/' + token)
+    qs = '?' + request.query_string.decode() if request.query_string else ''
+    return redirect('/feedback.html/' + FEEDBACK_TOKEN + '/' + token + qs)
 
 
 # ============================================
