@@ -4873,6 +4873,7 @@ application = app
 
 # ============================================
 # RUN APPLICATION
+# SMQSS - Smart Queue Management System (v2.1.0)
 # ============================================
 if __name__ == '__main__':
     PORT = int(os.environ.get('PORT', 5000))
