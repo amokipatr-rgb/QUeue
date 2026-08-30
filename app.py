@@ -644,6 +644,10 @@ def download_student_kiosk_installer():
 def download_index_kiosk_installer():
     return redirect('https://github.com/amokipatr-rgb/QUeue/releases/download/v2.1.0/QueueKiosk-Index-Setup-2.1.0.exe')
 
+@app.route('/api/download/queue-kiosk-student-b-setup.exe')
+def download_student_kiosk_b_installer():
+    return redirect('https://github.com/amokipatr-rgb/QUeue/releases/download/v1.0.0-kiosk-b/QueueKiosk-Student-B-Setup-1.0.0.exe')
+
 @app.route('/feedback.html')
 def feedback_decoy():
     return send_from_directory('.', '404.html'), 404
