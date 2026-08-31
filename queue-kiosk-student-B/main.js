@@ -192,47 +192,16 @@ ipcMain.on('print-receipt', async (event) => {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   const deviceName = await findReceiptPrinter(mainWindow.webContents);
 
-  // Inject print-only styles matching the working web @media print
-  const printCSS = `
-    @page { margin: 0 !important; }
-    html, body { margin: 0 !important; padding: 0 !important; height: auto !important; overflow: hidden !important; }
-    body { background: white !important; display: block !important; }
-    .container { max-width: 100% !important; height: auto !important; }
-    .card { box-shadow: none !important; border-radius: 0 !important; padding: 6px !important; }
-    .header, .step-indicator, .ai-panel, .error-bar, .loading-overlay, .rate-card, .mandatory-notice, .token-actions, .token-notice, .launch-center, .btn-row, .offline-banner, .online-banner { display: none !important; }
-    #tokenDisplay, #printArea, .token-result { height: auto !important; max-height: none !important; page-break-inside: avoid !important; padding: 0 !important; }
-    .token-badge { background: white !important; border: 1px solid #155c30; border-radius: 10px; padding: 10px 20px 8px !important; box-shadow: none !important; margin-bottom: 6px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .token-number { font-size: 30px !important; text-shadow: none !important; color: #d4aa00 !important; }
-    .token-label { margin-bottom: 2px !important; opacity: 1 !important; color: #155c30 !important; }
-    .token-meta { margin-top: 2px !important; font-size: 9px !important; opacity: 1 !important; color: #155c30 !important; }
-    .token-details { background: white !important; border: 1px solid #e2e0da; border-radius: 6px; padding: 6px 10px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    .token-row { font-size: 10px !important; padding: 2px 0 !important; }
-    .token-row .lbl { color: #6b7280 !important; }
-    .token-row .val { color: #155c30 !important; }
-    .receipt-header { display: block !important; margin-bottom: 6px !important; padding-bottom: 6px !important; border-bottom-width: 1.5px !important; }
-    .receipt-header .rh-brand { font-size: 13px !important; color: #155c30 !important; }
-    .receipt-header .rh-brand svg { width: 13px !important; height: 13px !important; fill: #155c30 !important; }
-    .receipt-header p { font-size: 9px !important; margin-top: 1px !important; color: #6b7280 !important; }
-    .qr-wrap { margin: 4px 0 2px !important; }
-    .qr-img { width: 100px !important; height: 100px !important; border-radius: 4px !important; }
-    .qr-label { font-size: 8px !important; margin-top: 2px !important; color: #6b7280 !important; }
-    .qr-fallback { display: none !important; }
-    .receipt-footer { display: block !important; margin-top: 4px !important; padding-top: 4px !important; font-size: 9px !important; color: #6b7280 !important; border-top-width: .5px !important; }
-  `;
-
-  await mainWindow.webContents.insertCSS(printCSS);
-
+  // No CSS injection — let the page's own @media print handle styling
+  // (the HTML file already has working print CSS)
   mainWindow.webContents.print({
     silent: true,
     printBackground: true,
     headerFooter: false,
     margins: { marginType: 'none' },
-    pageSize: { width: 220000, height: 330000 }, // 80mm x 297mm (continuous roll)
     deviceName: deviceName || undefined
   }, (ok, err) => {
     if (!ok) console.warn('[StudentKioskB] Silent print failed:', err);
-    // Remove injected CSS after printing
-    mainWindow.webContents.insertCSS('');
   });
 });
 
