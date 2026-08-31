@@ -1,5 +1,8 @@
 const { app, BrowserWindow, screen, powerSaveBlocker, ipcMain, session } = require('electron');
 const path = require('path');
+const fs = require('fs');
+const os = require('os');
+const { execFile } = require('child_process');
 
 const DISPLAY_URL = process.env.KIOSK_STUDENT_B_URL
   || 'https://queue-production-2a11.up.railway.app/student-kiosk-B.html';
@@ -170,7 +173,9 @@ app.whenReady().then(() => {
   console.log(`[StudentKioskB] Started — URL: ${DISPLAY_URL}`);
 });
 
-// ── Silent receipt printing ──
+// ── Silent receipt printing via printToPDF ──
+// webContents.print() doesn't apply @media print CSS, so we use
+// printToPDF() which does, then send the PDF to the printer.
 async function findReceiptPrinter(contents) {
   try {
     const printers = await contents.getPrintersAsync();
@@ -188,21 +193,84 @@ async function findReceiptPrinter(contents) {
   return process.env.RECEIPT_PRINTER || '';
 }
 
+function sendPdfToPrinter(pdfBuffer, printerName) {
+  return new Promise((resolve, reject) => {
+    const tmpFile = path.join(os.tmpdir(), `smqss-receipt-${Date.now()}.pdf`);
+    fs.writeFileSync(tmpFile, pdfBuffer);
+
+    // Use SumatraPDF if available, otherwise fall back to PowerShell
+    const sumatraPaths = [
+      path.join(process.env.ProgramFiles || '', 'SumatraPDF', 'SumatraPDF.exe'),
+      path.join(process.env['ProgramFiles(x86)'] || '', 'SumatraPDF', 'SumatraPDF.exe'),
+      'C:\\Program Files\\SumatraPDF\\SumatraPDF.exe',
+      'C:\\Program Files (x86)\\SumatraPDF\\SumatraPDF.exe',
+    ];
+    const sumatra = sumatraPaths.find(p => fs.existsSync(p));
+
+    if (sumatra && printerName) {
+      // SumatraPDF supports silent printing to a specific printer
+      execFile(sumatra, ['-print-to', printerName, '-print-settings', 'native', tmpFile], (err) => {
+        try { fs.unlinkSync(tmpFile); } catch(e) {}
+        if (err) {
+          console.warn('[StudentKioskB] SumatraPDF print failed:', err.message);
+          fallbackPrint(tmpFile, printerName).then(resolve).catch(reject);
+        } else {
+          console.log('[StudentKioskB] Receipt printed via SumatraPDF');
+          resolve();
+        }
+      });
+    } else {
+      fallbackPrint(tmpFile, printerName).then(resolve).catch(reject);
+    }
+  });
+}
+
+function fallbackPrint(pdfPath, printerName) {
+  return new Promise((resolve, reject) => {
+    // PowerShell: use Start-Process to print PDF silently
+    const printerArg = printerName ? `-PrinterName "${printerName}"` : '';
+    const psScript = `
+      $pdf = "${pdfPath.replace(/\\/g, '\\\\')}"
+      if (Test-Path $pdf) {
+        Start-Process -FilePath $pdf -Verb PrintTo -ArgumentList "${printerName || ''}" -Wait -WindowStyle Hidden
+      }
+    `;
+    execFile('powershell.exe', ['-NoProfile', '-Command', psScript], { windowsHide: true }, (err) => {
+      try { fs.unlinkSync(pdfPath); } catch(e) {}
+      if (err) {
+        console.warn('[StudentKioskB] PowerShell print failed:', err.message);
+        // Last resort: just open the PDF (user can print manually)
+        console.log('[StudentKioskB] Opening PDF for manual print');
+        execFile('cmd.exe', ['/c', 'start', '', pdfPath.replace(/\\/g, '\\\\')], { windowsHide: true }, () => {
+          resolve();
+        });
+      } else {
+        console.log('[StudentKioskB] Receipt printed via PowerShell');
+        resolve();
+      }
+    });
+  });
+}
+
 ipcMain.on('print-receipt', async (event) => {
   if (!mainWindow || mainWindow.isDestroyed()) return;
-  const deviceName = await findReceiptPrinter(mainWindow.webContents);
 
-  // No CSS injection — let the page's own @media print handle styling
-  // (the HTML file already has working print CSS)
-  mainWindow.webContents.print({
-    silent: true,
-    printBackground: true,
-    headerFooter: false,
-    margins: { marginType: 'none' },
-    deviceName: deviceName || undefined
-  }, (ok, err) => {
-    if (!ok) console.warn('[StudentKioskB] Silent print failed:', err);
-  });
+  try {
+    const deviceName = await findReceiptPrinter(mainWindow.webContents);
+
+    // Generate PDF — this applies the page's @media print CSS
+    const pdfBuffer = await mainWindow.webContents.printToPDF({
+      pageSize: { width: 220000, height: 330000 }, // 80mm x continuous
+      printBackground: true,
+      margins: { marginType: 'none' },
+      preferCSSPageSize: true,
+    });
+
+    console.log(`[StudentKioskB] PDF generated (${pdfBuffer.length} bytes), sending to printer...`);
+    await sendPdfToPrinter(pdfBuffer, deviceName);
+  } catch (err) {
+    console.error('[StudentKioskB] Print pipeline failed:', err);
+  }
 });
 
 app.on('activate', () => {
