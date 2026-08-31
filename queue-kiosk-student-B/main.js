@@ -195,23 +195,19 @@ ipcMain.on('print-receipt', async (event) => {
   // Inject print-only styles to isolate receipt content for 80mm POS printer
   const printCSS = `
     @page { size: 80mm auto; margin: 0 !important; }
-    * { visibility: hidden !important; }
-    #printArea, #printArea * { visibility: visible !important; }
-    body { background: white !important; margin: 0 !important; padding: 0 !important; overflow: hidden !important; }
-    #printArea {
-      position: absolute !important; left: 0 !important; top: 0 !important;
-      width: 80mm !important; padding: 4mm !important; margin: 0 !important;
-      background: white !important; box-shadow: none !important; border: none !important;
-      font-size: 11pt !important; color: #000 !important;
-    }
+    html, body { margin: 0 !important; padding: 0 !important; background: white !important; }
+    body > * { display: none !important; }
+    #tokenDisplay { display: block !important; position: absolute !important; left: 0 !important; top: 0 !important; }
+    #printArea { display: block !important; width: 80mm !important; padding: 4mm !important; background: white !important; }
+    #printArea * { display: block !important; }
     #printArea .receipt-header { border-bottom: 1px dashed #000 !important; padding-bottom: 4mm !important; margin-bottom: 4mm !important; }
     #printArea .receipt-header .rh-brand { font-size: 14pt !important; font-weight: 700 !important; color: #000 !important; }
     #printArea .receipt-header .rh-brand svg { display: none !important; }
-    #printArea .receipt-header p { font-size: 8pt !important; color: #555 !important; }
+    #printArea .receipt-header p { font-size: 8pt !important; color: #555 !important; margin-top: 1mm !important; }
     #printArea .token-badge { border: 2px solid #000 !important; border-radius: 6px !important; padding: 4mm !important; margin-bottom: 4mm !important; text-align: center !important; background: white !important; }
-    #printArea .token-number { font-size: 28pt !important; font-weight: 900 !important; color: #000 !important; text-shadow: none !important; letter-spacing: 2px !important; }
+    #printArea .token-number { font-size: 28pt !important; font-weight: 900 !important; color: #000 !important; letter-spacing: 2px !important; }
     #printArea .token-label { font-size: 9pt !important; color: #000 !important; margin-bottom: 2mm !important; }
-    #printArea .token-meta { font-size: 8pt !important; color: #555 !important; }
+    #printArea .token-meta { font-size: 8pt !important; color: #555 !important; margin-top: 2mm !important; }
     #printArea .token-details { border: 1px solid #ccc !important; border-radius: 4px !important; padding: 3mm !important; margin-bottom: 4mm !important; background: white !important; }
     #printArea .token-row { font-size: 9pt !important; padding: 1mm 0 !important; display: flex !important; justify-content: space-between !important; }
     #printArea .token-row .lbl { color: #555 !important; }
