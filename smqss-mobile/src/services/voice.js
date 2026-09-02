@@ -1,4 +1,5 @@
 import { Audio } from 'expo-av';
+import * as FileSystem from 'expo-file-system';
 import { fetchTTS } from './api';
 
 let audioQueue = [];
@@ -48,8 +49,16 @@ export async function speakText(text, onDone) {
   try {
     const blob = await fetchTTS(text);
     if (!blob) return;
-    const uri = URL.createObjectURL(blob);
-    const { sound } = await Audio.Sound.createAsync({ uri });
+    const fileUri = FileSystem.cacheDirectory + `tts_${Date.now()}.mp3`;
+    const arrayBuffer = await blob.arrayBuffer();
+    const uint8Array = new Uint8Array(arrayBuffer);
+    await FileSystem.writeAsStringAsync(fileUri, uint8Array, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    const base64 = await FileSystem.readAsStringAsync(fileUri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+    const { sound } = await Audio.Sound.createAsync({ uri: `data:audio/mp3;base64,${base64}` });
     audioQueue.push({ sound, onDone });
     playNext();
   } catch (e) {
