@@ -1727,7 +1727,7 @@
 
   function toggleDeskStatus() {
     const currentStatus = deskStatusOverride || currentOfficer.status;
-    if (currentStatus !== 'available' && currentStatus !== 'offline') {
+    if ((currentStatus === 'calling' || currentStatus === 'serving') && currentOfficer.current_token) {
       showToast('Cannot change desk status while serving. Complete current service first.', 'warning');
       return;
     }

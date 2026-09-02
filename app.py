@@ -2401,6 +2401,7 @@ def officer_login():
                 'location': officer.get('location', ''),
                 'status': officer['status'],
                 'status_reason': officer.get('status_reason') or '',
+                'current_token': officer.get('current_token'),
                 'role': role,
                 'user_type': role
             }
