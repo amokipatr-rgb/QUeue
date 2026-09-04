@@ -2587,7 +2587,7 @@ def analytics_service_times():
             JOIN officers o ON t.assigned_officer_id = o.id
             JOIN offices off ON t.office_id = off.id
             WHERE t.token_date BETWEEN %s AND %s AND t.service_duration_minutes IS NOT NULL
-            GROUP BY t.assigned_officer_id ORDER BY avg_service
+            GROUP BY t.assigned_officer_id, o.officer_name, off.office_name ORDER BY avg_service
         """, (from_d, to_d))
         by_officer = cursor.fetchall()
 
