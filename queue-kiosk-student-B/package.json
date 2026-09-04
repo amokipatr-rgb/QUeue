@@ -1,0 +1,36 @@
+{
+  "name": "queue-kiosk-student-B",
+  "version": "1.0.0",
+  "description": "SMQSS -- Student Token Kiosk (B)",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --win --x64",
+    "pack": "electron-builder --win --x64 --dir"
+  },
+  "build": {
+    "appId": "com.makerere.queue-kiosk-student-b",
+    "productName": "SMQSS Student Kiosk B",
+    "directories": { "output": "dist" },
+    "files": ["main.js", "preload.js", "build/**/*"],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.png",
+      "sign": false,
+      "artifactName": "QueueKiosk-Student-B-Setup-${version}.${ext}"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "runAfterFinish": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "SMQSS Student Kiosk B"
+    },
+    "extraResources": []
+  },
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
+  }
+}
