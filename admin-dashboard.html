@@ -2202,6 +2202,10 @@
         const API_BASE_URL = typeof window !== 'undefined' ? window.location.origin : '';
         var _gcData = null;
         const LOADING_TEXT = 'Saving...';
+        var ANALYTICS_API = API_BASE_URL + '/api/admin/analytics';
+        var analyticsCharts = {};
+        var analyticsAutoRefresh = null;
+        var analyticsPreset = '7d';
 
         function setLoading(btn, loading) {
             if (!btn) return;
@@ -4303,14 +4307,6 @@
             }
         }
 
-    /* ═══════════════════════════════════════════
-       ANALYTICS MODULE
-       ═══════════════════════════════════════════ */
-    var ANALYTICS_API = API_BASE_URL + '/api/admin/analytics';
-    var analyticsCharts = {};
-    var analyticsAutoRefresh = null;
-    var analyticsPreset = '7d';
-
         // Initialize
         document.getElementById('reportDate').value = new Date().toISOString().slice(0, 10);
         var attInput = document.getElementById('attSearch');
@@ -4336,6 +4332,10 @@
             updateGCBadge();
             for (const office of officesData) loadOfficeStats(office.id);
         }, 10000);
+
+    /* ═══════════════════════════════════════════
+       ANALYTICS MODULE
+       ═══════════════════════════════════════════ */
 
     function analyticsPresetChange() {
         const v = document.getElementById('analyticsPreset').value;
@@ -4394,7 +4394,6 @@
 
     /* ── Load All Analytics ── */
     async function loadAnalytics() {
-        if (!ANALYTICS_API) return;
         const params = getAnalyticsParams();
         try {
             const [overviewRes, flowRes, waitRes, serviceRes, peakRes, trendsRes, officerRes, feedbackRes, complaintRes, corrRes] = await Promise.all([
