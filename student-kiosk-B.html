@@ -879,7 +879,7 @@ function checkOfficeHours(){
  if(btn)btn.style.display=open?'':'none';
  if(desc&&desc.classList.contains('btn-desc'))desc.style.display=open?'':'none';
 }
-checkOfficeHours();
+// checkOfficeHours();
 setInterval(function(){ checkOfficeHours(); buildHeaderTicker(); }, 30000);
 document.addEventListener('visibilitychange',function(){if(!document.hidden){checkOfficeHours();buildHeaderTicker();}});
 
