@@ -2417,6 +2417,578 @@ def officer_login():
 
 
 # ============================================
+# ANALYTICS ENDPOINTS
+# ============================================
+
+def _parse_date_range(args):
+    """Parse date range from request args. Returns (from_date, to_date)."""
+    preset = args.get('preset', '7d')
+    today = date.today()
+    if preset == 'today':
+        return today, today
+    elif preset == 'yesterday':
+        d = today - timedelta(days=1)
+        return d, d
+    elif preset == 'month':
+        return today.replace(day=1), today
+    elif preset == 'custom':
+        f = args.get('from')
+        t = args.get('to')
+        try:
+            from_d = datetime.strptime(f, '%Y-%m-%d').date() if f else today
+            to_d = datetime.strptime(t, '%Y-%m-%d').date() if t else today
+        except ValueError:
+            from_d, to_d = today, today
+        return from_d, to_d
+    else:
+        days = int(preset.replace('d', '')) if 'd' in preset else 7
+        return today - timedelta(days=days - 1), today
+
+
+@app.route('/api/admin/analytics/overview', methods=['GET'])
+def analytics_overview():
+    """KPI summary with today vs yesterday comparison."""
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        today = date.today()
+        yesterday = today - timedelta(days=1)
+
+        def day_stats(d):
+            cursor.execute("""
+                SELECT COUNT(*) as total,
+                       COALESCE(AVG(wait_duration_minutes), 0) as avg_wait,
+                       SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END) as completed,
+                       SUM(CASE WHEN status IN ('waiting','called','serving') THEN 1 ELSE 0 END) as active
+                FROM university_tokens WHERE token_date = %s
+            """, (d,))
+            row = cursor.fetchone() or {}
+            total = row.get('total', 0) or 0
+            completed = row.get('completed', 0) or 0
+            return {
+                'total': total,
+                'avg_wait': round(float(row.get('avg_wait', 0) or 0), 1),
+                'completed': completed,
+                'completion_rate': round((completed / total * 100) if total > 0 else 0, 1),
+                'active': row.get('active', 0) or 0
+            }
+
+        t = day_stats(today)
+        y = day_stats(yesterday)
+
+        cursor.execute("SELECT COUNT(*) as cnt FROM general_complaints WHERE DATE(created_at) = %s", (today,))
+        complaints_today = (cursor.fetchone() or {}).get('cnt', 0) or 0
+        cursor.execute("SELECT COUNT(*) as cnt FROM general_complaints WHERE DATE(created_at) = %s", (yesterday,))
+        complaints_yesterday = (cursor.fetchone() or {}).get('cnt', 0) or 0
+
+        cursor.execute("SELECT COALESCE(AVG(rating), 0) as avg_rating FROM university_tokens WHERE token_date = %s AND rating IS NOT NULL", (today,))
+        sat_today = round(float((cursor.fetchone() or {}).get('avg_rating', 0) or 0), 2)
+        cursor.execute("SELECT COALESCE(AVG(rating), 0) as avg_rating FROM university_tokens WHERE token_date = %s AND rating IS NOT NULL", (yesterday,))
+        sat_yesterday = round(float((cursor.fetchone() or {}).get('avg_rating', 0) or 0), 2)
+
+        cursor.close()
+        conn.close()
+
+        def pct_change(curr, prev):
+            if prev == 0:
+                return {'value': curr, 'direction': 'neutral', 'text': 'N/A'}
+            change = round(((curr - prev) / prev) * 100, 1)
+            direction = 'up' if change > 0 else ('down' if change < 0 else 'neutral')
+            return {'value': change, 'direction': direction, 'text': f"{'+' if change > 0 else ''}{change}%"}
+
+        return jsonify({
+            'success': True,
+            'kpis': {
+                'total_tokens': {'value': t['total'], 'change': pct_change(t['total'], y['total'])},
+                'avg_wait': {'value': t['avg_wait'], 'change': pct_change(t['avg_wait'], y['avg_wait'])},
+                'completion_rate': {'value': t['completion_rate'], 'change': pct_change(t['completion_rate'], y['completion_rate'])},
+                'satisfaction': {'value': sat_today, 'change': pct_change(sat_today, sat_yesterday)},
+                'complaints': {'value': complaints_today, 'change': pct_change(complaints_today, complaints_yesterday)},
+                'active': t['active']
+            }
+        })
+    except Exception as e:
+        logger.error(f"Analytics overview error: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/analytics/queue-flow', methods=['GET'])
+def analytics_queue_flow():
+    """Token lifecycle funnel: created → called → serving → completed."""
+    try:
+        from_d, to_d = _parse_date_range(request.args)
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT
+                COUNT(*) as total_created,
+                SUM(CASE WHEN called_at IS NOT NULL THEN 1 ELSE 0 END) as called,
+                SUM(CASE WHEN serving_started_at IS NOT NULL THEN 1 ELSE 0 END) as serving,
+                SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END) as completed,
+                SUM(CASE WHEN status='cancelled' THEN 1 ELSE 0 END) as cancelled,
+                SUM(CASE WHEN status='expired' THEN 1 ELSE 0 END) as expired,
+                SUM(CASE WHEN status='skipped' THEN 1 ELSE 0 END) as skipped
+            FROM university_tokens WHERE token_date BETWEEN %s AND %s
+        """, (from_d, to_d))
+        row = cursor.fetchone() or {}
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'flow': row})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/analytics/wait-times', methods=['GET'])
+def analytics_wait_times():
+    """Average wait time by hour, office."""
+    try:
+        from_d, to_d = _parse_date_range(request.args)
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT HOUR(requested_at) as hour,
+                   COALESCE(AVG(wait_duration_minutes), 0) as avg_wait,
+                   COUNT(*) as token_count
+            FROM university_tokens
+            WHERE token_date BETWEEN %s AND %s AND wait_duration_minutes IS NOT NULL
+            GROUP BY HOUR(requested_at) ORDER BY hour
+        """, (from_d, to_d))
+        by_hour = cursor.fetchall()
+
+        cursor.execute("""
+            SELECT o.office_name, o.office_code,
+                   COALESCE(AVG(t.wait_duration_minutes), 0) as avg_wait,
+                   COUNT(t.id) as token_count
+            FROM university_tokens t JOIN offices o ON t.office_id = o.id
+            WHERE t.token_date BETWEEN %s AND %s AND t.wait_duration_minutes IS NOT NULL
+            GROUP BY o.id ORDER BY avg_wait DESC
+        """, (from_d, to_d))
+        by_office = cursor.fetchall()
+
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'by_hour': by_hour, 'by_office': by_office})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/analytics/service-times', methods=['GET'])
+def analytics_service_times():
+    """Service time distribution by officer, office."""
+    try:
+        from_d, to_d = _parse_date_range(request.args)
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT o.officer_name, off.office_name,
+                   COALESCE(AVG(t.service_duration_minutes), 0) as avg_service,
+                   COUNT(t.id) as tokens_served
+            FROM university_tokens t
+            JOIN officers o ON t.assigned_officer_id = o.id
+            JOIN offices off ON t.office_id = off.id
+            WHERE t.token_date BETWEEN %s AND %s AND t.service_duration_minutes IS NOT NULL
+            GROUP BY t.assigned_officer_id ORDER BY avg_service
+        """, (from_d, to_d))
+        by_officer = cursor.fetchall()
+
+        cursor.execute("""
+            SELECT
+                CASE
+                    WHEN service_duration_minutes <= 2 THEN '0-2 min'
+                    WHEN service_duration_minutes <= 5 THEN '2-5 min'
+                    WHEN service_duration_minutes <= 10 THEN '5-10 min'
+                    WHEN service_duration_minutes <= 20 THEN '10-20 min'
+                    ELSE '20+ min'
+                END as bucket,
+                COUNT(*) as count
+            FROM university_tokens
+            WHERE token_date BETWEEN %s AND %s AND service_duration_minutes IS NOT NULL
+            GROUP BY bucket ORDER BY MIN(service_duration_minutes)
+        """, (from_d, to_d))
+        distribution = cursor.fetchall()
+
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'by_officer': by_officer, 'distribution': distribution})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/analytics/peak-hours', methods=['GET'])
+def analytics_peak_hours():
+    """Hourly token creation heatmap data."""
+    try:
+        from_d, to_d = _parse_date_range(request.args)
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT DAYNAME(token_date) as day_name, DAYOFWEEK(token_date) as day_num,
+                   HOUR(requested_at) as hour, COUNT(*) as token_count,
+                   COALESCE(AVG(wait_duration_minutes), 0) as avg_wait
+            FROM university_tokens
+            WHERE token_date BETWEEN %s AND %s
+            GROUP BY token_date, HOUR(requested_at)
+            ORDER BY token_date, hour
+        """, (from_d, to_d))
+        raw = cursor.fetchall()
+
+        heatmap = {}
+        for row in raw:
+            day = row['day_name']
+            hour = row['hour']
+            if day not in heatmap:
+                heatmap[day] = {}
+            heatmap[day][hour] = {'count': row['token_count'], 'wait': round(float(row['avg_wait']), 1)}
+
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'heatmap': heatmap})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/analytics/token-trends', methods=['GET'])
+def analytics_token_trends():
+    """Daily token counts and completion rates over time."""
+    try:
+        from_d, to_d = _parse_date_range(request.args)
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT token_date as d,
+                   COUNT(*) as total,
+                   SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END) as completed,
+                   COALESCE(AVG(wait_duration_minutes), 0) as avg_wait,
+                   COALESCE(AVG(service_duration_minutes), 0) as avg_service
+            FROM university_tokens
+            WHERE token_date BETWEEN %s AND %s
+            GROUP BY token_date ORDER BY token_date
+        """, (from_d, to_d))
+        trends = cursor.fetchall()
+        for t in trends:
+            t['d'] = str(t['d'])
+            t['avg_wait'] = round(float(t['avg_wait']), 1)
+            t['avg_service'] = round(float(t['avg_service']), 1)
+            t['completion_rate'] = round((t['completed'] / t['total'] * 100) if t['total'] > 0 else 0, 1)
+
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'trends': trends})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/analytics/officer-productivity', methods=['GET'])
+def analytics_officer_productivity():
+    """Officer productivity: tokens/hour, hours worked, grades."""
+    try:
+        from_d, to_d = _parse_date_range(request.args)
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT o.id, o.officer_name, off.office_name,
+                   COALESCE(SUM(s.tokens_served), 0) as total_served,
+                   COALESCE(SUM(TIMESTAMPDIFF(MINUTE, s.login_time, COALESCE(s.logout_time, NOW()))), 0) as total_minutes,
+                   COUNT(s.id) as total_sessions,
+                   ROUND(COALESCE(SUM(s.tokens_served), 0) / GREATEST(COALESCE(SUM(TIMESTAMPDIFF(MINUTE, s.login_time, COALESCE(s.logout_time, NOW()))), 1), 1) * 60, 1) as tokens_per_hour
+            FROM officers o
+            JOIN offices off ON o.office_id = off.id
+            LEFT JOIN officer_sessions s ON o.id = s.officer_id AND s.session_date BETWEEN %s AND %s
+            GROUP BY o.id ORDER BY tokens_per_hour DESC
+        """, (from_d, to_d))
+        officers = cursor.fetchall()
+
+        for o in officers:
+            mins = o['total_minutes']
+            hours = mins / 60
+            target_mins = 540
+            o['attendance_pct'] = round((mins / target_mins * 100) if target_mins > 0 else 0, 1)
+            if o['attendance_pct'] >= 90:
+                o['grade'] = 'A'
+            elif o['attendance_pct'] >= 75:
+                o['grade'] = 'B'
+            elif o['attendance_pct'] >= 60:
+                o['grade'] = 'C'
+            elif o['attendance_pct'] >= 40:
+                o['grade'] = 'D'
+            else:
+                o['grade'] = 'F'
+
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'officers': officers})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/analytics/feedback-trends', methods=['GET'])
+def analytics_feedback_trends():
+    """Daily average rating and complaint count over time."""
+    try:
+        from_d, to_d = _parse_date_range(request.args)
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT token_date as d,
+                   COALESCE(AVG(rating), 0) as avg_rating,
+                   COUNT(CASE WHEN rating IS NOT NULL THEN 1 END) as rated_count,
+                   COUNT(CASE WHEN feedback_text IS NOT NULL AND feedback_text != '' THEN 1 END) as feedback_count
+            FROM university_tokens
+            WHERE token_date BETWEEN %s AND %s
+            GROUP BY token_date ORDER BY token_date
+        """, (from_d, to_d))
+        rating_trends = cursor.fetchall()
+        for r in rating_trends:
+            r['d'] = str(r['d'])
+            r['avg_rating'] = round(float(r['avg_rating']), 2)
+
+        cursor.execute("""
+            SELECT COALESCE(AVG(rating), 0) as avg_rating,
+                   COUNT(*) as total_rated,
+                   SUM(CASE WHEN rating >= 4 THEN 1 ELSE 0 END) as positive,
+                   SUM(CASE WHEN rating <= 2 THEN 1 ELSE 0 END) as negative
+            FROM university_tokens
+            WHERE token_date BETWEEN %s AND %s AND rating IS NOT NULL
+        """, (from_d, to_d))
+        summary = cursor.fetchone() or {}
+
+        cursor.execute("""
+            SELECT rating, COUNT(*) as count
+            FROM university_tokens
+            WHERE token_date BETWEEN %s AND %s AND rating IS NOT NULL
+            GROUP BY rating ORDER BY rating
+        """, (from_d, to_d))
+        distribution = cursor.fetchall()
+
+        cursor.execute("""
+            SELECT DATE(created_at) as d, COUNT(*) as count
+            FROM general_complaints
+            WHERE DATE(created_at) BETWEEN %s AND %s
+            GROUP BY DATE(created_at) ORDER BY d
+        """, (from_d, to_d))
+        complaints = cursor.fetchall()
+        for c in complaints:
+            c['d'] = str(c['d'])
+
+        cursor.close()
+        conn.close()
+        return jsonify({
+            'success': True,
+            'rating_trends': rating_trends,
+            'summary': {
+                'avg_rating': round(float(summary.get('avg_rating', 0) or 0), 2),
+                'total_rated': summary.get('total_rated', 0) or 0,
+                'positive': summary.get('positive', 0) or 0,
+                'negative': summary.get('negative', 0) or 0
+            },
+            'distribution': distribution,
+            'complaints': complaints
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/analytics/complaints', methods=['GET'])
+def analytics_complaints():
+    """Complaint analytics: by category, status, resolution time."""
+    try:
+        from_d, to_d = _parse_date_range(request.args)
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT category, COUNT(*) as count,
+                   SUM(CASE WHEN status='resolved' THEN 1 ELSE 0 END) as resolved,
+                   SUM(CASE WHEN status='pending' THEN 1 ELSE 0 END) as pending
+            FROM general_complaints
+            WHERE DATE(created_at) BETWEEN %s AND %s
+            GROUP BY category ORDER BY count DESC
+        """, (from_d, to_d))
+        by_category = cursor.fetchall()
+
+        cursor.execute("""
+            SELECT status, COUNT(*) as count
+            FROM general_complaints
+            WHERE DATE(created_at) BETWEEN %s AND %s
+            GROUP BY status
+        """, (from_d, to_d))
+        by_status = cursor.fetchall()
+
+        cursor.execute("SELECT COUNT(*) as total FROM general_complaints WHERE DATE(created_at) BETWEEN %s AND %s", (from_d, to_d))
+        total = (cursor.fetchone() or {}).get('total', 0) or 0
+
+        cursor.close()
+        conn.close()
+        return jsonify({
+            'success': True,
+            'by_category': by_category,
+            'by_status': by_status,
+            'total': total
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/analytics/correlations', methods=['GET'])
+def analytics_correlations():
+    """Cross-analytics: wait time vs rating, attendance vs productivity."""
+    try:
+        from_d, to_d = _parse_date_range(request.args)
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT wait_duration_minutes as wait_min, rating
+            FROM university_tokens
+            WHERE token_date BETWEEN %s AND %s AND rating IS NOT NULL AND wait_duration_minutes IS NOT NULL
+            ORDER BY requested_at DESC LIMIT 200
+        """, (from_d, to_d))
+        wait_vs_rating = cursor.fetchall()
+
+        cursor.execute("""
+            SELECT o.officer_name,
+                   COALESCE(SUM(TIMESTAMPDIFF(MINUTE, s.login_time, COALESCE(s.logout_time, NOW()))), 0) as hours_worked,
+                   COALESCE(SUM(s.tokens_served), 0) as tokens_served,
+                   (SELECT COALESCE(AVG(t2.rating), 0) FROM university_tokens t2
+                    WHERE t2.assigned_officer_id = o.id AND t2.token_date BETWEEN %s AND %s AND t2.rating IS NOT NULL) as avg_rating
+            FROM officers o
+            LEFT JOIN officer_sessions s ON o.id = s.officer_id AND s.session_date BETWEEN %s AND %s
+            GROUP BY o.id HAVING hours_worked > 0
+        """, (from_d, to_d, from_d, to_d))
+        attendance_vs_productivity = cursor.fetchall()
+        for r in attendance_vs_productivity:
+            r['hours_worked'] = round(r['hours_worked'] / 60, 1)
+            r['avg_rating'] = round(float(r['avg_rating'] or 0), 2)
+
+        cursor.close()
+        conn.close()
+        return jsonify({
+            'success': True,
+            'wait_vs_rating': wait_vs_rating,
+            'attendance_vs_productivity': attendance_vs_productivity
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/analytics/ai-insights', methods=['GET'])
+def analytics_ai_insights():
+    """AI-powered insights across all analytics."""
+    try:
+        from_d, to_d = _parse_date_range(request.args)
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT COUNT(*) as total,
+                   COALESCE(AVG(wait_duration_minutes), 0) as avg_wait,
+                   COALESCE(AVG(service_duration_minutes), 0) as avg_service,
+                   SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END) as completed,
+                   SUM(CASE WHEN status IN ('waiting','called','serving') THEN 1 ELSE 0 END) as active
+            FROM university_tokens WHERE token_date BETWEEN %s AND %s
+        """, (from_d, to_d))
+        queue = cursor.fetchone() or {}
+
+        cursor.execute("""
+            SELECT o.officer_name, COALESCE(SUM(s.tokens_served), 0) as served,
+                   COALESCE(SUM(TIMESTAMPDIFF(MINUTE, s.login_time, COALESCE(s.logout_time, NOW()))), 0) as mins
+            FROM officers o LEFT JOIN officer_sessions s ON o.id = s.officer_id AND s.session_date BETWEEN %s AND %s
+            GROUP BY o.id ORDER BY served DESC LIMIT 5
+        """, (from_d, to_d))
+        top_officers = cursor.fetchall()
+
+        cursor.execute("""
+            SELECT COALESCE(AVG(rating), 0) as avg_rating, COUNT(*) as total
+            FROM university_tokens WHERE token_date BETWEEN %s AND %s AND rating IS NOT NULL
+        """, (from_d, to_d))
+        feedback = cursor.fetchone() or {}
+
+        cursor.execute("SELECT COUNT(*) as cnt FROM general_complaints WHERE DATE(created_at) BETWEEN %s AND %s", (from_d, to_d))
+        complaints = (cursor.fetchone() or {}).get('cnt', 0) or 0
+
+        cursor.close()
+        conn.close()
+
+        total = queue.get('total', 0) or 0
+        completed = queue.get('completed', 0) or 0
+        prompt = f"""You are an analytics advisor for a queue management system. Based on the following data for {from_d} to {to_d}:
+
+Queue: {total} tokens created, {completed} completed ({round(completed/total*100,1) if total else 0}% completion rate), avg wait {round(float(queue.get('avg_wait',0) or 0),1)} min, avg service {round(float(queue.get('avg_service',0) or 0),1)} min, {queue.get('active',0) or 0} currently active
+
+Top officers: {', '.join([f"{o['officer_name']} ({o['served']} served, {round(o['mins']/60,1)}h)" for o in top_officers])}
+
+Feedback: avg rating {round(float(feedback.get('avg_rating',0) or 0),2)}/5 from {feedback.get('total',0) or 0} ratings
+Complaints: {complaints}
+
+Provide:
+1. Top 3 insights
+2. Areas of concern
+3. Actionable recommendations
+
+Keep under 250 words. Be specific with numbers."""
+
+        try:
+            from groq import Groq
+            groq_client = Groq(api_key=os.environ.get('GROQ_API_KEY', ''))
+            response = groq_client.chat.completions.create(
+                model=GROQ_MODEL,
+                messages=[{'role': 'user', 'content': prompt}],
+                max_tokens=500,
+                temperature=0.3
+            )
+            ai_text = response.choices[0].message.content
+        except Exception as ai_err:
+            logger.warning(f"AI insights error: {ai_err}")
+            ai_text = f"AI analysis unavailable. Key metrics: {total} tokens, {round(completed/total*100,1) if total else 0}% completion, {round(float(feedback.get('avg_rating',0) or 0),2)}/5 satisfaction, {complaints} complaints."
+
+        return jsonify({'success': True, 'insight': ai_text})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/analytics/export', methods=['GET'])
+def analytics_export():
+    """Export analytics data as CSV."""
+    try:
+        export_type = request.args.get('type', 'csv')
+        from_d, to_d = _parse_date_range(request.args)
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT token_number, token_date, o.office_name, s.service_name,
+                   student_name, status, wait_duration_minutes, service_duration_minutes,
+                   rating, feedback_text, assigned_officer_id, requested_at
+            FROM university_tokens t
+            JOIN offices o ON t.office_id = o.id
+            JOIN services s ON t.service_id = s.id
+            WHERE t.token_date BETWEEN %s AND %s
+            ORDER BY t.requested_at
+        """, (from_d, to_d))
+        rows = cursor.fetchall()
+
+        cursor.close()
+        conn.close()
+
+        if export_type == 'csv':
+            import csv, io
+            output = io.StringIO()
+            writer = csv.writer(output)
+            writer.writerow(['Token', 'Date', 'Office', 'Service', 'Student', 'Status', 'Wait (min)', 'Service (min)', 'Rating', 'Feedback'])
+            for r in rows:
+                writer.writerow([
+                    r['token_number'], str(r['token_date']), r['office_name'], r['service_name'],
+                    r['student_name'] or '', r['status'], r['wait_duration_minutes'] or '',
+                    r['service_duration_minutes'] or '', r['rating'] or '', r['feedback_text'] or ''
+                ])
+            from flask import Response
+            return Response(output.getvalue(), mimetype='text/csv',
+                          headers={'Content-Disposition': f'attachment; filename=analytics_{from_d}_to_{to_d}.csv'})
+        else:
+            return jsonify({'success': False, 'message': 'PDF export not yet implemented'}), 501
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+# ============================================
 # OFFICER QUEUE
 # ============================================
 @app.route('/api/officer/queue/<int:officer_id>', methods=['GET'])

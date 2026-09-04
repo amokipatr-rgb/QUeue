@@ -936,6 +936,47 @@
             .att-mobile-cards { display: block; }
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <style>
+        /* ── Analytics Tab Styles ── */
+        .analytics-tabs { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 24px; flex-wrap: wrap; }
+        .analytics-tab { padding: 10px 20px; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.2s; background: none; border-top: none; border-left: none; border-right: none; font-family: inherit; }
+        .analytics-tab:hover { color: var(--green-mid); }
+        .analytics-tab.active { color: var(--green-dark); border-bottom-color: var(--green-mid); }
+        .analytics-sub { display: none; }
+        .analytics-sub.active { display: block; }
+        .analytics-kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .analytics-kpi { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 20px; position: relative; }
+        .analytics-kpi-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+        .analytics-kpi-value { font-size: 28px; font-weight: 800; color: var(--green-dark); line-height: 1; }
+        .analytics-kpi-change { display: inline-flex; align-items: center; gap: 4px; font-size: 12px; font-weight: 600; margin-top: 8px; padding: 2px 8px; border-radius: 20px; }
+        .analytics-kpi-change.up { background: #e8f5e9; color: #2e7d32; }
+        .analytics-kpi-change.down { background: #fce4ec; color: #c62828; }
+        .analytics-kpi-change.neutral { background: #f5f5f5; color: #757575; }
+        .analytics-chart-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; margin-bottom: 24px; }
+        .analytics-chart-card { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+        .analytics-chart-title { font-size: 14px; font-weight: 700; color: var(--green-dark); margin-bottom: 16px; }
+        .analytics-chart-wrap { position: relative; height: 280px; }
+        .analytics-date-bar { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
+        .analytics-date-bar select, .analytics-date-bar input { padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-family: inherit; background: var(--white); }
+        .analytics-date-bar input[type="date"] { min-width: 140px; }
+        .analytics-ai-panel { background: linear-gradient(135deg, #f0fdf4, #ecfdf5); border: 1px solid #bbf7d0; border-radius: 12px; padding: 20px; margin-bottom: 24px; }
+        .analytics-ai-panel h4 { font-size: 14px; font-weight: 700; color: var(--green-dark); margin-bottom: 12px; display: flex; align-items: center; gap: 8px; }
+        .analytics-ai-panel .ai-content { font-size: 13px; color: #374151; line-height: 1.7; white-space: pre-wrap; }
+        .analytics-ai-panel .ai-loading { color: var(--muted); font-style: italic; }
+        .analytics-heatmap { width: 100%; border-collapse: collapse; }
+        .analytics-heatmap th, .analytics-heatmap td { padding: 8px 6px; text-align: center; font-size: 12px; border: 1px solid var(--border); }
+        .analytics-heatmap th { background: var(--green-dark); color: #fff; font-weight: 600; }
+        .analytics-heatmap td { font-weight: 500; }
+        .analytics-export-bar { display: flex; gap: 8px; margin-bottom: 16px; }
+        .analytics-export-bar button { padding: 8px 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--white); font-size: 12px; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 6px; transition: all 0.2s; font-family: inherit; }
+        .analytics-export-bar button:hover { background: var(--green-light); border-color: var(--green-mid); color: var(--green-dark); }
+        @media (max-width: 768px) {
+            .analytics-chart-grid { grid-template-columns: 1fr; }
+            .analytics-kpi-grid { grid-template-columns: repeat(2, 1fr); }
+            .analytics-date-bar { flex-direction: column; align-items: stretch; }
+        }
+    </style>
 </head>
 <!-- RESTORE DEVTOOLS BLOCK: replace line below with: <body oncontextmenu="return false" onkeydown="if(event.key==='F12'||(event.ctrlKey&&event.shiftKey&&event.key==='I')||(event.ctrlKey&&event.shiftKey&&event.key==='J')||(event.ctrlKey&&event.key==='U')){event.preventDefault();return false}"> -->
 <body>
@@ -1038,6 +1079,17 @@
             </div>
             <span>Live Queue</span>
             <span class="nav-badge" id="sidebarQueueBadge">0</span>
+        </div>
+
+        <div class="nav-section-label">Reports</div>
+        <div class="nav-item" onclick="showPage('analytics', this)">
+            <div class="nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                    <path d="M21 12a9 9 0 1 1-9-9"/><path d="M21 3v9h-9"/>
+                    <circle cx="12" cy="12" r="1"/><path d="M12 8v4l2 2"/>
+                </svg>
+            </div>
+            <span>Analytics</span>
         </div>
 
         <div class="nav-section-label">Account</div>
@@ -1750,6 +1802,163 @@
                     </div>
                 </div>
             </div>
+
+            <!-- ANALYTICS PAGE -->
+            <div class="page" id="page-analytics" style="display:none">
+                <!-- Date Range Bar -->
+                <div class="analytics-date-bar">
+                    <select id="analyticsPreset" onchange="analyticsPresetChange()">
+                        <option value="today">Today</option>
+                        <option value="yesterday">Yesterday</option>
+                        <option value="7d" selected>Last 7 Days</option>
+                        <option value="30d">Last 30 Days</option>
+                        <option value="month">This Month</option>
+                        <option value="custom">Custom Range</option>
+                    </select>
+                    <input type="date" id="analyticsFrom" style="display:none">
+                    <input type="date" id="analyticsTo" style="display:none">
+                    <button onclick="loadAnalytics()" style="padding:8px 16px;background:var(--green-mid);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit">Apply</button>
+                    <div style="flex:1"></div>
+                    <div class="analytics-export-bar">
+                        <button onclick="exportAnalyticsCSV()">📥 CSV</button>
+                        <button onclick="exportAnalyticsPDF()">📄 PDF</button>
+                        <button id="analyticsRefreshBtn" onclick="toggleAnalyticsAutoRefresh()" title="Auto-refresh">⟳ Auto</button>
+                    </div>
+                </div>
+
+                <!-- Sub-Tabs -->
+                <div class="analytics-tabs">
+                    <button class="analytics-tab active" onclick="showAnalyticsSub('overview', this)">Overview</button>
+                    <button class="analytics-tab" onclick="showAnalyticsSub('queue', this)">Queue</button>
+                    <button class="analytics-tab" onclick="showAnalyticsSub('officers', this)">Officers</button>
+                    <button class="analytics-tab" onclick="showAnalyticsSub('feedback', this)">Feedback</button>
+                    <button class="analytics-tab" onclick="showAnalyticsSub('ai-insights', this)">AI Insights</button>
+                </div>
+
+                <!-- OVERVIEW SUB-TAB -->
+                <div class="analytics-sub active" id="analytics-overview">
+                    <div class="analytics-kpi-grid" id="analyticsKpiGrid">
+                        <div class="analytics-kpi"><div class="analytics-kpi-label">Total Tokens</div><div class="analytics-kpi-value" id="kpiTotalTokens">-</div><div class="analytics-kpi-change neutral" id="kpiTotalTokensChange">--</div></div>
+                        <div class="analytics-kpi"><div class="analytics-kpi-label">Avg Wait Time</div><div class="analytics-kpi-value" id="kpiAvgWait">-</div><div class="analytics-kpi-change neutral" id="kpiAvgWaitChange">--</div></div>
+                        <div class="analytics-kpi"><div class="analytics-kpi-label">Completion Rate</div><div class="analytics-kpi-value" id="kpiCompletion">-</div><div class="analytics-kpi-change neutral" id="kpiCompletionChange">--</div></div>
+                        <div class="analytics-kpi"><div class="analytics-kpi-label">Satisfaction</div><div class="analytics-kpi-value" id="kpiSatisfaction">-</div><div class="analytics-kpi-change neutral" id="kpiSatisfactionChange">--</div></div>
+                        <div class="analytics-kpi"><div class="analytics-kpi-label">Complaints</div><div class="analytics-kpi-value" id="kpiComplaints">-</div><div class="analytics-kpi-change neutral" id="kpiComplaintsChange">--</div></div>
+                    </div>
+                    <div class="analytics-chart-grid">
+                        <div class="analytics-chart-card">
+                            <div class="analytics-chart-title">Queue Flow Funnel</div>
+                            <div class="analytics-chart-wrap"><canvas id="chartFunnel"></canvas></div>
+                        </div>
+                        <div class="analytics-chart-card">
+                            <div class="analytics-chart-title">Token Trend</div>
+                            <div class="analytics-chart-wrap"><canvas id="chartTokenTrend"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="analytics-chart-grid">
+                        <div class="analytics-chart-card" style="grid-column:span 2">
+                            <div class="analytics-chart-title">Peak Hours Heatmap</div>
+                            <div id="analyticsHeatmap"></div>
+                        </div>
+                    </div>
+                    <div class="analytics-ai-panel" id="analyticsOverviewAi">
+                        <h4>🤖 AI Insight</h4>
+                        <div class="ai-content ai-loading">Loading insight...</div>
+                    </div>
+                </div>
+
+                <!-- QUEUE SUB-TAB -->
+                <div class="analytics-sub" id="analytics-queue">
+                    <div class="analytics-chart-grid">
+                        <div class="analytics-chart-card">
+                            <div class="analytics-chart-title">Wait Time by Hour</div>
+                            <div class="analytics-chart-wrap"><canvas id="chartWaitByHour"></canvas></div>
+                        </div>
+                        <div class="analytics-chart-card">
+                            <div class="analytics-chart-title">Service Time Distribution</div>
+                            <div class="analytics-chart-wrap"><canvas id="chartServiceDist"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="analytics-chart-grid">
+                        <div class="analytics-chart-card">
+                            <div class="analytics-chart-title">Completion Rate (Daily)</div>
+                            <div class="analytics-chart-wrap"><canvas id="chartCompletionDaily"></canvas></div>
+                        </div>
+                        <div class="analytics-chart-card">
+                            <div class="analytics-chart-title">Token Lifecycle</div>
+                            <div class="analytics-chart-wrap"><canvas id="chartLifecycle"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="analytics-ai-panel" id="analyticsQueueAi">
+                        <h4>🤖 AI Insight</h4>
+                        <div class="ai-content ai-loading">Loading insight...</div>
+                    </div>
+                </div>
+
+                <!-- OFFICERS SUB-TAB -->
+                <div class="analytics-sub" id="analytics-officers">
+                    <div class="analytics-chart-grid">
+                        <div class="analytics-chart-card">
+                            <div class="analytics-chart-title">Productivity Ranking</div>
+                            <div class="analytics-chart-wrap"><canvas id="chartOfficerRanking"></canvas></div>
+                        </div>
+                        <div class="analytics-chart-card">
+                            <div class="analytics-chart-title">Attendance Hours (Weekly)</div>
+                            <div class="analytics-chart-wrap"><canvas id="chartOfficerHours"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="analytics-chart-grid">
+                        <div class="analytics-chart-card">
+                            <div class="analytics-chart-title">Performance Grade Trend</div>
+                            <div class="analytics-chart-wrap"><canvas id="chartGradeTrend"></canvas></div>
+                        </div>
+                        <div class="analytics-chart-card">
+                            <div class="analytics-chart-title">Tokens per Hour Trend</div>
+                            <div class="analytics-chart-wrap"><canvas id="chartTokensPerHour"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="analytics-ai-panel" id="analyticsOfficersAi">
+                        <h4>🤖 AI Insight</h4>
+                        <div class="ai-content ai-loading">Loading insight...</div>
+                    </div>
+                </div>
+
+                <!-- FEEDBACK SUB-TAB -->
+                <div class="analytics-sub" id="analytics-feedback">
+                    <div class="analytics-chart-grid">
+                        <div class="analytics-chart-card">
+                            <div class="analytics-chart-title">Rating Trend (30 Days)</div>
+                            <div class="analytics-chart-wrap"><canvas id="chartRatingTrend"></canvas></div>
+                        </div>
+                        <div class="analytics-chart-card">
+                            <div class="analytics-chart-title">Rating Distribution</div>
+                            <div class="analytics-chart-wrap"><canvas id="chartRatingDist"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="analytics-chart-grid">
+                        <div class="analytics-chart-card">
+                            <div class="analytics-chart-title">Complaints by Category</div>
+                            <div class="analytics-chart-wrap"><canvas id="chartComplaintCat"></canvas></div>
+                        </div>
+                        <div class="analytics-chart-card">
+                            <div class="analytics-chart-title">Wait Time vs Rating</div>
+                            <div class="analytics-chart-wrap"><canvas id="chartWaitVsRating"></canvas></div>
+                        </div>
+                    </div>
+                    <div class="analytics-ai-panel" id="analyticsFeedbackAi">
+                        <h4>🤖 AI Insight</h4>
+                        <div class="ai-content ai-loading">Loading insight...</div>
+                    </div>
+                </div>
+
+                <!-- AI INSIGHTS SUB-TAB -->
+                <div class="analytics-sub" id="analytics-ai-insights">
+                    <div class="analytics-ai-panel" id="analyticsFullAi">
+                        <h4>🤖 Full AI Analysis</h4>
+                        <div class="ai-content ai-loading">Generating comprehensive analysis across all metrics...</div>
+                    </div>
+                </div>
+            </div>
+
         </div>
         <footer style="border-top:1px solid var(--border);padding:12px 28px;font-size:12px;color:var(--text-muted);display:flex;justify-content:space-between;align-items:center;flex-shrink:0">
             <span>SMQSS</span>
@@ -2150,6 +2359,7 @@
                 feedback: { title: 'Feedback & Complaints', sub: 'Student ratings and complaints from completed and non-completed tokens' },
                 'general-complaints': { title: 'General Complaints', sub: 'Non-token complaints from students, staff, and others' },
                 'system-rating': { title: 'System Rating', sub: 'Enable officer system rating and view submitted ratings' },
+                'analytics': { title: 'Analytics', sub: 'Advanced analytics and insights' },
                 changepin: { title: 'Change PIN', sub: 'Update your login PIN code' }
             };
             const t = titles[id] || { title: 'Management', sub: '' };
@@ -2184,6 +2394,9 @@
             } else if (id === 'system-rating') {
                 document.getElementById('topbarActions').innerHTML = '';
                 loadSystemRating();
+            } else if (id === 'analytics') {
+                document.getElementById('topbarActions').innerHTML = '';
+                loadAnalytics();
             } else if (id === 'performance') {
                 document.getElementById('topbarActions').innerHTML = '';
             } else {
@@ -4115,6 +4328,487 @@
             updateGCBadge();
             for (const office of officesData) loadOfficeStats(office.id);
         }, 10000);
+    </script>
+
+    <script>
+    /* ═══════════════════════════════════════════
+       ANALYTICS MODULE
+       ═══════════════════════════════════════════ */
+    const ANALYTICS_API = API_BASE_URL + '/api/admin/analytics';
+    let analyticsCharts = {};
+    let analyticsAutoRefresh = null;
+    let analyticsPreset = '7d';
+
+    function analyticsPresetChange() {
+        const v = document.getElementById('analyticsPreset').value;
+        analyticsPreset = v;
+        const custom = v === 'custom';
+        document.getElementById('analyticsFrom').style.display = custom ? 'inline-block' : 'none';
+        document.getElementById('analyticsTo').style.display = custom ? 'inline-block' : 'none';
+        if (!custom) loadAnalytics();
+    }
+
+    function getAnalyticsParams() {
+        const preset = document.getElementById('analyticsPreset').value;
+        if (preset === 'custom') {
+            const f = document.getElementById('analyticsFrom').value;
+            const t = document.getElementById('analyticsTo').value;
+            return `preset=custom&from=${f}&to=${t}`;
+        }
+        return `preset=${preset}`;
+    }
+
+    function showAnalyticsSub(tab, btn) {
+        document.querySelectorAll('.analytics-sub').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.analytics-tab').forEach(t => t.classList.remove('active'));
+        document.getElementById('analytics-' + tab).classList.add('active');
+        if (btn) btn.classList.add('active');
+    }
+
+    function destroyChart(id) {
+        if (analyticsCharts[id]) { analyticsCharts[id].destroy(); delete analyticsCharts[id]; }
+    }
+
+    function makeChart(id, config) {
+        destroyChart(id);
+        const canvas = document.getElementById(id);
+        if (!canvas) return null;
+        const ctx = canvas.getContext('2d');
+        analyticsCharts[id] = new Chart(ctx, config);
+        return analyticsCharts[id];
+    }
+
+    const CHART_COLORS = {
+        green: '#2a5a3a', gold: '#ffd700', blue: '#3b82f6', red: '#ef4444',
+        orange: '#f97316', purple: '#8b5cf6', teal: '#14b8a6', gray: '#9ca3af',
+        greenLight: 'rgba(42,90,58,0.1)', goldLight: 'rgba(255,215,0,0.1)',
+        blueLight: 'rgba(59,130,246,0.1)'
+    };
+
+    function chartDefaults() {
+        Chart.defaults.font.family = "'Plus Jakarta Sans', sans-serif";
+        Chart.defaults.font.size = 12;
+        Chart.defaults.plugins.legend.labels.usePointStyle = true;
+        Chart.defaults.plugins.legend.labels.padding = 16;
+        Chart.defaults.scale = Chart.defaults.scale || {};
+    }
+    chartDefaults();
+
+    /* ── Load All Analytics ── */
+    async function loadAnalytics() {
+        const params = getAnalyticsParams();
+        try {
+            const [overviewRes, flowRes, waitRes, serviceRes, peakRes, trendsRes, officerRes, feedbackRes, complaintRes, corrRes] = await Promise.all([
+                fetch(`${ANALYTICS_API}/overview`).then(r => r.json()),
+                fetch(`${ANALYTICS_API}/queue-flow?${params}`).then(r => r.json()),
+                fetch(`${ANALYTICS_API}/wait-times?${params}`).then(r => r.json()),
+                fetch(`${ANALYTICS_API}/service-times?${params}`).then(r => r.json()),
+                fetch(`${ANALYTICS_API}/peak-hours?${params}`).then(r => r.json()),
+                fetch(`${ANALYTICS_API}/token-trends?${params}`).then(r => r.json()),
+                fetch(`${ANALYTICS_API}/officer-productivity?${params}`).then(r => r.json()),
+                fetch(`${ANALYTICS_API}/feedback-trends?${params}`).then(r => r.json()),
+                fetch(`${ANALYTICS_API}/complaints?${params}`).then(r => r.json()),
+                fetch(`${ANALYTICS_API}/correlations?${params}`).then(r => r.json())
+            ]);
+
+            renderOverviewKPIs(overviewRes);
+            renderFunnel(flowRes);
+            renderTokenTrend(trendsRes);
+            renderHeatmap(peakRes);
+            renderWaitByHour(waitRes);
+            renderServiceDist(serviceRes);
+            renderCompletionDaily(trendsRes);
+            renderLifecycle(flowRes);
+            renderOfficerRanking(officerRes);
+            renderOfficerHours(officerRes);
+            renderGradeTrend(officerRes);
+            renderTokensPerHour(officerRes);
+            renderRatingTrend(feedbackRes);
+            renderRatingDist(feedbackRes);
+            renderComplaintCat(complaintRes);
+            renderWaitVsRating(corrRes);
+
+            loadAnalyticsAI('overview', overviewRes, trendsRes, feedbackRes, complaintRes);
+            loadAnalyticsAI('queue', trendsRes, waitRes, serviceRes, flowRes);
+            loadAnalyticsAI('officers', officerRes, null, null, null);
+            loadAnalyticsAI('feedback', feedbackRes, complaintRes, corrRes, null);
+            loadFullAI();
+        } catch (e) {
+            console.error('Analytics load error:', e);
+        }
+    }
+
+    /* ── Overview KPIs ── */
+    function renderOverviewKPIs(res) {
+        if (!res.success) return;
+        const k = res.kpis;
+        document.getElementById('kpiTotalTokens').textContent = k.total_tokens.value;
+        setKpiChange('kpiTotalTokensChange', k.total_tokens.change);
+        document.getElementById('kpiAvgWait').textContent = k.avg_wait.value + ' min';
+        setKpiChange('kpiAvgWaitChange', k.avg_wait.change);
+        document.getElementById('kpiCompletion').textContent = k.completion_rate.value + '%';
+        setKpiChange('kpiCompletionChange', k.completion_rate.change);
+        document.getElementById('kpiSatisfaction').textContent = k.satisfaction.value + ' ★';
+        setKpiChange('kpiSatisfactionChange', k.satisfaction.change);
+        document.getElementById('kpiComplaints').textContent = k.complaints.value;
+        setKpiChange('kpiComplaintsChange', k.complaints.change);
+    }
+
+    function setKpiChange(id, change) {
+        const el = document.getElementById(id);
+        el.textContent = change.text;
+        el.className = 'analytics-kpi-change ' + change.direction;
+    }
+
+    /* ── Queue Flow Funnel ── */
+    function renderFunnel(res) {
+        if (!res.success) return;
+        const f = res.flow;
+        makeChart('chartFunnel', {
+            type: 'bar',
+            data: {
+                labels: ['Created', 'Called', 'Serving', 'Completed'],
+                datasets: [{
+                    data: [f.total_created, f.called, f.serving, f.completed],
+                    backgroundColor: [CHART_COLORS.blue, CHART_COLORS.gold, CHART_COLORS.orange, CHART_COLORS.green],
+                    borderRadius: 6
+                }]
+            },
+            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+    }
+
+    /* ── Token Trend ── */
+    function renderTokenTrend(res) {
+        if (!res.success || !res.trends.length) return;
+        makeChart('chartTokenTrend', {
+            type: 'line',
+            data: {
+                labels: res.trends.map(t => t.d),
+                datasets: [
+                    { label: 'Created', data: res.trends.map(t => t.total), borderColor: CHART_COLORS.blue, backgroundColor: CHART_COLORS.blueLight, fill: true, tension: 0.3 },
+                    { label: 'Completed', data: res.trends.map(t => t.completed), borderColor: CHART_COLORS.green, backgroundColor: CHART_COLORS.greenLight, fill: true, tension: 0.3 }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true } } }
+        });
+    }
+
+    /* ── Peak Hours Heatmap ── */
+    function renderHeatmap(res) {
+        if (!res.success) return;
+        const hm = res.heatmap;
+        const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday'];
+        const hours = Array.from({length: 10}, (_, i) => i + 8);
+        let maxCount = 0;
+        for (const day of days) {
+            for (const h of hours) {
+                const v = hm[day] && hm[day][h] ? hm[day][h].count : 0;
+                if (v > maxCount) maxCount = v;
+            }
+        }
+        let html = '<table class="analytics-heatmap"><thead><tr><th></th>';
+        hours.forEach(h => html += `<th>${h}:00</th>`);
+        html += '</tr></thead><tbody>';
+        days.forEach(day => {
+            html += `<tr><th>${day.substring(0,3)}</th>`;
+            hours.forEach(h => {
+                const v = hm[day] && hm[day][h] ? hm[day][h].count : 0;
+                const intensity = maxCount > 0 ? v / maxCount : 0;
+                const bg = intensity > 0.7 ? '#c62828' : intensity > 0.4 ? '#ffd700' : intensity > 0 ? '#e8f5e9' : '#f5f5f5';
+                const color = intensity > 0.7 ? '#fff' : intensity > 0.4 ? '#000' : '#333';
+                html += `<td style="background:${bg};color:${color};font-weight:600">${v || ''}</td>`;
+            });
+            html += '</tr>';
+        });
+        html += '</tbody></table>';
+        document.getElementById('analyticsHeatmap').innerHTML = html;
+    }
+
+    /* ── Wait Time by Hour ── */
+    function renderWaitByHour(res) {
+        if (!res.success || !res.by_hour.length) return;
+        makeChart('chartWaitByHour', {
+            type: 'bar',
+            data: {
+                labels: res.by_hour.map(h => h.hour + ':00'),
+                datasets: [{
+                    label: 'Avg Wait (min)',
+                    data: res.by_hour.map(h => Math.round(h.avg_wait * 10) / 10),
+                    backgroundColor: CHART_COLORS.gold,
+                    borderRadius: 4
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+        });
+    }
+
+    /* ── Service Time Distribution ── */
+    function renderServiceDist(res) {
+        if (!res.success || !res.distribution.length) return;
+        makeChart('chartServiceDist', {
+            type: 'bar',
+            data: {
+                labels: res.distribution.map(d => d.bucket),
+                datasets: [{
+                    label: 'Tokens',
+                    data: res.distribution.map(d => d.count),
+                    backgroundColor: [CHART_COLORS.green, CHART_COLORS.teal, CHART_COLORS.blue, CHART_COLORS.orange, CHART_COLORS.red],
+                    borderRadius: 4
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+        });
+    }
+
+    /* ── Completion Rate Daily ── */
+    function renderCompletionDaily(res) {
+        if (!res.success || !res.trends.length) return;
+        makeChart('chartCompletionDaily', {
+            type: 'line',
+            data: {
+                labels: res.trends.map(t => t.d),
+                datasets: [{
+                    label: 'Completion %',
+                    data: res.trends.map(t => t.completion_rate),
+                    borderColor: CHART_COLORS.green,
+                    backgroundColor: CHART_COLORS.greenLight,
+                    fill: true, tension: 0.3
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100 } } }
+        });
+    }
+
+    /* ── Token Lifecycle Donut ── */
+    function renderLifecycle(res) {
+        if (!res.success) return;
+        const f = res.flow;
+        makeChart('chartLifecycle', {
+            type: 'doughnut',
+            data: {
+                labels: ['Completed', 'Cancelled', 'Expired', 'Skipped', 'Active'],
+                datasets: [{
+                    data: [f.completed, f.cancelled, f.expired, f.skipped, f.total_created - f.completed - f.cancelled - f.expired - f.skipped],
+                    backgroundColor: [CHART_COLORS.green, CHART_COLORS.gray, CHART_COLORS.red, CHART_COLORS.orange, CHART_COLORS.blue]
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+        });
+    }
+
+    /* ── Officer Productivity Ranking ── */
+    function renderOfficerRanking(res) {
+        if (!res.success || !res.officers.length) return;
+        const top = res.officers.slice(0, 10);
+        makeChart('chartOfficerRanking', {
+            type: 'bar',
+            data: {
+                labels: top.map(o => o.officer_name),
+                datasets: [{
+                    label: 'Tokens/Hour',
+                    data: top.map(o => o.tokens_per_hour),
+                    backgroundColor: CHART_COLORS.green,
+                    borderRadius: 4
+                }]
+            },
+            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+    }
+
+    /* ── Officer Attendance Hours ── */
+    function renderOfficerHours(res) {
+        if (!res.success || !res.officers.length) return;
+        makeChart('chartOfficerHours', {
+            type: 'bar',
+            data: {
+                labels: res.officers.map(o => o.officer_name),
+                datasets: [{
+                    label: 'Hours Worked',
+                    data: res.officers.map(o => Math.round(o.total_minutes / 60 * 10) / 10),
+                    backgroundColor: CHART_COLORS.blue,
+                    borderRadius: 4
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+        });
+    }
+
+    /* ── Performance Grade Trend ── */
+    function renderGradeTrend(res) {
+        if (!res.success || !res.officers.length) return;
+        makeChart('chartGradeTrend', {
+            type: 'bar',
+            data: {
+                labels: res.officers.map(o => o.officer_name),
+                datasets: [{
+                    label: 'Attendance %',
+                    data: res.officers.map(o => o.attendance_pct),
+                    backgroundColor: res.officers.map(o => o.grade === 'A' ? CHART_COLORS.green : o.grade === 'B' ? CHART_COLORS.teal : o.grade === 'C' ? CHART_COLORS.gold : CHART_COLORS.red),
+                    borderRadius: 4
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 100 } } }
+        });
+    }
+
+    /* ── Tokens per Hour Trend ── */
+    function renderTokensPerHour(res) {
+        if (!res.success || !res.officers.length) return;
+        makeChart('chartTokensPerHour', {
+            type: 'bar',
+            data: {
+                labels: res.officers.map(o => o.officer_name),
+                datasets: [{
+                    label: 'Tokens/Hour',
+                    data: res.officers.map(o => o.tokens_per_hour),
+                    backgroundColor: CHART_COLORS.gold,
+                    borderRadius: 4
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+        });
+    }
+
+    /* ── Rating Trend ── */
+    function renderRatingTrend(res) {
+        if (!res.success || !res.rating_trends.length) return;
+        makeChart('chartRatingTrend', {
+            type: 'line',
+            data: {
+                labels: res.rating_trends.map(r => r.d),
+                datasets: [{
+                    label: 'Avg Rating',
+                    data: res.rating_trends.map(r => r.avg_rating),
+                    borderColor: CHART_COLORS.gold,
+                    backgroundColor: CHART_COLORS.goldLight,
+                    fill: true, tension: 0.3
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true, max: 5 } } }
+        });
+    }
+
+    /* ── Rating Distribution ── */
+    function renderRatingDist(res) {
+        if (!res.success || !res.distribution.length) return;
+        const labels = ['1★', '2★', '3★', '4★', '5★'];
+        const data = [0, 0, 0, 0, 0];
+        res.distribution.forEach(d => { if (d.rating >= 1 && d.rating <= 5) data[d.rating - 1] = d.count; });
+        makeChart('chartRatingDist', {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Count',
+                    data: data,
+                    backgroundColor: [CHART_COLORS.red, CHART_COLORS.orange, CHART_COLORS.gold, CHART_COLORS.teal, CHART_COLORS.green],
+                    borderRadius: 4
+                }]
+            },
+            options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+    }
+
+    /* ── Complaints by Category ── */
+    function renderComplaintCat(res) {
+        if (!res.success || !res.by_category.length) return;
+        makeChart('chartComplaintCat', {
+            type: 'doughnut',
+            data: {
+                labels: res.by_category.map(c => c.category),
+                datasets: [{
+                    data: res.by_category.map(c => c.count),
+                    backgroundColor: [CHART_COLORS.green, CHART_COLORS.blue, CHART_COLORS.gold, CHART_COLORS.orange, CHART_COLORS.purple, CHART_COLORS.red]
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+        });
+    }
+
+    /* ── Wait Time vs Rating Scatter ── */
+    function renderWaitVsRating(res) {
+        if (!res.success || !res.wait_vs_rating.length) return;
+        makeChart('chartWaitVsRating', {
+            type: 'scatter',
+            data: {
+                datasets: [{
+                    label: 'Wait vs Rating',
+                    data: res.wait_vs_rating.map(d => ({ x: d.wait_min, y: d.rating })),
+                    backgroundColor: CHART_COLORS.green + '80',
+                    pointRadius: 4
+                }]
+            },
+            options: {
+                responsive: true, maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { x: { title: { display: true, text: 'Wait Time (min)' } }, y: { title: { display: true, text: 'Rating' }, min: 0, max: 5 } }
+            }
+        });
+    }
+
+    /* ── AI Insights ── */
+    async function loadAnalyticsAI(tab, ...dataSets) {
+        const panel = document.getElementById('analytics' + tab.charAt(0).toUpperCase() + tab.slice(1) + 'Ai');
+        if (!panel) return;
+        const content = panel.querySelector('.ai-content');
+        content.className = 'ai-content ai-loading';
+        content.textContent = 'Generating insight...';
+        try {
+            const params = getAnalyticsParams();
+            const res = await fetch(`${ANALYTICS_API}/ai-insights?${params}`).then(r => r.json());
+            content.className = 'ai-content';
+            content.textContent = res.insight || 'No insight available.';
+        } catch (e) {
+            content.className = 'ai-content';
+            content.textContent = 'Failed to load insight.';
+        }
+    }
+
+    async function loadFullAI() {
+        const content = document.querySelector('#analytics-ai-insights .ai-content');
+        if (!content) return;
+        content.className = 'ai-content ai-loading';
+        content.textContent = 'Generating comprehensive analysis across all metrics...';
+        try {
+            const params = getAnalyticsParams();
+            const res = await fetch(`${ANALYTICS_API}/ai-insights?${params}`).then(r => r.json());
+            content.className = 'ai-content';
+            content.textContent = res.insight || 'No insight available.';
+        } catch (e) {
+            content.className = 'ai-content';
+            content.textContent = 'Failed to load analysis.';
+        }
+    }
+
+    /* ── Auto-Refresh ── */
+    function toggleAnalyticsAutoRefresh() {
+        const btn = document.getElementById('analyticsRefreshBtn');
+        if (analyticsAutoRefresh) {
+            clearInterval(analyticsAutoRefresh);
+            analyticsAutoRefresh = null;
+            btn.style.background = '';
+            btn.style.color = '';
+            btn.textContent = '⟳ Auto';
+        } else {
+            analyticsAutoRefresh = setInterval(loadAnalytics, 30000);
+            btn.style.background = 'var(--green-mid)';
+            btn.style.color = '#fff';
+            btn.textContent = '⟳ Live (30s)';
+        }
+    }
+
+    /* ── Export CSV ── */
+    function exportAnalyticsCSV() {
+        const params = getAnalyticsParams();
+        window.open(`${ANALYTICS_API}/export?type=csv&${params}`, '_blank');
+    }
+
+    /* ── Export PDF ── */
+    function exportAnalyticsPDF() {
+        const params = getAnalyticsParams();
+        window.open(`${ANALYTICS_API}/export?type=pdf&${params}`, '_blank');
+    }
     </script>
     <div id="toastContainer" class="toast-container"></div>
 </body>
