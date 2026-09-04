@@ -2,7 +2,7 @@ from flask import Flask, request, jsonify, send_from_directory, redirect
 from flask_cors import CORS
 import mysql.connector
 from mysql.connector import Error
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from calendar import monthrange
 import logging
 import secrets
