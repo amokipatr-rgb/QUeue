@@ -4332,10 +4332,10 @@
     /* ═══════════════════════════════════════════
        ANALYTICS MODULE
        ═══════════════════════════════════════════ */
-    const ANALYTICS_API = API_BASE_URL + '/api/admin/analytics';
-    let analyticsCharts = {};
-    let analyticsAutoRefresh = null;
-    let analyticsPreset = '7d';
+    var ANALYTICS_API = API_BASE_URL + '/api/admin/analytics';
+    var analyticsCharts = {};
+    var analyticsAutoRefresh = null;
+    var analyticsPreset = '7d';
 
     function analyticsPresetChange() {
         const v = document.getElementById('analyticsPreset').value;
