@@ -2447,21 +2447,27 @@ def _parse_date_range(args):
 
 @app.route('/api/admin/analytics/overview', methods=['GET'])
 def analytics_overview():
-    """KPI summary with today vs yesterday comparison."""
+    """KPI summary for the selected date range vs the previous equal-length period."""
     try:
         conn = get_db_connection()
         cursor = conn.cursor(dictionary=True)
         today = date.today()
-        yesterday = today - timedelta(days=1)
+        end_str = request.args.get('end', today.strftime('%Y-%m-%d'))
+        start_str = request.args.get('start', (today - timedelta(days=6)).strftime('%Y-%m-%d'))
+        start_d = date.fromisoformat(start_str)
+        end_d = date.fromisoformat(end_str)
+        span = (end_d - start_d).days
+        prev_end = start_d - timedelta(days=1)
+        prev_start = prev_end - timedelta(days=span)
 
-        def day_stats(d):
+        def range_stats(s, e):
             cursor.execute("""
                 SELECT COUNT(*) as total,
                        COALESCE(AVG(wait_duration_minutes), 0) as avg_wait,
                        SUM(CASE WHEN status='completed' THEN 1 ELSE 0 END) as completed,
                        SUM(CASE WHEN status IN ('waiting','called','serving') THEN 1 ELSE 0 END) as active
-                FROM university_tokens WHERE token_date = %s
-            """, (d,))
+                FROM university_tokens WHERE token_date BETWEEN %s AND %s
+            """, (s, e))
             row = cursor.fetchone() or {}
             total = row.get('total', 0) or 0
             completed = row.get('completed', 0) or 0
@@ -2473,18 +2479,18 @@ def analytics_overview():
                 'active': row.get('active', 0) or 0
             }
 
-        t = day_stats(today)
-        y = day_stats(yesterday)
+        t = range_stats(start_d, end_d)
+        y = range_stats(prev_start, prev_end)
 
-        cursor.execute("SELECT COUNT(*) as cnt FROM general_complaints WHERE DATE(created_at) = %s", (today,))
-        complaints_today = (cursor.fetchone() or {}).get('cnt', 0) or 0
-        cursor.execute("SELECT COUNT(*) as cnt FROM general_complaints WHERE DATE(created_at) = %s", (yesterday,))
-        complaints_yesterday = (cursor.fetchone() or {}).get('cnt', 0) or 0
+        cursor.execute("SELECT COUNT(*) as cnt FROM general_complaints WHERE DATE(created_at) BETWEEN %s AND %s", (start_d, end_d))
+        complaints_curr = (cursor.fetchone() or {}).get('cnt', 0) or 0
+        cursor.execute("SELECT COUNT(*) as cnt FROM general_complaints WHERE DATE(created_at) BETWEEN %s AND %s", (prev_start, prev_end))
+        complaints_prev = (cursor.fetchone() or {}).get('cnt', 0) or 0
 
-        cursor.execute("SELECT COALESCE(AVG(rating), 0) as avg_rating FROM university_tokens WHERE token_date = %s AND rating IS NOT NULL", (today,))
-        sat_today = round(float((cursor.fetchone() or {}).get('avg_rating', 0) or 0), 2)
-        cursor.execute("SELECT COALESCE(AVG(rating), 0) as avg_rating FROM university_tokens WHERE token_date = %s AND rating IS NOT NULL", (yesterday,))
-        sat_yesterday = round(float((cursor.fetchone() or {}).get('avg_rating', 0) or 0), 2)
+        cursor.execute("SELECT COALESCE(AVG(rating), 0) as avg_rating FROM university_tokens WHERE token_date BETWEEN %s AND %s AND rating IS NOT NULL", (start_d, end_d))
+        sat_curr = round(float((cursor.fetchone() or {}).get('avg_rating', 0) or 0), 2)
+        cursor.execute("SELECT COALESCE(AVG(rating), 0) as avg_rating FROM university_tokens WHERE token_date BETWEEN %s AND %s AND rating IS NOT NULL", (prev_start, prev_end))
+        sat_prev = round(float((cursor.fetchone() or {}).get('avg_rating', 0) or 0), 2)
 
         cursor.close()
         conn.close()
@@ -2502,8 +2508,8 @@ def analytics_overview():
                 'total_tokens': {'value': t['total'], 'change': pct_change(t['total'], y['total'])},
                 'avg_wait': {'value': t['avg_wait'], 'change': pct_change(t['avg_wait'], y['avg_wait'])},
                 'completion_rate': {'value': t['completion_rate'], 'change': pct_change(t['completion_rate'], y['completion_rate'])},
-                'satisfaction': {'value': sat_today, 'change': pct_change(sat_today, sat_yesterday)},
-                'complaints': {'value': complaints_today, 'change': pct_change(complaints_today, complaints_yesterday)},
+                'satisfaction': {'value': sat_curr, 'change': pct_change(sat_curr, sat_prev)},
+                'complaints': {'value': complaints_curr, 'change': pct_change(complaints_curr, complaints_prev)},
                 'active': t['active']
             }
         })

@@ -4454,7 +4454,7 @@
         const params = getAnalyticsParams();
         try {
             const [overviewRes, flowRes, waitRes, serviceRes, peakRes, trendsRes, officerRes, feedbackRes, complaintRes, corrRes] = await Promise.all([
-                fetch(`${ANALYTICS_API}/overview`).then(r => r.json()),
+                fetch(`${ANALYTICS_API}/overview?${params}`).then(r => r.json()),
                 fetch(`${ANALYTICS_API}/queue-flow?${params}`).then(r => r.json()),
                 fetch(`${ANALYTICS_API}/wait-times?${params}`).then(r => r.json()),
                 fetch(`${ANALYTICS_API}/service-times?${params}`).then(r => r.json()),
