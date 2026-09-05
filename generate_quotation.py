@@ -185,7 +185,7 @@ def build_pdf(output_path="SMQSS_Quotation.pdf"):
     pdf.set_x(10)
     pdf.set_font("Helvetica", "I", 8)
     pdf.set_text_color(*pdf.GRAY)
-    pdf.cell(0, 5, "Copyrighted with the Uganda Registration Services Bureau (URSB).")
+    pdf.cell(0, 5, "Copyrighted and patented with the Uganda Registration Services Bureau (URSB).")
     pdf.ln(7)
 
     # ── KEY BENEFITS COMPARISON ──
