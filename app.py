@@ -2721,6 +2721,448 @@ def analytics_officer_productivity():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 
+@app.route('/api/admin/analytics/officer-comparison', methods=['GET'])
+def analytics_officer_comparison():
+    """All officers side-by-side for HR overview."""
+    try:
+        from_d, to_d = _parse_date_range(request.args)
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT o.id, o.officer_name, o.officer_number, off.office_name, o.status,
+                   COALESCE(SUM(s.tokens_served), 0) as tokens_served,
+                   COALESCE(SUM(TIMESTAMPDIFF(MINUTE, s.login_time, COALESCE(s.logout_time, NOW()))), 0) as total_minutes,
+                   COUNT(s.id) as total_sessions
+            FROM officers o
+            JOIN offices off ON o.office_id = off.id
+            LEFT JOIN officer_sessions s ON o.id = s.officer_id AND s.session_date BETWEEN %s AND %s
+            WHERE o.is_admin = 0
+            GROUP BY o.id ORDER BY off.office_name, o.officer_name
+        """, (from_d, to_d))
+        officers = cursor.fetchall()
+
+        for o in officers:
+            mins = o['total_minutes']
+            hours = mins / 60
+            o['total_hours'] = round(hours, 1)
+            target_mins = 540
+            o['attendance_pct'] = round((mins / target_mins * 100) if target_mins > 0 else 0, 1)
+            o['tokens_per_hour'] = round(o['tokens_served'] / max(hours, 0.1), 1)
+            if o['attendance_pct'] >= 90:
+                o['grade'] = 'A'
+            elif o['attendance_pct'] >= 75:
+                o['grade'] = 'B'
+            elif o['attendance_pct'] >= 60:
+                o['grade'] = 'C'
+            elif o['attendance_pct'] >= 40:
+                o['grade'] = 'D'
+            else:
+                o['grade'] = 'F'
+
+        # Ratings per officer
+        cursor.execute("""
+            SELECT assigned_officer_id as officer_id,
+                   ROUND(AVG(rating), 1) as avg_rating,
+                   COUNT(CASE WHEN rating IS NOT NULL THEN 1 END) as total_ratings,
+                   COUNT(CASE WHEN rating IS NULL THEN 1 END) as unrated
+            FROM university_tokens
+            WHERE token_date BETWEEN %s AND %s AND assigned_officer_id IS NOT NULL
+            GROUP BY assigned_officer_id
+        """, (from_d, to_d))
+        ratings = {r['officer_id']: r for r in cursor.fetchall()}
+
+        # Complaints per officer
+        cursor.execute("""
+            SELECT assigned_officer_id as officer_id, COUNT(*) as complaints
+            FROM university_tokens
+            WHERE token_date BETWEEN %s AND %s AND assigned_officer_id IS NOT NULL
+                  AND rating IS NOT NULL AND rating <= 2
+            GROUP BY assigned_officer_id
+        """, (from_d, to_d))
+        complaints = {c['officer_id']: c['complaints'] for c in cursor.fetchall()}
+
+        # Days present per officer
+        cursor.execute("""
+            SELECT officer_id, COUNT(DISTINCT session_date) as days_present
+            FROM officer_sessions
+            WHERE session_date BETWEEN %s AND %s
+            GROUP BY officer_id
+        """, (from_d, to_d))
+        days_map = {d['officer_id']: d['days_present'] for d in cursor.fetchall()}
+
+        from datetime import timedelta as _td
+        total_days = (to_d - from_d).days + 1
+        # Approximate expected working days (weekdays only)
+        expected_days = sum(1 for i in range(total_days) if (from_d + _td(days=i)).weekday() < 5)
+        if expected_days == 0:
+            expected_days = 1
+
+        for o in officers:
+            oid = o['id']
+            r = ratings.get(oid, {})
+            o['avg_rating'] = r.get('avg_rating') or 0
+            o['total_ratings'] = r.get('total_ratings') or 0
+            o['complaints'] = complaints.get(oid, 0)
+            o['days_present'] = days_map.get(oid, 0)
+            o['days_expected'] = expected_days
+            o['days_present_pct'] = round(o['days_present'] / expected_days * 100, 1)
+
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'officers': officers})
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/analytics/officer-profile', methods=['GET'])
+def analytics_officer_profile():
+    """Detailed per-officer analytics for drill-down."""
+    try:
+        officer_id = request.args.get('officer_id', type=int)
+        if not officer_id:
+            return jsonify({'success': False, 'error': 'officer_id required'}), 400
+
+        from_d, to_d = _parse_date_range(request.args)
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        # Officer info
+        cursor.execute("""
+            SELECT o.id, o.officer_name, o.officer_number, off.office_name, o.status, o.created_at
+            FROM officers o JOIN offices off ON o.office_id = off.id
+            WHERE o.id = %s
+        """, (officer_id,))
+        officer = cursor.fetchone()
+        if not officer:
+            cursor.close(); conn.close()
+            return jsonify({'success': False, 'error': 'Officer not found'}), 404
+
+        # Attendance summary
+        cursor.execute("""
+            SELECT COUNT(DISTINCT session_date) as days_present,
+                   COALESCE(SUM(TIMESTAMPDIFF(MINUTE, login_time, COALESCE(logout_time, NOW()))), 0) as total_minutes,
+                   COUNT(id) as total_sessions,
+                   MIN(login_time) as first_login,
+                   MAX(logout_time) as last_logout
+            FROM officer_sessions
+            WHERE officer_id = %s AND session_date BETWEEN %s AND %s
+        """, (officer_id, from_d, to_d))
+        att = cursor.fetchone()
+
+        from datetime import timedelta as _td
+        total_days = (to_d - from_d).days + 1
+        expected_days = sum(1 for i in range(total_days) if (from_d + _td(days=i)).weekday() < 5)
+        if expected_days == 0:
+            expected_days = 1
+
+        total_hours = round(att['total_minutes'] / 60, 1) if att['total_minutes'] else 0
+        attendance_pct = round(att['days_present'] / expected_days * 100, 1) if expected_days else 0
+
+        # Punctuality - logins before 8:30 AM
+        cursor.execute("""
+            SELECT COUNT(*) as early,
+                   SUM(CASE WHEN TIME(login_time) > '08:30:00' THEN 1 ELSE 0 END) as late
+            FROM officer_sessions
+            WHERE officer_id = %s AND session_date BETWEEN %s AND %s
+        """, (officer_id, from_d, to_d))
+        punct = cursor.fetchone()
+        total_logins = (punct['early'] or 0) + (punct['late'] or 0)
+        punctuality_pct = round((punct['early'] or 0) / max(total_logins, 1) * 100, 1)
+
+        # Tokens served
+        cursor.execute("""
+            SELECT COUNT(*) as tokens_served,
+                   ROUND(AVG(service_duration_minutes), 1) as avg_service_time,
+                   ROUND(AVG(rating), 1) as avg_rating,
+                   COUNT(CASE WHEN rating IS NOT NULL THEN 1 END) as total_ratings,
+                   COUNT(CASE WHEN rating IS NULL THEN 1 END) as unrated
+            FROM university_tokens
+            WHERE assigned_officer_id = %s AND token_date BETWEEN %s AND %s
+        """, (officer_id, from_d, to_d))
+        perf = cursor.fetchone()
+
+        tokens_per_hour = round(perf['tokens_served'] / max(total_hours, 0.1), 1)
+
+        # Weekly trend
+        cursor.execute("""
+            SELECT YEARWEEK(session_date, 1) as week_key,
+                   DATE(MIN(session_date)) as week_start,
+                   COUNT(DISTINCT session_date) as days_present,
+                   ROUND(SUM(TIMESTAMPDIFF(MINUTE, login_time, COALESCE(logout_time, NOW()))) / 60, 1) as hours
+            FROM officer_sessions
+            WHERE officer_id = %s AND session_date BETWEEN %s AND %s
+            GROUP BY YEARWEEK(session_date, 1) ORDER BY week_key
+        """, (officer_id, from_d, to_d))
+        weekly_trend = cursor.fetchall()
+
+        # Add tokens per week
+        for w in weekly_trend:
+            ws = w['week_start']
+            we = ws + _td(days=6)
+            cursor.execute("""
+                SELECT COUNT(*) as tokens
+                FROM university_tokens
+                WHERE assigned_officer_id = %s AND token_date BETWEEN %s AND %s
+            """, (officer_id, ws, we))
+            w['tokens'] = cursor.fetchone()['tokens']
+
+        # Monthly trend
+        cursor.execute("""
+            SELECT DATE_FORMAT(session_date, '%%Y-%%m') as month_key,
+                   COUNT(DISTINCT session_date) as days_present,
+                   ROUND(SUM(TIMESTAMPDIFF(MINUTE, login_time, COALESCE(logout_time, NOW()))) / 60, 1) as hours
+            FROM officer_sessions
+            WHERE officer_id = %s AND session_date BETWEEN %s AND %s
+            GROUP BY DATE_FORMAT(session_date, '%%Y-%%m') ORDER BY month_key
+        """, (officer_id, from_d, to_d))
+        monthly_trend = cursor.fetchall()
+
+        for m in monthly_trend:
+            mk = m['month_key']
+            cursor.execute("""
+                SELECT COUNT(*) as tokens
+                FROM university_tokens
+                WHERE assigned_officer_id = %s AND DATE_FORMAT(token_date, '%%Y-%%m') = %s
+            """, (officer_id, mk))
+            m['tokens'] = cursor.fetchone()['tokens']
+            m['attendance_pct'] = round(m['days_present'] / 22 * 100, 1)  # ~22 workdays/month
+
+        # Service type breakdown
+        cursor.execute("""
+            SELECT t.service_code, s.service_name, COUNT(*) as count,
+                   ROUND(AVG(t.service_duration_minutes), 1) as avg_time
+            FROM university_tokens t
+            JOIN services s ON t.service_id = s.id
+            WHERE t.assigned_officer_id = %s AND t.token_date BETWEEN %s AND %s
+            GROUP BY t.service_code, s.service_name ORDER BY count DESC
+        """, (officer_id, from_d, to_d))
+        service_types = cursor.fetchall()
+
+        # Rating distribution
+        cursor.execute("""
+            SELECT rating, COUNT(*) as count
+            FROM university_tokens
+            WHERE assigned_officer_id = %s AND token_date BETWEEN %s AND %s AND rating IS NOT NULL
+            GROUP BY rating ORDER BY rating
+        """, (officer_id, from_d, to_d))
+        rating_dist = [0, 0, 0, 0, 0]
+        for r in cursor.fetchall():
+            if 1 <= r['rating'] <= 5:
+                rating_dist[r['rating'] - 1] = r['count']
+
+        # Complaints count
+        cursor.execute("""
+            SELECT COUNT(*) as complaints
+            FROM university_tokens
+            WHERE assigned_officer_id = %s AND token_date BETWEEN %s AND %s
+                  AND rating IS NOT NULL AND rating <= 2
+        """, (officer_id, from_d, to_d))
+        complaints = cursor.fetchone()['complaints']
+
+        # Status breakdown from status_log
+        cursor.execute("""
+            SELECT status,
+                   COALESCE(SUM(TIMESTAMPDIFF(MINUTE, started_at, COALESCE(ended_at, NOW()))), 0) as minutes
+            FROM officer_status_log
+            WHERE officer_id = %s AND started_at BETWEEN %s AND DATE_ADD(%s, INTERVAL 1 DAY)
+            GROUP BY status
+        """, (officer_id, from_d, to_d))
+        status_rows = cursor.fetchall()
+        total_status_mins = sum(s['minutes'] for s in status_rows) or 1
+        status_breakdown = {}
+        for s in status_rows:
+            status_breakdown[s['status']] = round(s['minutes'] / total_status_mins * 100, 1)
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'officer': officer,
+            'kpi': {
+                'attendance_pct': attendance_pct,
+                'total_hours': total_hours,
+                'tokens_served': perf['tokens_served'] or 0,
+                'tokens_per_hour': tokens_per_hour,
+                'avg_rating': perf['avg_rating'] or 0,
+                'complaints': complaints,
+                'avg_service_time': perf['avg_service_time'] or 0
+            },
+            'attendance': {
+                'days_present': att['days_present'],
+                'days_expected': expected_days,
+                'total_hours': total_hours,
+                'punctuality_pct': punctuality_pct,
+                'early_logins': punct['early'] or 0,
+                'late_logins': punct['late'] or 0,
+                'weekly_trend': weekly_trend,
+                'monthly_trend': monthly_trend
+            },
+            'performance': {
+                'tokens_per_hour': tokens_per_hour,
+                'service_types': service_types,
+                'status_breakdown': status_breakdown
+            },
+            'quality': {
+                'avg_rating': perf['avg_rating'] or 0,
+                'rating_distribution': rating_dist,
+                'total_ratings': perf['total_ratings'] or 0,
+                'complaints': complaints
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
+@app.route('/api/admin/analytics/officer-evaluate', methods=['POST'])
+def analytics_officer_evaluate():
+    """AI-powered officer evaluation for HR."""
+    try:
+        data = request.get_json() or {}
+        officer_id = data.get('officer_id')
+        preset = data.get('preset', '30d')
+        if not officer_id:
+            return jsonify({'success': False, 'error': 'officer_id required'}), 400
+
+        from_d, to_d = _parse_date_range(request.args if request.args else {'preset': preset})
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT o.id, o.officer_name, o.officer_number, off.office_name
+            FROM officers o JOIN offices off ON o.office_id = off.id
+            WHERE o.id = %s
+        """, (officer_id,))
+        officer = cursor.fetchone()
+        if not officer:
+            cursor.close(); conn.close()
+            return jsonify({'success': False, 'error': 'Officer not found'}), 404
+
+        # Gather all data
+        from datetime import timedelta as _td
+        total_days = (to_d - from_d).days + 1
+        expected_days = sum(1 for i in range(total_days) if (from_d + _td(days=i)).weekday() < 5)
+        if expected_days == 0: expected_days = 1
+
+        cursor.execute("""
+            SELECT COUNT(DISTINCT session_date) as days_present,
+                   COALESCE(SUM(TIMESTAMPDIFF(MINUTE, login_time, COALESCE(logout_time, NOW()))), 0) as total_minutes
+            FROM officer_sessions WHERE officer_id = %s AND session_date BETWEEN %s AND %s
+        """, (officer_id, from_d, to_d))
+        att = cursor.fetchone()
+        total_hours = round(att['total_minutes'] / 60, 1) if att['total_minutes'] else 0
+        attendance_pct = round(att['days_present'] / expected_days * 100, 1)
+
+        cursor.execute("""
+            SELECT COUNT(*) as early,
+                   SUM(CASE WHEN TIME(login_time) > '08:30:00' THEN 1 ELSE 0 END) as late
+            FROM officer_sessions WHERE officer_id = %s AND session_date BETWEEN %s AND %s
+        """, (officer_id, from_d, to_d))
+        punct = cursor.fetchone()
+        total_logins = (punct['early'] or 0) + (punct['late'] or 0)
+        punctuality_pct = round((punct['early'] or 0) / max(total_logins, 1) * 100, 1)
+
+        cursor.execute("""
+            SELECT COUNT(*) as tokens_served,
+                   ROUND(AVG(service_duration_minutes), 1) as avg_service_time,
+                   ROUND(AVG(rating), 1) as avg_rating,
+                   COUNT(CASE WHEN rating IS NOT NULL THEN 1 END) as total_ratings,
+                   COUNT(CASE WHEN rating IS NOT NULL AND rating <= 2 THEN 1 END) as complaints
+            FROM university_tokens
+            WHERE assigned_officer_id = %s AND token_date BETWEEN %s AND %s
+        """, (officer_id, from_d, to_d))
+        perf = cursor.fetchone()
+        tokens_per_hour = round(perf['tokens_served'] / max(total_hours, 0.1), 1)
+
+        # Build AI prompt
+        prompt = f"""You are an HR performance analyst for a university queue management system.
+Generate a professional officer evaluation based on this data:
+
+OFFICER: {officer['officer_name']}, #{officer['officer_number']}, {officer['office_name']}
+PERIOD: {from_d} to {to_d}
+
+ATTENDANCE:
+- Days present: {att['days_present']}/{expected_days} ({attendance_pct}%)
+- Total hours: {total_hours}h, Average daily: {round(total_hours/max(att['days_present'] or 1,1),1)}h
+- Punctuality: {punctuality_pct}% (on-time arrivals)
+- Late arrivals: {punct['late'] or 0}
+
+PERFORMANCE:
+- Tokens served: {perf['tokens_served'] or 0}
+- Throughput: {tokens_per_hour} tokens/hour
+- Average service time: {perf['avg_service_time'] or 0} min
+
+QUALITY:
+- Student rating: {perf['avg_rating'] or 0}/5 ({perf['total_ratings'] or 0} ratings)
+- Complaints: {perf['complaints'] or 0}
+
+Generate a clean evaluation with:
+1. ATTENDANCE SCORE (out of 100) with brief justification
+2. PERFORMANCE SCORE (out of 100) with brief justification
+3. QUALITY SCORE (out of 100) with brief justification
+4. OVERALL GRADE (A/B/C/D/F)
+5. STRENGTHS (2-3 bullet points)
+6. AREAS FOR IMPROVEMENT (2-3 bullet points)
+7. RECOMMENDATION FOR MANAGEMENT (1-2 actionable items)
+
+Keep it concise and professional. Use plain text, no markdown."""
+
+        try:
+            from groq import Groq
+            groq_client = Groq(api_key=os.environ.get('GROQ_API_KEY', ''))
+            response = groq_client.chat.completions.create(
+                model=GROQ_MODEL,
+                messages=[{'role': 'user', 'content': prompt}],
+                max_tokens=800,
+                temperature=0.4
+            )
+            ai_text = response.choices[0].message.content.strip()
+        except Exception:
+            # Fallback: generate text-based evaluation
+            att_score = min(100, round(attendance_pct * 1.0 + punctuality_pct * 0.2))
+            perf_score = min(100, round(tokens_per_hour * 12 + (100 - min(perf['complaints'] or 0, 5) * 10)))
+            qual_score = min(100, round((perf['avg_rating'] or 0) / 5 * 100))
+            avg_score = round((att_score + perf_score + qual_score) / 3)
+            grade = 'A' if avg_score >= 90 else 'B' if avg_score >= 80 else 'C' if avg_score >= 70 else 'D' if avg_score >= 60 else 'F'
+            ai_text = (
+                f"Performance Evaluation - {officer['officer_name']}\n"
+                f"Period: {from_d} to {to_d}\n\n"
+                f"ATTENDANCE: {att_score}/100\n"
+                f"Present {att['days_present']}/{expected_days} days ({attendance_pct}%). "
+                f"{total_hours}h total. Punctuality {punctuality_pct}%.\n\n"
+                f"PERFORMANCE: {perf_score}/100\n"
+                f"Served {perf['tokens_served'] or 0} tokens at {tokens_per_hour}/hr. "
+                f"Avg service time {perf['avg_service_time'] or 0} min.\n\n"
+                f"QUALITY: {qual_score}/100\n"
+                f"Rating {perf['avg_rating'] or 0}/5 from {perf['total_ratings'] or 0} feedback submissions. "
+                f"{perf['complaints'] or 0} complaints.\n\n"
+                f"OVERALL GRADE: {grade}\n\n"
+            )
+            if attendance_pct >= 90:
+                ai_text += "Strengths:\n- Strong attendance record\n- Consistent daily presence\n\n"
+            else:
+                ai_text += "Areas for improvement:\n- Improve attendance consistency\n\n"
+            if tokens_per_hour >= 4:
+                ai_text += "Strengths:\n- Good service throughput\n\n"
+            ai_text += "Recommendation:\n- Continue monitoring performance trends\n"
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'evaluation': ai_text,
+            'scores': {
+                'attendance': round(attendance_pct),
+                'performance': min(100, round(tokens_per_hour * 12)),
+                'quality': round((perf['avg_rating'] or 0) / 5 * 100),
+            }
+        })
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+
 @app.route('/api/admin/analytics/feedback-trends', methods=['GET'])
 def analytics_feedback_trends():
     """Daily average rating and complaint count over time."""

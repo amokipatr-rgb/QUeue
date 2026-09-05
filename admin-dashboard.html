@@ -1891,29 +1891,91 @@
 
                 <!-- OFFICERS SUB-TAB -->
                 <div class="analytics-sub" id="analytics-officers">
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
-                        <div class="bg-white border border-gray-200 rounded-xl p-5">
-                            <div class="text-sm font-bold text-[#1a3c2c] mb-4">Productivity Ranking</div>
-                            <div class="relative h-[280px]"><canvas id="chartOfficerRanking"></canvas></div>
+                    <!-- Officer Selector -->
+                    <div class="flex items-center gap-3 mb-6 flex-wrap">
+                        <select id="officerSelector" onchange="officerSelectorChange()" class="px-3 py-2 border border-gray-200 rounded-lg text-[13px] font-semibold bg-white font-['Plus_Jakarta_Sans',sans-serif]">
+                            <option value="all">All Officers</option>
+                        </select>
+                    </div>
+
+                    <!-- KPI Cards -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6" id="officerKpiGrid">
+                        <div class="bg-white border border-gray-200 rounded-xl p-4">
+                            <div class="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Attendance</div>
+                            <div class="text-2xl font-extrabold text-[#1a3c2c]" id="officerKpiAttendance">-</div>
                         </div>
-                        <div class="bg-white border border-gray-200 rounded-xl p-5">
-                            <div class="text-sm font-bold text-[#1a3c2c] mb-4">Attendance Hours (Weekly)</div>
-                            <div class="relative h-[280px]"><canvas id="chartOfficerHours"></canvas></div>
+                        <div class="bg-white border border-gray-200 rounded-xl p-4">
+                            <div class="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Tokens Served</div>
+                            <div class="text-2xl font-extrabold text-[#1a3c2c]" id="officerKpiTokens">-</div>
+                        </div>
+                        <div class="bg-white border border-gray-200 rounded-xl p-4">
+                            <div class="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Avg Rating</div>
+                            <div class="text-2xl font-extrabold text-[#1a3c2c]" id="officerKpiRating">-</div>
+                        </div>
+                        <div class="bg-white border border-gray-200 rounded-xl p-4">
+                            <div class="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-1">Hours</div>
+                            <div class="text-2xl font-extrabold text-[#1a3c2c]" id="officerKpiHours">-</div>
                         </div>
                     </div>
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
-                        <div class="bg-white border border-gray-200 rounded-xl p-5">
-                            <div class="text-sm font-bold text-[#1a3c2c] mb-4">Performance Grade Trend</div>
-                            <div class="relative h-[280px]"><canvas id="chartGradeTrend"></canvas></div>
+
+                    <!-- Charts: All Officers Mode -->
+                    <div id="officerAllView">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+                            <div class="bg-white border border-gray-200 rounded-xl p-5">
+                                <div class="text-sm font-bold text-[#1a3c2c] mb-4">Productivity Ranking</div>
+                                <div class="relative h-[280px]"><canvas id="chartOfficerRanking"></canvas></div>
+                            </div>
+                            <div class="bg-white border border-gray-200 rounded-xl p-5">
+                                <div class="text-sm font-bold text-[#1a3c2c] mb-4">Attendance Hours</div>
+                                <div class="relative h-[280px]"><canvas id="chartOfficerHours"></canvas></div>
+                            </div>
                         </div>
-                        <div class="bg-white border border-gray-200 rounded-xl p-5">
-                            <div class="text-sm font-bold text-[#1a3c2c] mb-4">Tokens per Hour Trend</div>
-                            <div class="relative h-[280px]"><canvas id="chartTokensPerHour"></canvas></div>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+                            <div class="bg-white border border-gray-200 rounded-xl p-5">
+                                <div class="text-sm font-bold text-[#1a3c2c] mb-4">Grade Overview</div>
+                                <div class="relative h-[280px]"><canvas id="chartGradeTrend"></canvas></div>
+                            </div>
+                            <div class="bg-white border border-gray-200 rounded-xl p-5">
+                                <div class="text-sm font-bold text-[#1a3c2c] mb-4">Attendance Trend (Weekly)</div>
+                                <div class="relative h-[280px]"><canvas id="chartAttendanceTrendAll"></canvas></div>
+                            </div>
+                        </div>
+                        <div class="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-5 mb-6" id="analyticsOfficersAi">
+                            <div class="text-[13px] text-gray-700 leading-relaxed whitespace-pre-wrap">Loading team insight...</div>
                         </div>
                     </div>
-                    <div class="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-5 mb-6" id="analyticsOfficersAi">
-                        <h4 class="text-sm font-bold text-[#1a3c2c] mb-3 flex items-center gap-2">🤖 AI Insight</h4>
-                        <div class="ai-content text-[13px] text-gray-700 leading-relaxed whitespace-pre-wrap">Loading insight...</div>
+
+                    <!-- Charts: Individual Officer Mode (hidden by default) -->
+                    <div id="officerSingleView" style="display:none">
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+                            <div class="bg-white border border-gray-200 rounded-xl p-5">
+                                <div class="text-sm font-bold text-[#1a3c2c] mb-4">Attendance Trend (Weekly)</div>
+                                <div class="relative h-[280px]"><canvas id="chartOfficerAttTrend"></canvas></div>
+                            </div>
+                            <div class="bg-white border border-gray-200 rounded-xl p-5">
+                                <div class="text-sm font-bold text-[#1a3c2c] mb-4">Tokens Served (Daily)</div>
+                                <div class="relative h-[280px]"><canvas id="chartOfficerTokensDaily"></canvas></div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+                            <div class="bg-white border border-gray-200 rounded-xl p-5">
+                                <div class="text-sm font-bold text-[#1a3c2c] mb-4">Service Types</div>
+                                <div class="relative h-[280px]"><canvas id="chartOfficerServiceTypes"></canvas></div>
+                            </div>
+                            <div class="bg-white border border-gray-200 rounded-xl p-5">
+                                <div class="text-sm font-bold text-[#1a3c2c] mb-4">Status Breakdown</div>
+                                <div class="relative h-[280px]"><canvas id="chartOfficerStatus"></canvas></div>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+                            <div class="bg-white border border-gray-200 rounded-xl p-5">
+                                <div class="text-sm font-bold text-[#1a3c2c] mb-4">Rating Distribution</div>
+                                <div class="relative h-[280px]"><canvas id="chartOfficerRatings"></canvas></div>
+                            </div>
+                        </div>
+                        <div class="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-5 mb-6" id="officerEvalPanel">
+                            <div class="text-[13px] text-gray-700 leading-relaxed whitespace-pre-wrap" id="officerEvalContent">Loading officer evaluation...</div>
+                        </div>
                     </div>
                 </div>
 
@@ -4398,7 +4460,7 @@
                 fetch(`${ANALYTICS_API}/service-times?${params}`).then(r => r.json()),
                 fetch(`${ANALYTICS_API}/peak-hours?${params}`).then(r => r.json()),
                 fetch(`${ANALYTICS_API}/token-trends?${params}`).then(r => r.json()),
-                fetch(`${ANALYTICS_API}/officer-productivity?${params}`).then(r => r.json()),
+                fetch(`${ANALYTICS_API}/officer-comparison?${params}`).then(r => r.json()),
                 fetch(`${ANALYTICS_API}/feedback-trends?${params}`).then(r => r.json()),
                 fetch(`${ANALYTICS_API}/complaints?${params}`).then(r => r.json()),
                 fetch(`${ANALYTICS_API}/correlations?${params}`).then(r => r.json())
@@ -4412,10 +4474,20 @@
             renderServiceDist(serviceRes);
             renderCompletionDaily(trendsRes);
             renderLifecycle(flowRes);
-            renderOfficerRanking(officerRes);
-            renderOfficerHours(officerRes);
-            renderGradeTrend(officerRes);
-            renderTokensPerHour(officerRes);
+
+            // Officer analytics
+            if (officerRes.success && officerRes.officers) {
+                populateOfficerDropdown(officerRes.officers);
+                if (currentOfficerView === 'all') {
+                    renderOfficerRanking(officerRes);
+                    renderOfficerHours(officerRes);
+                    renderGradeTrend(officerRes);
+                    renderAttendanceTrendAll(officerRes);
+                    // Team AI insight
+                    loadAnalyticsAI('officers', officerRes, null, null, null);
+                }
+            }
+
             renderRatingTrend(feedbackRes);
             renderRatingDist(feedbackRes);
             renderComplaintCat(complaintRes);
@@ -4590,17 +4662,122 @@
         });
     }
 
-    /* ── Officer Productivity Ranking ── */
+    /* ── OFFICER ANALYTICS MODULE ── */
+    var currentOfficerView = 'all';
+    var currentOfficerId = null;
+
+    function officerSelectorChange() {
+        var val = document.getElementById('officerSelector').value;
+        if (val === 'all') {
+            currentOfficerView = 'all';
+            currentOfficerId = null;
+            document.getElementById('officerAllView').style.display = '';
+            document.getElementById('officerSingleView').style.display = 'none';
+            loadOfficerComparison();
+        } else {
+            currentOfficerView = 'single';
+            currentOfficerId = parseInt(val);
+            document.getElementById('officerAllView').style.display = 'none';
+            document.getElementById('officerSingleView').style.display = '';
+            loadOfficerProfile(currentOfficerId);
+            loadOfficerEvaluation(currentOfficerId);
+        }
+    }
+
+    function populateOfficerDropdown(officers) {
+        var sel = document.getElementById('officerSelector');
+        var current = sel.value;
+        sel.innerHTML = '<option value="all">All Officers</option>';
+        officers.forEach(function(o) {
+            var opt = document.createElement('option');
+            opt.value = o.id;
+            opt.textContent = o.officer_name + ' (' + o.office_name + ')';
+            sel.appendChild(opt);
+        });
+        if (current && current !== 'all') sel.value = current;
+    }
+
+    /* ── Load Officer Comparison (All Officers) ── */
+    async function loadOfficerComparison() {
+        var params = getAnalyticsParams();
+        try {
+            var res = await fetch(ANALYTICS_API + '/officer-comparison?' + params).then(function(r) { return r.json(); });
+            if (!res.success) return;
+            populateOfficerDropdown(res.officers);
+            renderOfficerRanking(res);
+            renderOfficerHours(res);
+            renderGradeTrend(res);
+            renderAttendanceTrendAll(res);
+
+            // KPIs
+            var officers = res.officers;
+            var avgAtt = officers.length ? Math.round(officers.reduce(function(s, o) { return s + o.attendance_pct; }, 0) / officers.length) : 0;
+            var avgRating = officers.length ? (officers.reduce(function(s, o) { return s + (o.avg_rating || 0); }, 0) / officers.length).toFixed(1) : 0;
+            var topPerf = officers.length ? officers.reduce(function(a, b) { return (a.tokens_per_hour || 0) > (b.tokens_per_hour || 0) ? a : b; }) : null;
+            document.getElementById('officerKpiAttendance').textContent = avgAtt + '%';
+            document.getElementById('officerKpiTokens').textContent = officers.reduce(function(s, o) { return s + (o.tokens_served || 0); }, 0);
+            document.getElementById('officerKpiRating').textContent = avgRating;
+            document.getElementById('officerKpiHours').textContent = officers.reduce(function(s, o) { return s + (o.total_hours || 0); }, 0).toFixed(0) + 'h';
+
+            // Team AI insight
+            loadAnalyticsAI('officers', res, null, null, null);
+        } catch (e) {
+            console.error('Officer comparison error:', e);
+        }
+    }
+
+    /* ── Load Officer Profile (Individual) ── */
+    async function loadOfficerProfile(officerId) {
+        var params = getAnalyticsParams();
+        try {
+            var res = await fetch(ANALYTICS_API + '/officer-profile?officer_id=' + officerId + '&' + params).then(function(r) { return r.json(); });
+            if (!res.success) return;
+
+            // KPIs
+            document.getElementById('officerKpiAttendance').textContent = res.kpi.attendance_pct + '%';
+            document.getElementById('officerKpiTokens').textContent = res.kpi.tokens_served;
+            document.getElementById('officerKpiRating').textContent = res.kpi.avg_rating + '/5';
+            document.getElementById('officerKpiHours').textContent = res.kpi.total_hours + 'h';
+
+            // Charts
+            renderOfficerAttTrend(res);
+            renderOfficerTokensDaily(res);
+            renderOfficerServiceTypes(res);
+            renderOfficerStatus(res);
+            renderOfficerRatings(res);
+        } catch (e) {
+            console.error('Officer profile error:', e);
+        }
+    }
+
+    /* ── Load Officer AI Evaluation ── */
+    async function loadOfficerEvaluation(officerId) {
+        var panel = document.getElementById('officerEvalContent');
+        panel.textContent = 'Generating evaluation...';
+        try {
+            var params = getAnalyticsParams();
+            var res = await fetch(ANALYTICS_API + '/officer-evaluate?' + params, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ officer_id: officerId, preset: document.getElementById('analyticsPreset').value })
+            }).then(function(r) { return r.json(); });
+            panel.textContent = res.evaluation || 'No evaluation available.';
+        } catch (e) {
+            panel.textContent = 'Failed to load evaluation.';
+        }
+    }
+
+    /* ── All Officers Charts ── */
     function renderOfficerRanking(res) {
         if (!res.success || !res.officers.length) return;
-        const top = res.officers.slice(0, 10);
+        var sorted = res.officers.slice().sort(function(a, b) { return b.tokens_per_hour - a.tokens_per_hour; });
         makeChart('chartOfficerRanking', {
             type: 'bar',
             data: {
-                labels: top.map(o => o.officer_name),
+                labels: sorted.map(function(o) { return o.officer_name; }),
                 datasets: [{
                     label: 'Tokens/Hour',
-                    data: top.map(o => o.tokens_per_hour),
+                    data: sorted.map(function(o) { return o.tokens_per_hour; }),
                     backgroundColor: CHART_COLORS.green,
                     borderRadius: 4
                 }]
@@ -4609,16 +4786,15 @@
         });
     }
 
-    /* ── Officer Attendance Hours ── */
     function renderOfficerHours(res) {
         if (!res.success || !res.officers.length) return;
         makeChart('chartOfficerHours', {
             type: 'bar',
             data: {
-                labels: res.officers.map(o => o.officer_name),
+                labels: res.officers.map(function(o) { return o.officer_name; }),
                 datasets: [{
-                    label: 'Hours Worked',
-                    data: res.officers.map(o => Math.round(o.total_minutes / 60 * 10) / 10),
+                    label: 'Hours',
+                    data: res.officers.map(function(o) { return o.total_hours; }),
                     backgroundColor: CHART_COLORS.blue,
                     borderRadius: 4
                 }]
@@ -4627,17 +4803,18 @@
         });
     }
 
-    /* ── Performance Grade Trend ── */
     function renderGradeTrend(res) {
         if (!res.success || !res.officers.length) return;
         makeChart('chartGradeTrend', {
             type: 'bar',
             data: {
-                labels: res.officers.map(o => o.officer_name),
+                labels: res.officers.map(function(o) { return o.officer_name; }),
                 datasets: [{
                     label: 'Attendance %',
-                    data: res.officers.map(o => o.attendance_pct),
-                    backgroundColor: res.officers.map(o => o.grade === 'A' ? CHART_COLORS.green : o.grade === 'B' ? CHART_COLORS.teal : o.grade === 'C' ? CHART_COLORS.gold : CHART_COLORS.red),
+                    data: res.officers.map(function(o) { return o.attendance_pct; }),
+                    backgroundColor: res.officers.map(function(o) {
+                        return o.grade === 'A' ? CHART_COLORS.green : o.grade === 'B' ? CHART_COLORS.teal : o.grade === 'C' ? CHART_COLORS.gold : CHART_COLORS.red;
+                    }),
                     borderRadius: 4
                 }]
             },
@@ -4645,17 +4822,113 @@
         });
     }
 
-    /* ── Tokens per Hour Trend ── */
-    function renderTokensPerHour(res) {
+    function renderAttendanceTrendAll(res) {
+        // This uses the productivity endpoint data for weekly hours per officer
+        // For now, show a summary bar of attendance % per officer
         if (!res.success || !res.officers.length) return;
-        makeChart('chartTokensPerHour', {
+        makeChart('chartAttendanceTrendAll', {
             type: 'bar',
             data: {
-                labels: res.officers.map(o => o.officer_name),
+                labels: res.officers.map(function(o) { return o.officer_name; }),
                 datasets: [{
-                    label: 'Tokens/Hour',
-                    data: res.officers.map(o => o.tokens_per_hour),
+                    label: 'Days Present',
+                    data: res.officers.map(function(o) { return o.days_present || 0; }),
+                    backgroundColor: CHART_COLORS.teal,
+                    borderRadius: 4
+                }, {
+                    label: 'Days Expected',
+                    data: res.officers.map(function(o) { return o.days_expected || 0; }),
+                    backgroundColor: CHART_COLORS.gray,
+                    borderRadius: 4
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true } } }
+        });
+    }
+
+    /* ── Individual Officer Charts ── */
+    function renderOfficerAttTrend(res) {
+        if (!res.success || !res.attendance.weekly_trend.length) return;
+        makeChart('chartOfficerAttTrend', {
+            type: 'line',
+            data: {
+                labels: res.attendance.weekly_trend.map(function(w) { return w.week || w.week_start; }),
+                datasets: [{
+                    label: 'Hours',
+                    data: res.attendance.weekly_trend.map(function(w) { return w.hours; }),
+                    borderColor: CHART_COLORS.green,
+                    backgroundColor: CHART_COLORS.greenLight,
+                    fill: true, tension: 0.3
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+        });
+    }
+
+    function renderOfficerTokensDaily(res) {
+        if (!res.success || !res.attendance.weekly_trend.length) return;
+        makeChart('chartOfficerTokensDaily', {
+            type: 'bar',
+            data: {
+                labels: res.attendance.weekly_trend.map(function(w) { return w.week || w.week_start; }),
+                datasets: [{
+                    label: 'Tokens',
+                    data: res.attendance.weekly_trend.map(function(w) { return w.tokens || 0; }),
                     backgroundColor: CHART_COLORS.gold,
+                    borderRadius: 4
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+        });
+    }
+
+    function renderOfficerServiceTypes(res) {
+        if (!res.success || !res.performance.service_types.length) return;
+        var types = res.performance.service_types;
+        makeChart('chartOfficerServiceTypes', {
+            type: 'doughnut',
+            data: {
+                labels: types.map(function(t) { return t.service_name || t.service_code; }),
+                datasets: [{
+                    data: types.map(function(t) { return t.count; }),
+                    backgroundColor: [CHART_COLORS.green, CHART_COLORS.blue, CHART_COLORS.gold, CHART_COLORS.orange, CHART_COLORS.purple, CHART_COLORS.teal]
+                }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+        });
+    }
+
+    function renderOfficerStatus(res) {
+        if (!res.success) return;
+        var sb = res.performance.status_breakdown || {};
+        var labels = [];
+        var data = [];
+        var colors = [];
+        if (sb.available_pct !== undefined) { labels.push('Available'); data.push(sb.available_pct); colors.push(CHART_COLORS.green); }
+        if (sb.serving_pct !== undefined) { labels.push('Serving'); data.push(sb.serving_pct); colors.push(CHART_COLORS.blue); }
+        if (sb.idle_pct !== undefined) { labels.push('Idle'); data.push(sb.idle_pct); colors.push(CHART_COLORS.gray); }
+        if (!labels.length) return;
+        makeChart('chartOfficerStatus', {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{ data: data, backgroundColor: colors }]
+            },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'right' } } }
+        });
+    }
+
+    function renderOfficerRatings(res) {
+        if (!res.success) return;
+        var dist = res.quality.rating_distribution || [0, 0, 0, 0, 0];
+        makeChart('chartOfficerRatings', {
+            type: 'bar',
+            data: {
+                labels: ['1', '2', '3', '4', '5'],
+                datasets: [{
+                    label: 'Count',
+                    data: dist,
+                    backgroundColor: [CHART_COLORS.red, CHART_COLORS.orange, CHART_COLORS.gold, CHART_COLORS.teal, CHART_COLORS.green],
                     borderRadius: 4
                 }]
             },
