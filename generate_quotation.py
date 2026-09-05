@@ -197,6 +197,7 @@ def build_pdf(output_path="SMQSS_Quotation.pdf"):
         ("Real-time visibility into queue status across all offices", True, True),
         ("Digital receipts and printed queue tickets", True, True),
         ("Student satisfaction feedback on every service", True, True),
+        ("Modernises the institution with current AI technology trends", True, True),
         ("Basic daily and weekly service reports", True, True),
         ("Data-driven decision making with comprehensive analytics", False, True),
         ("Intelligent insights and recommendations for management", False, True),
@@ -339,10 +340,19 @@ def build_pdf(output_path="SMQSS_Quotation.pdf"):
          "permanently own the devices on which the software runs. All other subscribers "
          "use the software on devices that remain the property of the subscriber and "
          "are not covered under this subscription."),
-        ("5.", "License:", "Single-institution, non-transferable, revocable upon non-payment."),
+        ("5.", "License:", "Single-institution, non-exclusive, non-transferable, revocable upon non-payment."),
         ("6.", "Hosting:", "Infrastructure maintained by SMQSS on cloud servers; subscriber accesses via web browser."),
         ("7.", "Support:", "Email and remote technical support included in the subscription."),
         ("8.", "Termination:", "SMQSS reserves the right to terminate access upon 30 days' notice for breach of terms."),
+        ("9.", "IP Protection:",
+         "All rights, title, and interest in the SMQSS software, including its system architecture, "
+         "source code, user interface, documentation, databases, and designs, remain the exclusive "
+         "property of SMQSS/Custospark Company Ltd. The Subscriber shall not copy, reproduce, "
+         "duplicate, clone, modify, adapt, distribute, sell, sublicense, reverse engineer, decompile, "
+         "extract, or otherwise commercially exploit the system or any substantial part thereof without "
+         "prior written consent. Unauthorized use may constitute infringement under the Copyright and "
+         "Neighbouring Rights Act, 2006 (Act 19 of 2006) and applicable laws of Uganda. SMQSS "
+         "reserves all lawful remedies including suspension of access, injunctive relief, and damages."),
     ]
 
     for num, title, desc in terms:
