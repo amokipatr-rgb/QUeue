@@ -210,11 +210,11 @@ function sendPdfToPrinter(pdfBuffer, printerName) {
     if (sumatra && printerName) {
       // SumatraPDF supports silent printing to a specific printer
       execFile(sumatra, ['-print-to', printerName, '-print-settings', 'native', tmpFile], (err) => {
-        try { fs.unlinkSync(tmpFile); } catch(e) {}
         if (err) {
           console.warn('[StudentKioskB] SumatraPDF print failed:', err.message);
           fallbackPrint(tmpFile, printerName).then(resolve).catch(reject);
         } else {
+          try { fs.unlinkSync(tmpFile); } catch(e) {}
           console.log('[StudentKioskB] Receipt printed via SumatraPDF');
           resolve();
         }

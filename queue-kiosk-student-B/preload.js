@@ -1,6 +1,6 @@
-const { contextBridge } = require('electron');
+const { contextBridge, ipcRenderer } = require('electron');
 
 contextBridge.exposeInMainWorld('kiosk', {
   isElectron: true,
-  printReceipt: () => window.print(),
+  printReceipt: () => ipcRenderer.send('print-receipt'),
 });
