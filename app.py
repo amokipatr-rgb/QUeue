@@ -363,8 +363,21 @@ _ALL_INDEXES = [
     ('idx_statuslog_started', 'officer_status_log', 'started_at'),
 ]
 
-# Test connection on startup
+# Test connection on startup — create database if it doesn't exist
 import mysql.connector as _mysql_connector
+try:
+    # Connect to MySQL server (no database) to ensure the database exists
+    _server_config = {k: v for k, v in DB_CONFIG.items() if k != 'database'}
+    _server_conn = mysql.connector.connect(**_server_config)
+    _server_cursor = _server_conn.cursor()
+    _server_cursor.execute(f"CREATE DATABASE IF NOT EXISTS `{DB_CONFIG['database']}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci")
+    _server_conn.commit()
+    print(f"[OK] Database '{DB_CONFIG['database']}' ensured")
+    _server_cursor.close()
+    _server_conn.close()
+except Exception as e:
+    print(f"[WARN] Could not pre-create database: {e}")
+
 try:
     connection = mysql.connector.connect(**DB_CONFIG)
     if connection.is_connected():
