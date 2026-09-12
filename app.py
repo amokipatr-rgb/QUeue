@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, send_from_directory, redirect
+from flask import Flask, request, jsonify, send_from_directory, redirect, Response
 from flask_cors import CORS
 import mysql.connector
 from mysql.connector import Error
@@ -286,6 +286,17 @@ _CREATE_OFFICER_SYSTEM_RATINGS_SQL = """
         CONSTRAINT fk_rating_officer FOREIGN KEY (officer_id) REFERENCES officers(id) ON DELETE CASCADE
     )"""
 
+_CREATE_DISPLAY_ADS_SQL = """
+    CREATE TABLE IF NOT EXISTS display_ads (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        filename VARCHAR(255) NOT NULL,
+        original_name VARCHAR(255),
+        mime_type VARCHAR(50) DEFAULT 'image/jpeg',
+        image_data LONGBLOB,
+        uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        is_active TINYINT(1) DEFAULT 1
+    )"""
+
 _ALL_TABLES = [
     ('offices', _CREATE_OFFICES_SQL),
     ('officers', _CREATE_OFFICERS_SQL),
@@ -299,6 +310,7 @@ _ALL_TABLES = [
     ('general_complaints', _CREATE_GENERAL_COMPLAINTS_SQL),
     ('system_settings', _CREATE_SYSTEM_SETTINGS_SQL),
     ('officer_system_ratings', _CREATE_OFFICER_SYSTEM_RATINGS_SQL),
+    ('display_ads', _CREATE_DISPLAY_ADS_SQL),
 ]
 
 _SEED_OFFICES_SQL = """
@@ -4879,6 +4891,111 @@ def text_to_speech():
 
     except Exception as e:
         logger.error(f"TTS error: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
+# ── DISPLAY ADS: LIST ──
+@app.route('/api/display/ads', methods=['GET'])
+def list_display_ads():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        try:
+            cursor.execute("""
+                SELECT id, filename, original_name, uploaded_at
+                FROM display_ads
+                WHERE is_active=1
+                ORDER BY uploaded_at DESC
+            """)
+            return jsonify({'success': True, 'ads': cursor.fetchall()})
+        finally:
+            cursor.close(); conn.close()
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+# ── DISPLAY ADS: UPLOAD ──
+@app.route('/api/display/ads', methods=['POST'])
+def upload_display_ad():
+    try:
+        if 'file' not in request.files:
+            return jsonify({'success': False, 'message': 'No file provided.'}), 400
+        f = request.files['file']
+        if not f.filename:
+            return jsonify({'success': False, 'message': 'No file selected.'}), 400
+
+        ext = os.path.splitext(f.filename)[1].lower()
+        if ext not in ('.jpg', '.jpeg', '.png', '.gif', '.webp'):
+            return jsonify({'success': False, 'message': 'Only JPG, PNG, GIF, WEBP allowed.'}), 400
+
+        mime_map = {
+            '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg',
+            '.png': 'image/png',  '.gif': 'image/gif',
+            '.webp': 'image/webp'
+        }
+        mime_type = mime_map.get(ext, f.mimetype or 'image/jpeg')
+
+        data = f.read()
+        if not data:
+            return jsonify({'success': False, 'message': 'Uploaded file is empty.'}), 400
+        if len(data) > 16 * 1024 * 1024:
+            return jsonify({'success': False, 'message': 'Image too large (max 16 MB).'}), 400
+
+        import uuid
+        filename = 'disp_' + str(uuid.uuid4())[:12] + ext
+
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("""
+                INSERT INTO display_ads (filename, original_name, mime_type, image_data)
+                VALUES (%s, %s, %s, %s)
+            """, (filename, f.filename, mime_type, data))
+            conn.commit()
+            return jsonify({'success': True, 'id': cursor.lastrowid, 'filename': filename})
+        finally:
+            cursor.close(); conn.close()
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+# ── DISPLAY ADS: DELETE ──
+@app.route('/api/display/ads/<int:ad_id>', methods=['DELETE'])
+def delete_display_ad(ad_id):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        try:
+            cursor.execute("DELETE FROM display_ads WHERE id=%s", (ad_id,))
+            conn.commit()
+            return jsonify({'success': True})
+        finally:
+            cursor.close(); conn.close()
+    except Exception as e:
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+# ── DISPLAY ADS: SERVE IMAGE ──
+@app.route('/display/ads/<path:filename>')
+def serve_display_ad(filename):
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        try:
+            cursor.execute("""
+                SELECT image_data, mime_type
+                FROM display_ads
+                WHERE filename=%s AND is_active=1
+                LIMIT 1
+            """, (filename,))
+            row = cursor.fetchone()
+        finally:
+            cursor.close(); conn.close()
+
+        if not row or not row.get('image_data'):
+            return jsonify({'success': False, 'message': 'Ad not found'}), 404
+
+        resp = Response(row['image_data'], mimetype=row.get('mime_type') or 'image/jpeg')
+        resp.headers['Cache-Control'] = 'public, max-age=86400'
+        return resp
+    except Exception as e:
         return jsonify({'success': False, 'message': str(e)}), 500
 
 
