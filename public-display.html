@@ -765,6 +765,16 @@
             .ticker-message-text { font-size: 13px; }
         }
 
+        /* ── LARGE TV SCREENS (55"+) ── */
+        @media (min-width: 1400px) {
+            .no-active.has-ads { gap: 32px; padding: 0 32px; }
+            .no-active.has-ads .on-duty-section { flex: 0 0 clamp(380px, 28vw, 500px); max-width: 500px; }
+            .no-active.has-ads .on-duty-grid { grid-template-columns: 1fr; gap: 12px; }
+            .ad-panel { max-width: none; }
+            .ad-carousel-dot { width: 12px; height: 12px; }
+            .ad-carousel-dots { gap: 12px; bottom: 20px; }
+        }
+
         .offline-banner {
             position: fixed;
             bottom: 0;
