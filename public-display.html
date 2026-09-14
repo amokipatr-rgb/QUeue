@@ -769,7 +769,14 @@
         @media (min-width: 1400px) {
             .no-active.has-ads { gap: 32px; padding: 0 32px; }
             .no-active.has-ads .on-duty-section { flex: 0 0 clamp(380px, 28vw, 500px); max-width: 500px; }
-            .no-active.has-ads .on-duty-grid { grid-template-columns: 1fr; gap: 12px; }
+            .no-active.has-ads .on-duty-grid { grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+            .no-active.has-ads .on-duty-card { padding: 14px 16px; border-radius: 10px; }
+            .no-active.has-ads .on-duty-code { width: 30px; height: 30px; }
+            .no-active.has-ads .on-duty-code svg { width: 16px; height: 16px; }
+            .no-active.has-ads .on-duty-name { font-size: 14px; }
+            .no-active.has-ads .on-duty-location { font-size: 11px; margin-bottom: 6px; }
+            .no-active.has-ads .on-duty-waiting { font-size: 12px; }
+            .no-active.has-ads .on-duty-header { margin-bottom: 14px; }
             .ad-panel { max-width: none; }
             .ad-carousel-dot { width: 12px; height: 12px; }
             .ad-carousel-dots { gap: 12px; bottom: 20px; }
