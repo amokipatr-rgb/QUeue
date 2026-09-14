@@ -269,14 +269,17 @@
         .no-active.has-ads .ad-panel { display: block; }
         .ad-slide {
             position: absolute; inset: 0;
-            background-size: contain;
-            background-position: center;
-            background-repeat: no-repeat;
-            background-color: rgba(0,0,0,0.8);
+            display: flex; align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.8);
             opacity: 0;
             transition: opacity 1.2s ease;
         }
         .ad-slide.active { opacity: 1; }
+        .ad-slide img {
+            width: 100%; height: 100%;
+            object-fit: cover;
+            object-position: center;
+        }
         .ad-carousel-dots {
             position: absolute; bottom: 16px; left: 50%; transform: translateX(-50%);
             display: flex; gap: 8px; z-index: 3;
@@ -1387,7 +1390,7 @@
             }
 
             carousel.innerHTML = displayAdImages.map(function(src, i) {
-                return '<div class="ad-slide' + (i === 0 ? ' active' : '') + '" style="background-image:url(\'' + src + '\')"></div>';
+                return '<div class="ad-slide' + (i === 0 ? ' active' : '') + '"><img src="' + src + '" alt="Ad"></div>';
             }).join('');
             dotsEl.innerHTML = displayAdImages.map(function(_, i) {
                 return '<div class="ad-carousel-dot' + (i === 0 ? ' active' : '') + '"></div>';
