@@ -265,6 +265,7 @@
             overflow: hidden;
             background: rgba(255,255,255,0.03);
             border: 1px solid rgba(201,162,39,0.15);
+            aspect-ratio: 16 / 9;
         }
         .no-active.has-ads .ad-panel { display: block; }
         .ad-slide {
@@ -766,6 +767,53 @@
             .screen { padding: 80px 16px 110px; }
             .ticker-label { min-width: 90px; }
             .ticker-message-text { font-size: 13px; }
+        }
+
+        /* ── TABLETS & SMALL SCREENS (stack ad + on-duty vertically) ── */
+        @media (max-width: 1023px) {
+            .no-active.has-ads {
+                flex-direction: column;
+                align-items: center;
+                padding: 0 16px;
+                gap: 16px;
+            }
+            .no-active.has-ads .on-duty-section {
+                flex: 0 0 auto;
+                max-width: none;
+                width: 100%;
+                text-align: center;
+            }
+            .no-active.has-ads .on-duty-header {
+                justify-content: center;
+            }
+            .no-active.has-ads .on-duty-grid {
+                grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            }
+            .ad-panel {
+                max-width: 100%;
+                width: 100%;
+                max-height: 45vh;
+                aspect-ratio: 16 / 9;
+            }
+        }
+
+        /* ── SMALL TVS & MONITORS (compact side-by-side) ── */
+        @media (min-width: 1024px) and (max-width: 1399px) {
+            .no-active.has-ads {
+                gap: 20px;
+                padding: 0 24px;
+            }
+            .no-active.has-ads .on-duty-section {
+                flex: 0 0 280px;
+                max-width: 300px;
+            }
+            .no-active.has-ads .on-duty-grid {
+                grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            }
+            .ad-panel {
+                max-width: none;
+                aspect-ratio: 16 / 9;
+            }
         }
 
         /* ── LARGE TV SCREENS (55"+) ── */
@@ -1398,6 +1446,12 @@
 
             noActive.classList.add('has-ads');
             panel.style.display = 'block';
+            var onDutyEl = document.getElementById('onDutySection');
+            if (!onDutyEl || onDutyEl.style.display === 'none') {
+                panel.style.maxWidth = '100%';
+            } else {
+                panel.style.maxWidth = '';
+            }
             dotsEl.style.display = displayAdImages.length > 1 ? 'flex' : 'none';
             displayAdIndex = 0;
             displayAdBuilt = true;
