@@ -29,7 +29,7 @@ body{font-family:'DM Sans',sans-serif;background:var(--surface);color:var(--ink)
 .shield-large svg{width:38px;height:38px;fill:var(--mak-green)}
 .app-title{font-family:'DM Serif Display',serif;font-size:clamp(28px,5vw,38px);color:var(--mak-green);line-height:1.15;margin-bottom:8px;letter-spacing:-.5px}
 .app-sub{font-size:clamp(14px,2.5vw,16px);color:var(--muted);line-height:1.6;margin-bottom:32px;padding:0 8px}
-.btn-login{display:inline-flex;align-items:center;gap:8px;background:var(--mak-green);color:#fff;font-size:clamp(14px,2.5vw,15px);font-weight:600;padding:14px 36px;border-radius:var(--r);text-decoration:none;cursor:pointer;border:none;transition:background .2s;font-family:'DM Sans',sans-serif}
+.btn-login{display:inline-flex;align-items:center;gap:8px;background:var(--mak-green);color:#fff;font-size:clamp(14px,2.5vw,15px);font-weight:600;padding:14px 36px;border-radius:var(--r);text-decoration:none;cursor:pointer;border:none;transition:all .25s ease;font-family:'DM Sans',sans-serif}
 .btn-login:hover{background:var(--mak-green-mid)}
 .btn-login svg{width:18px;height:18px;fill:currentColor}
 .login-card .btn-row{display:flex;flex-direction:column;align-items:center;gap:12px}
@@ -136,7 +136,9 @@ function liveClock() {
 try { var d = new Date(); var t = d.toLocaleTimeString('en-UG', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }).replace(/^0/, ''); var dt = d.toLocaleDateString('en-UG', { year: 'numeric', month: 'long', day: 'numeric' }); document.getElementById('liveDateTime').textContent = dt + ' | ' + t + ' EAT'; } catch(e) {}
 }
 function goToLogin() {
-fetch('/api/admin/login-token').then(function(r){return r.json()}).then(function(d){window.location.href=d.url}).catch(function(){window.location.href='/'});
+  var btn = document.querySelector('.btn-login');
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; btn.style.pointerEvents = 'none'; }
+  fetch('/api/admin/login-token').then(function(r){return r.json()}).then(function(d){window.location.href=d.url}).catch(function(){window.location.href='/'});
 }
 function goToWorkflow() {
 fetch('/api/admin/workflow-token').then(function(r){return r.json()}).then(function(d){window.location.href=d.url}).catch(function(){window.location.href='/'});
