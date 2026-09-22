@@ -789,6 +789,29 @@
   let allMessages = [];
   let isProcessingCall = false;
   let batchSize = 2;
+  const BATCH_CHOICES = [2, 3, 5, 10];
+  let batchInteracting = false;
+  let queuePrevSig = '';
+
+  function batchStoreKey() {
+    return 'officer_batch_' + (currentOfficer && currentOfficer.id ? currentOfficer.id : 'shared');
+  }
+
+  function loadBatchPreference() {
+    try {
+      const saved = parseInt(localStorage.getItem(batchStoreKey()), 10);
+      if (BATCH_CHOICES.includes(saved)) batchSize = saved;
+    } catch(e) {}
+  }
+
+  function setBatchSize(v) {
+    const n = parseInt(v, 10);
+    if (!BATCH_CHOICES.includes(n)) return;
+    batchSize = n;
+    try { localStorage.setItem(batchStoreKey(), String(n)); } catch(e) {}
+    const sel = document.getElementById('batchSizeSelect');
+    if (sel) sel.value = String(n);
+  }
   let currentBatch = [];
   let refreshInterval = null;
 
@@ -1188,6 +1211,17 @@
     if (completedEl) completedEl.textContent = result.completed_today || 0;
     checkAndNotifyNewTokens(waiting);
     checkWaitingReminder(waiting);
+    const sig = JSON.stringify([
+      waiting.map(t => t.token_number + ':' + t.status),
+      (result.current_tokens || []).map(t => t.token_number + ':' + t.status),
+      result.completed_today || 0
+    ]);
+    if (sig === queuePrevSig && !batchInteracting) {
+      const selSame = document.getElementById('batchSizeSelect');
+      if (selSame) selSame.value = String(batchSize);
+      return;
+    }
+    queuePrevSig = sig;
     const qEl = document.getElementById('queueContainer');
     if (!waiting.length) {
       qEl.innerHTML = `<div class="empty"><div class="empty-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><div class="empty-text">No students waiting</div></div>`;
@@ -1222,7 +1256,7 @@
             <div class="batch-row-actions">${actionBtn}<button class="action-btn btn-skip" onclick="skipToken('${t.token_number}', this)">${ic.skip} Skip</button><button class="action-btn btn-recall" onclick="recallToken('${t.token_number}', this)">${ic.repeat} Recall</button></div>
           </div>`;
         }).join('');
-        servEl.innerHTML = `<div class="serving-hero serving-batch"><div class="serving-label">${anyServing ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Batch Serving' : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.5 12.38a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.41 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.29 6.29l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Batch Called'}</div><div class="batch-status-line">${total} tokens called — proceed one at a time to the window</div><div class="batch-rows">${rowsHtml}</div></div><div class="action-grid">${anyServing ? '<button class="action-btn btn-complete-all" onclick="completeAllBatch()">' + ic.check + ' Complete All at Once</button>' : '<button class="action-btn btn-serve-all" onclick="serveAllBatch()">' + ic.play + ' Serve All at Once</button><button class="action-btn btn-recall-all" onclick="recallAllBatch()">' + ic.repeat + ' Recall All</button>'}<button class="action-btn btn-reset" onclick="resetQueue()">${ic.reset} Reset Queue</button></div>`;
+                  if (!batchInteracting) servEl.innerHTML = `<div class="serving-hero serving-batch"><div class="serving-label">${anyServing ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Batch Serving' : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.5 12.38a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.41 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.29 6.29l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Batch Called'}</div><div class="batch-status-line">${total} tokens called — proceed one at a time to the window</div><div class="batch-rows">${rowsHtml}</div></div><div class="action-grid">${anyServing ? '<button class="action-btn btn-complete-all" onclick="completeAllBatch()">' + ic.check + ' Complete All at Once</button>' : '<button class="action-btn btn-serve-all" onclick="serveAllBatch()">' + ic.play + ' Serve All at Once</button><button class="action-btn btn-recall-all" onclick="recallAllBatch()">' + ic.repeat + ' Recall All</button>'}<button class="action-btn btn-reset" onclick="resetQueue()">${ic.reset} Reset Queue</button></div>`;
         statusDot.className = 'status-dot dot-amber';
         statusText.textContent = anyServing ? 'Serving' : 'Called';
         tokenBadge.textContent = currentServing || tokens[0].token_number;
@@ -1231,7 +1265,7 @@
       } else {
         const t = tokens[0];
         const isCalled = t.status === 'called';
-        servEl.innerHTML = `<div class="serving-hero"><div class="serving-label">${isCalled ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.5 12.38a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.41 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.29 6.29l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Now Called' : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Now Serving'}</div><div class="serving-token-num">${t.token_number}</div><div class="serving-service-name"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg> ${t.service_name || t.service_code}</div><div class="serving-status-text"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> ${isCalled ? 'Called — please proceed to window' : 'Being served now'}</div></div><div class="action-grid">${isCalled ? '<button class="action-btn btn-serve" onclick="serveStudent()">' + ic.play + ' Start Serving</button>' : '<button class="action-btn btn-complete" onclick="completeService()">' + ic.check + ' Complete</button>'}<button class="action-btn btn-recall" onclick="recallStudent()">${ic.repeat} Recall</button><button class="action-btn btn-skip" onclick="skipStudent()">${ic.skip} Skip</button><button class="action-btn btn-reset" onclick="resetQueue()">${ic.reset} Reset Queue</button></div>`;
+                  if (!batchInteracting) servEl.innerHTML = `<div class="serving-hero"><div class="serving-label">${isCalled ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.5 12.38a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.41 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.29 6.29l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Now Called' : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Now Serving'}</div><div class="serving-token-num">${t.token_number}</div><div class="serving-service-name"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg> ${t.service_name || t.service_code}</div><div class="serving-status-text"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> ${isCalled ? 'Called — please proceed to window' : 'Being served now'}</div></div><div class="action-grid">${isCalled ? '<button class="action-btn btn-serve" onclick="serveStudent()">' + ic.play + ' Start Serving</button>' : '<button class="action-btn btn-complete" onclick="completeService()">' + ic.check + ' Complete</button>'}<button class="action-btn btn-recall" onclick="recallStudent()">${ic.repeat} Recall</button><button class="action-btn btn-skip" onclick="skipStudent()">${ic.skip} Skip</button><button class="action-btn btn-reset" onclick="resetQueue()">${ic.reset} Reset Queue</button></div>`;
         statusDot.className = 'status-dot dot-amber';
         statusText.textContent = isCalled ? 'Called' : 'Serving';
         tokenBadge.textContent = t.token_number;
@@ -1240,7 +1274,10 @@
       }
     } else {
       currentServing = null;
-      servEl.innerHTML = `<div class="empty" style="margin-bottom:14px;"><div class="empty-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div class="empty-text">No student being served</div></div><div class="action-grid"><button class="action-btn btn-next" onclick="callNext()">${ic.callnext} Call Next Student</button><button class="action-btn btn-reset" onclick="resetQueue()">${ic.reset} Reset Queue</button></div><div style="display:flex;gap:8px;align-items:center;margin-top:10px;justify-content:center;"><select class="batch-select" id="batchSizeSelect" onchange="batchSize=parseInt(this.value)"><option value="2" selected>2</option><option value="3">3</option><option value="5">5</option><option value="10">10</option></select><button class="action-btn btn-next" style="grid-column:auto;flex:1;max-width:220px" onclick="callBatch()">${ic.callnext} Call Batch</button></div>`;
+      if (!batchInteracting) {
+        const opts = BATCH_CHOICES.map(n => `<option value="${n}"${n === batchSize ? ' selected' : ''}>${n}</option>`).join('');
+        servEl.innerHTML = `<div class="empty" style="margin-bottom:14px;"><div class="empty-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div><div class="empty-text">No student being served</div></div><div class="action-grid"><button class="action-btn btn-next" onclick="callNext()">${ic.callnext} Call Next Student</button><button class="action-btn btn-reset" onclick="resetQueue()">${ic.reset} Reset Queue</button></div><div style="display:flex;gap:8px;align-items:center;margin-top:10px;justify-content:center;"><select class="batch-select" id="batchSizeSelect" style="min-height:44px;font-size:14px;" onchange="setBatchSize(this.value);batchInteracting=false;loadQueue()" onfocus="batchInteracting=true" onblur="setTimeout(function(){batchInteracting=false;},500)">${opts}</select><button class="action-btn btn-next" style="grid-column:auto;flex:1;max-width:220px;min-height:44px;" onclick="callBatch()">${ic.callnext} Call Batch</button></div>`;
+      }
       statusDot.className = 'status-dot dot-green';
       statusText.textContent = 'Available';
       tokenBadge.style.display = 'none';
@@ -2013,6 +2050,7 @@
     }
     addLog(`Logged in as ${currentOfficer.officer_name} — ${currentOfficer.office_name}`, 'success');
     loadSoundPreference();
+    loadBatchPreference();
     autoRequestNotificationPermission();
     document.getElementById('soundToggleBtn').addEventListener('click', toggleSound);
     loadDeskStatus();
@@ -2032,6 +2070,7 @@
   window.completeService = completeService; window.skipStudent = skipStudent; window.recallStudent = recallStudent;
   window.callBatch = callBatch; window.serveAllBatch = serveAllBatch; window.recallAllBatch = recallAllBatch; window.completeAllBatch = completeAllBatch;
   window.resetQueue = resetQueue; window.loadQueue = loadQueue; window.clearLog = clearLog;
+  window.setBatchSize = setBatchSize;
   window.closeModal = closeModal; window.confirmAction = confirmAction; window.closeResetModal = closeResetModal;
   window.toggleOfficeAvailability = toggleOfficeAvailability; window.loadOfficeStatus = loadOfficeStatus;
   window.confirmAvailabilityChange = confirmAvailabilityChange; window.closeAvailReasonModal = closeAvailReasonModal;
