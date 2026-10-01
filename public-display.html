@@ -1171,7 +1171,7 @@
             };
             el.play().catch((err) => {
                 if (err.name === 'NotAllowedError') {
-                    console.warn('Audio blocked — see ' + window.location.origin + '/kiosk-setup to fix');
+                    console.warn('Audio blocked - see ' + window.location.origin + '/kiosk-setup to fix');
                 }
                 isPlaying = false;
             });
@@ -1239,9 +1239,9 @@
             const b = document.createElement('div');
             b.className = 'recall-banner';
             if (studentName && studentName.trim() !== '') {
-                b.textContent = `${studentName}  —  ${token}`;
+                b.textContent = `${studentName}  -  ${token}`;
             } else {
-                b.textContent = `${token}  —  ${officeName}`;
+                b.textContent = `${token}  -  ${officeName}`;
             }
             document.body.appendChild(b);
             setTimeout(() => b?.remove(), 3000);
@@ -1565,7 +1565,7 @@
                             <div class="called-card">
                                 <div class="status-badge badge-called">
                                     <span class="badge-dot"></span>
-                                    CALLED — PLEASE PROCEED
+                                    CALLED - PLEASE PROCEED
                                 </div>
                                 <div class="batch-token-row">${tokenHtml}</div>
                                 ${namesStr ? `<div class="batch-names">${namesStr}</div>` : ''}
@@ -1593,7 +1593,7 @@
                         <div class="${t.type}-card">
                             <div class="status-badge badge-${t.type}">
                                 <span class="badge-dot"></span>
-                                ${t.type === 'called' ? 'CALLED — PLEASE PROCEED' : 'BEING SERVED NOW'}
+                                ${t.type === 'called' ? 'CALLED - PLEASE PROCEED' : 'BEING SERVED NOW'}
                             </div>
                             <div class="token-number">${t.token}</div>
                             ${t.studentName ? `<div class="student-name">${escapeHtml(truncateName(t.studentName))}</div>` : ''}
@@ -1657,7 +1657,7 @@
                                 <div class="on-duty-name">${escapeHtml(o.office_name)}</div>
                                 <div class="on-duty-location">${escapeHtml(o.location || 'Main Campus')}</div>
                                 <div class="on-duty-waiting"><strong>${o.waiting_count || 0}</strong> waiting</div>
-                                <div class="break-badge"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg><span>On Break${o.unavailability_notice ? ' — ' + escapeHtml(o.unavailability_notice) : ''}</span></div>
+                                <div class="break-badge"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg><span>On Break${o.unavailability_notice ? ' - ' + escapeHtml(o.unavailability_notice) : ''}</span></div>
                             </div>`;
                         } else {
                             return `<div class="on-duty-card unavailable">
