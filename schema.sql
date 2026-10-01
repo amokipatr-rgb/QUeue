@@ -79,7 +79,7 @@ CREATE TABLE services (
     
     description TEXT,
     
-    estimated_time_minutes INT DEFAULT 5,
+    estimated_time_minutes INT DEFAULT 15,
     
     is_active TINYINT(1) DEFAULT 1,
     display_order INT DEFAULT 0,
@@ -329,7 +329,7 @@ VALUES
     'Registry Services',
     1,
     'General registry inquiries',
-    5,
+    15,
     1
 ),
 (
@@ -345,7 +345,7 @@ VALUES
     'Admission Letters',
     2,
     'Admission support',
-    5,
+    15,
     1
 ),
 (

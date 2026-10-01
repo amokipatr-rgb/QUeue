@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -1866,7 +1866,7 @@
                     <div class="add-service-row">
                         <input type="text" id="newServiceName" placeholder="Service Name" style="flex:2">
                         <input type="text" id="newServiceCode" placeholder="Code (e.g., REG)" style="flex:1">
-                        <input type="number" id="newServiceTime" placeholder="Min" style="width:68px" value="5">
+                        <input type="number" id="newServiceTime" placeholder="Min" style="width:68px" value="15">
                         <button type="button" class="btn-add-service" onclick="addServiceToList()">+ Add</button>
                     </div>
                 </div>
@@ -1915,7 +1915,7 @@
                 </div>
                 <div class="form-group">
                     <label>Estimated Time (minutes)</label>
-                    <input type="number" id="addServiceTime" value="5">
+                    <input type="number" id="addServiceTime" value="15">
                 </div>
                 <div class="form-group">
                     <label>Description</label>
@@ -2312,7 +2312,7 @@
             const code = document.getElementById('newServiceCode').value.trim();
             const time = document.getElementById('newServiceTime').value;
             if (!name || !code) { showToast('Please enter service name and code', 'error'); return; }
-            pendingServices.push({ service_name: name, service_code: code.toUpperCase(), estimated_time_minutes: parseInt(time) || 5, is_active: 1 });
+            pendingServices.push({ service_name: name, service_code: code.toUpperCase(), estimated_time_minutes: parseInt(time) || 15, is_active: 1 });
             renderServicesList();
             document.getElementById('newServiceName').value = '';
             document.getElementById('newServiceCode').value = '';
@@ -2579,7 +2579,7 @@
             document.getElementById('addServiceForm').reset();
             document.getElementById('addServiceCode').value = '';
             document.getElementById('addServiceName').value = '';
-            document.getElementById('addServiceTime').value = '5';
+            document.getElementById('addServiceTime').value = '15';
             document.getElementById('addServiceDesc').value = '';
             openModal('addServiceModal');
         }
@@ -2595,7 +2595,7 @@
                     service_name: document.getElementById('addServiceName').value,
                     office_id: parseInt(officeId),
                     description: document.getElementById('addServiceDesc').value,
-                    estimated_time_minutes: parseInt(document.getElementById('addServiceTime').value) || 5
+                    estimated_time_minutes: parseInt(document.getElementById('addServiceTime').value) || 15
                 };
                 const result = await apiCall('/api/admin/service', 'POST', serviceData);
                 if (result.success) { showToast(result.message || 'Service added successfully'); closeModal('addServiceModal'); loadAllData(); }
@@ -2673,7 +2673,7 @@
             try {
                 const serviceId = document.getElementById('serviceId').value;
                 const officeId = document.getElementById('serviceOfficeId').value;
-                const serviceData = { service_code: document.getElementById('serviceCode').value.toUpperCase(), service_name: document.getElementById('serviceName').value, office_id: parseInt(officeId), description: document.getElementById('serviceDesc').value, estimated_time_minutes: parseInt(document.getElementById('serviceTime').value) || 5 };
+                const serviceData = { service_code: document.getElementById('serviceCode').value.toUpperCase(), service_name: document.getElementById('serviceName').value, office_id: parseInt(officeId), description: document.getElementById('serviceDesc').value, estimated_time_minutes: parseInt(document.getElementById('serviceTime').value) || 15 };
                 const result = await apiCall(`/api/admin/service/${serviceId}`, 'PUT', serviceData);
                 if (result.success) { showToast(result.message || 'Service updated successfully'); closeModal('serviceModal'); loadAllData(); }
                 else showToast(result.message || 'Failed to update service', 'error');

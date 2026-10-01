@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS services (
     service_name VARCHAR(100) NOT NULL,
     office_id INT NOT NULL,
     description TEXT,
-    estimated_time_minutes INT DEFAULT 5,
+    estimated_time_minutes INT DEFAULT 15,
     is_active TINYINT(1) DEFAULT 1,
     display_order INT DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -196,10 +196,10 @@ INSERT IGNORE INTO offices (id, office_code, office_name, description, location,
 -- SEED: SERVICES
 -- =====================================================
 INSERT IGNORE INTO services (service_code, service_name, office_id, description, estimated_time_minutes, display_order) VALUES
-('REG', 'Registry Services', 1, 'General registry inquiries', 5, 1),
+('REG', 'Registry Services', 1, 'General registry inquiries', 15, 1),
 ('TST', 'Testimonial Letters', 1, 'Request testimonials', 10, 2),
 ('GEN', 'General Inquiry', 1, 'Other academic matters', 5, 3),
-('ADM', 'Admission Letters', 2, 'Admission support', 5, 1),
+('ADM', 'Admission Letters', 2, 'Admission support', 15, 1),
 ('TRN', 'Transcript Issuance', 2, 'Official transcripts', 20, 2),
 ('YRO', 'Year One Registration', 2, 'First year registration', 10, 3),
 ('COU', 'Counselling Session', 3, 'Student counselling', 30, 1);
