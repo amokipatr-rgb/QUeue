@@ -1186,6 +1186,30 @@
             <!-- OFFICES PAGE -->
             <div class="page" id="page-offices">
                 <div class="offices-grid" id="officesGrid"></div>
+                <div class="section" style="margin-top:24px">
+                    <div class="section-header">
+                        <h2 class="section-title">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:20px;height:20px;margin-right:8px"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                            Linked Offices
+                        </h2>
+                    </div>
+                    <div style="padding:24px;max-width:640px">
+                        <p style="font-size:13px;color:#888;margin-bottom:16px">Link offices that share similar services. When a person waiting at one office stays beyond their estimated wait, the token is automatically escalated to the linked office with the shortest queue and becomes priority there.</p>
+                        <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;margin-bottom:16px">
+                            <div style="flex:1;min-width:160px">
+                                <label style="display:block;font-size:13px;font-weight:600;color:#555;margin-bottom:6px">From Office</label>
+                                <select id="linkSourceOffice" style="width:100%;padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:14px;background:#fff;cursor:pointer"></select>
+                            </div>
+                            <div style="flex:1;min-width:160px">
+                                <label style="display:block;font-size:13px;font-weight:600;color:#555;margin-bottom:6px">To Office</label>
+                                <select id="linkTargetOffice" style="width:100%;padding:10px 14px;border:1px solid #ddd;border-radius:8px;font-size:14px;background:#fff;cursor:pointer"></select>
+                            </div>
+                            <button class="btn-primary" onclick="addOfficeLink(this)" id="linkAddBtn">Link</button>
+                        </div>
+                        <div id="officeLinksList" style="display:flex;flex-direction:column;gap:8px"></div>
+                        <div id="linkToast" style="margin-top:12px;font-size:13px;display:none"></div>
+                    </div>
+                </div>
             </div>
 
             <!-- OFFICERS PAGE -->
@@ -2200,6 +2224,7 @@
                         </svg>
                         Add New Office
                     </button>`;
+                loadOfficeLinks();
             } else if (id === 'officers') {
                 document.getElementById('topbarActions').innerHTML = `
                     <button class="btn-primary" onclick="openAddOfficerModal()">
@@ -2450,6 +2475,88 @@
                 const result = await apiCall(`/api/admin/office/${id}`, 'DELETE');
                 if (result.success) { showToast('Office deleted successfully'); loadAllData(); }
                 else showToast(result.message || 'Delete failed', 'error');
+            }
+        }
+
+        async function loadOfficeLinks() {
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/admin/office-links`);
+                const data = await res.json();
+                if (!data.success) return;
+                const offices = data.offices || [];
+                const src = document.getElementById('linkSourceOffice');
+                const tgt = document.getElementById('linkTargetOffice');
+                if (!src || !tgt) return;
+                const opts = offices.map(o => `<option value="${o.id}">${escapeHtml(o.office_name)} (${escapeHtml(o.office_code)})</option>`).join('');
+                src.innerHTML = opts;
+                tgt.innerHTML = opts;
+                const list = document.getElementById('officeLinksList');
+                const links = data.links || [];
+                if (!links.length) {
+                    list.innerHTML = '<div style="font-size:13px;color:#999;padding:12px;text-align:center">No linked offices yet.</div>';
+                    return;
+                }
+                list.innerHTML = links.map(l =>
+                    `<div style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1px solid #e5e7eb;border-radius:8px;font-size:13px">` +
+                    `<span style="font-weight:600">${escapeHtml(l.source_name)}</span>` +
+                    `<span style="color:#999">→</span>` +
+                    `<span style="font-weight:600">${escapeHtml(l.linked_name)}</span>` +
+                    `<button onclick="deleteOfficeLink(${l.id}, this)" style="margin-left:auto;background:none;border:1px solid #ef4444;color:#ef4444;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer">Remove</button>` +
+                    `</div>`
+                ).join('');
+            } catch (e) {}
+        }
+
+        async function addOfficeLink(btn) {
+            const src = document.getElementById('linkSourceOffice').value;
+            const tgt = document.getElementById('linkTargetOffice').value;
+            const toast = document.getElementById('linkToast');
+            if (!src || !tgt) return;
+            if (src === tgt) {
+                toast.style.display = 'block';
+                toast.style.color = '#dc2626';
+                toast.textContent = 'An office cannot link to itself';
+                return;
+            }
+            setLoading(btn, true);
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/admin/office-links`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ source_office_id: parseInt(src), linked_office_id: parseInt(tgt) })
+                });
+                const data = await res.json();
+                if (data.success) {
+                    toast.style.display = 'block';
+                    toast.style.color = '#16a34a';
+                    toast.textContent = data.message || 'Offices linked';
+                    loadOfficeLinks();
+                } else {
+                    toast.style.display = 'block';
+                    toast.style.color = '#dc2626';
+                    toast.textContent = data.message || 'Failed to link offices';
+                }
+                setTimeout(function() { toast.style.display = 'none'; }, 3000);
+            } catch (e) {
+                toast.style.display = 'block';
+                toast.style.color = '#dc2626';
+                toast.textContent = 'Network error';
+            } finally {
+                setLoading(btn, false);
+            }
+        }
+
+        async function deleteOfficeLink(id, btn) {
+            if (!confirm('Remove this office link?')) return;
+            setLoading(btn, true);
+            try {
+                const res = await fetch(`${API_BASE_URL}/api/admin/office-links/${id}`, { method: 'DELETE' });
+                const data = await res.json();
+                if (data.success) loadOfficeLinks();
+            } catch (e) {
+                showToast('Network error', 'error');
+            } finally {
+                setLoading(btn, false);
             }
         }
 

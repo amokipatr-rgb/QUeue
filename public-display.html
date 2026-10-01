@@ -482,6 +482,10 @@
         .on-duty-card.unavailable .on-duty-name { color: rgba(255,255,255,0.5); }
         .on-duty-card.unavailable .on-duty-waiting { display: none; }
         .on-duty-card.unavailable .unavail-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: #e8c547; margin-top: 8px; }
+        .on-duty-card.on-break { border-color: rgba(245,158,11,0.35); background: rgba(245,158,11,0.08); }
+        .on-duty-card.on-break .on-duty-code { color: #f59e0b; opacity: 0.7; }
+        .on-duty-card.on-break .break-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: #f59e0b; margin-top: 8px; }
+        .on-duty-card .break-badge { display: none; }
         .on-duty-card .unavail-badge { display: none; }
         .on-duty-card .avail-badge { display: none; }
         .on-duty-card.available .avail-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 600; color: #69ff9c; margin-top: 8px; }
@@ -1483,7 +1487,10 @@
 
             currentUnavailNotices = (queues || [])
                 .filter(o => (o.availability_status || '').toLowerCase() === 'unavailable' && (o.unavailability_notice || '').trim())
-                .map(o => ({ office_name: o.office_name, office_code: o.office_code, message: '⚠️ ' + o.office_name + ' is currently closed: ' + o.unavailability_notice, is_unavailability: true }));
+                .map(o => ({ office_name: o.office_name, office_code: o.office_code, message: '⚠️ ' + o.office_name + ' is currently closed: ' + o.unavailability_notice, is_unavailability: true }))
+                .concat((queues || [])
+                    .filter(o => (o.availability_status || '').toLowerCase() === 'on_break')
+                    .map(o => ({ office_name: o.office_name, office_code: o.office_code, message: o.office_name + ' is on break' + ((o.unavailability_notice || '').trim() ? ': ' + o.unavailability_notice : ''), is_unavailability: true })));
             
             const activeGrid = document.getElementById('activeGrid');
             const noActive = document.getElementById('noActive');
@@ -1632,15 +1639,25 @@
                     onDutySection.style.display = 'block';
                     onDutyClosed.style.display = anyOpen ? 'none' : 'block';
                     onDutyGrid.innerHTML = queues.map(o => {
-                        const isAvail = (o.availability_status || '').toLowerCase() === 'available';
-                        const availClass = isAvail ? '' : 'unavailable';
+                        const _st = (o.availability_status || '').toLowerCase();
+                        const isAvail = _st === 'available';
+                        const isBreak = _st === 'on_break';
+                        const availClass = isAvail ? '' : (isBreak ? 'on-break' : 'unavailable');
                         if (isAvail) {
                             return `<div class="on-duty-card available">
                                 <div class="on-duty-code"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M8 10h.01"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 14h.01"/><path d="M16 14h.01"/><path d="M12 14h.01"/></svg></div>
                                 <div class="on-duty-name">${escapeHtml(o.office_name)}</div>
                                 <div class="on-duty-location">${escapeHtml(o.location || 'Main Campus')}</div>
                                 <div class="on-duty-waiting"><strong>${o.waiting_count || 0}</strong> waiting</div>
-                                <div class="avail-badge">&#10003; Available</div>
+                                    <div class="avail-badge">&#10003; Available</div>
+                                </div>`;
+                        } else if (isBreak) {
+                            return `<div class="on-duty-card on-break">
+                                <div class="on-duty-code"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="2" width="16" height="20" rx="2" ry="2"/><path d="M9 22v-4h6v4"/><path d="M8 6h.01"/><path d="M16 6h.01"/><path d="M12 6h.01"/><path d="M8 10h.01"/><path d="M16 10h.01"/><path d="M12 10h.01"/><path d="M8 14h.01"/><path d="M16 14h.01"/><path d="M12 14h.01"/></svg></div>
+                                <div class="on-duty-name">${escapeHtml(o.office_name)}</div>
+                                <div class="on-duty-location">${escapeHtml(o.location || 'Main Campus')}</div>
+                                <div class="on-duty-waiting"><strong>${o.waiting_count || 0}</strong> waiting</div>
+                                <div class="break-badge"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg><span>On Break${o.unavailability_notice ? ' — ' + escapeHtml(o.unavailability_notice) : ''}</span></div>
                             </div>`;
                         } else {
                             return `<div class="on-duty-card unavailable">

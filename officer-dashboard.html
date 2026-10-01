@@ -84,10 +84,11 @@
     .sound-badge { position: absolute; top: -2px; right: -2px; width: 10px; height: 10px; border-radius: 50%; display: none; }
     .sound-badge.active { display: block; background: #00e676; box-shadow: 0 0 4px #00e676; animation: pulse-dot 1.5s infinite; }
     .sound-badge.muted { display: block; background: #ff9800; }
-    .avail-toggle { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 500; font-family: var(--font); transition: all 0.2s; display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+    .avail-toggle { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; font-family: var(--font); transition: all 0.2s; display: flex; align-items: center; gap: 6px; white-space: nowrap; min-height: 44px; touch-action: manipulation; }
     .avail-toggle:hover { filter: brightness(1.15); }
     .avail-toggle.available { background: rgba(34,197,94,0.25); border-color: var(--green-accent); }
     .avail-toggle.unavailable { background: rgba(239,68,68,0.25); border-color: var(--red); }
+    .avail-toggle.on-break { background: rgba(245,158,11,0.25); border-color: #f59e0b; }
     .logout-btn { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 14px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 500; font-family: var(--font); transition: background 0.2s; display: flex; align-items: center; gap: 6px; }
     .logout-btn:hover { background: rgba(239,68,68,0.5); border-color: var(--red); }
 
@@ -131,7 +132,11 @@
     .q-service { font-size: 11px; font-weight: 600; color: var(--amber); letter-spacing: 0.5px; text-transform: uppercase; margin-bottom: 2px; }
     .q-student { font-size: 12px; color: var(--text-secondary); }
     .q-wait    { font-size: 11px; color: var(--text-muted); margin-top: 2px; font-family: var(--mono); display: flex; align-items: center; gap: 4px; }
-    .call-btn  { background: var(--green-soft); color: var(--green-dark); border: 1px solid var(--green-border); padding: 7px 14px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; font-family: var(--font); flex-shrink: 0; transition: all 0.15s; display: flex; align-items: center; gap: 6px; }
+    .q-escalated { font-size: 11px; font-weight: 700; color: #b45309; background: #fef3c7; border: 1px solid #fcd34d; border-radius: 6px; padding: 2px 8px; margin-top: 4px; display: inline-flex; align-items: center; gap: 4px; }
+    .queue-item-escalated { border-color: #f59e0b; background: rgba(245,158,11,0.08); box-shadow: 0 0 0 3px rgba(245,158,11,0.15); }
+    .queue-item-escalated .q-token { color: #b45309; }
+    .queue-item-escalated .q-service { color: #b45309; }
+    .call-btn  { background: var(--green-soft); color: var(--green-dark); border: 1px solid var(--green-border); padding: 12px 18px; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 600; font-family: var(--font); flex-shrink: 0; transition: all 0.15s; display: flex; align-items: center; gap: 6px; min-height: 44px; touch-action: manipulation; }
     .call-btn:hover { background: var(--green-accent); color: white; border-color: var(--green-accent); }
 
     .empty { text-align: center; padding: 44px 20px; color: var(--text-muted); }
@@ -155,7 +160,7 @@
     .batch-row-name { font-size: 13px; font-weight: 600; color: white; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .batch-row-service { font-size: 11px; opacity: 0.7; }
     .batch-row-actions { display: flex; gap: 5px; }
-    .batch-row-actions .action-btn { padding: 7px 9px; font-size: 10.5px; white-space: nowrap; border: none; color: #fff; }
+    .batch-row-actions .action-btn { padding: 10px 12px; font-size: 12px; white-space: nowrap; border: none; color: #fff; min-height: 40px; touch-action: manipulation; }
     .batch-row-actions .btn-serve, .batch-row-actions .btn-complete { grid-column: auto; }
     .batch-row-actions .btn-serve    { background: #16A34A; }
     .batch-row-actions .btn-complete { background: #2563EB; }
@@ -165,11 +170,11 @@
     .btn-complete-all { background: linear-gradient(135deg, #3B82F6, #2563EB); color: #fff; border: none; }
     .btn-recall-all { background: #7C3AED; color: #fff; border: none; }
     .batch-status-line { font-size: 10px; font-weight: 600; letter-spacing: 1.5px; text-transform: uppercase; opacity: 0.55; margin-bottom: 6px; display: flex; align-items: center; gap: 6px; }
-    .batch-select { padding: 9px 10px; border-radius: var(--radius); border: 1px solid var(--border); font-size: 13px; font-family: var(--font); font-weight: 600; background: var(--white); color: var(--text); }
+    .batch-select { padding: 10px 12px; border-radius: var(--radius); border: 1px solid var(--border); font-size: 13px; font-family: var(--font); font-weight: 600; background: var(--white); color: var(--text); min-height: 44px; }
 
     /* ACTION BTNS */
     .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-    .action-btn  { padding: 11px 10px; border: none; border-radius: var(--radius); font-size: 12px; font-weight: 600; font-family: var(--font); cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 7px; }
+    .action-btn  { padding: 13px 12px; border: none; border-radius: var(--radius); font-size: 13px; font-weight: 600; font-family: var(--font); cursor: pointer; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 44px; touch-action: manipulation; }
     .action-btn:hover  { transform: translateY(-1px); box-shadow: var(--shadow-md); }
     .action-btn:active { transform: translateY(0); }
     .action-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; box-shadow: none !important; }
@@ -204,7 +209,7 @@
     .modal-title  { font-size: 17px; font-weight: 700; color: var(--text-primary); margin-bottom: 8px; }
     .modal-body   { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 22px; }
     .modal-footer { display: flex; gap: 10px; }
-    .mbtn         { flex: 1; padding: 11px; border-radius: 10px; font-size: 13px; font-weight: 600; font-family: var(--font); cursor: pointer; border: none; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 6px; }
+    .mbtn         { flex: 1; padding: 12px; border-radius: 10px; font-size: 13px; font-weight: 600; font-family: var(--font); cursor: pointer; border: none; transition: all 0.15s; display: flex; align-items: center; justify-content: center; gap: 6px; min-height: 44px; touch-action: manipulation; }
     .mbtn:hover   { filter: brightness(0.92); }
     .mbtn-confirm { background: var(--red); color: white; }
     .mbtn-cancel  { background: var(--border); color: var(--text-primary); }
@@ -220,7 +225,7 @@
     .msg-input-row > div:first-child { min-width: 0; }
     .msg-input      { width: 100%; box-sizing: border-box; padding: 10px 10px; border: 1.5px solid var(--border-mid); border-radius: 8px; font-size: 13px; font-family: var(--font); outline: none; transition: border-color 0.2s; }
     .msg-input:focus { border-color: var(--green-accent); }
-    .post-btn   { background: var(--green-dark); color: white; border: none; padding: 10px 12px; border-radius: 8px; font-size: 12px; font-weight: 600; font-family: var(--font); cursor: pointer; flex-shrink: 0; transition: background 0.2s; display: flex; align-items: center; gap: 6px; }
+    .post-btn   { background: var(--green-dark); color: white; border: none; padding: 12px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; font-family: var(--font); cursor: pointer; flex-shrink: 0; transition: background 0.2s; display: flex; align-items: center; gap: 6px; min-height: 44px; touch-action: manipulation; }
     .post-btn:hover { background: var(--green-mid); }
     .msg-item   { display: flex; align-items: flex-start; gap: 10px; background: var(--bg-panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; margin-bottom: 8px; }
     .msg-text   { font-size: 13px; color: var(--text-primary); margin-bottom: 4px; }
@@ -300,7 +305,7 @@
       .call-btn { width: 100%; justify-content: center; order: 4; }
       .action-grid { grid-template-columns: 1fr; }
       .btn-next, .btn-reset { grid-column: span 1; }
-      .action-btn { padding: 10px; font-size: 11px; }
+      .action-btn { padding: 12px 10px; font-size: 12px; min-height: 44px; }
       .serving-hero { padding: 16px 12px; }
       .serving-token-num { font-size: 32px; }
       .serving-service-name { font-size: 12px; }
@@ -496,6 +501,10 @@
       <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
       <span id="availToggleText">Office: Available</span>
     </button>
+    <button class="avail-toggle" id="breakToggleBtn" onclick="takeOfficeBreak()" title="Take a break — pause new tokens">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>
+      <span id="breakToggleText">Take a Break</span>
+    </button>
     <button class="icon-btn" onclick="openSearchModal()" title="Search tokens">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
     </button>
@@ -582,6 +591,20 @@
     <div class="modal-body" id="availReasonBody">
       <p style="margin-bottom:12px;font-size:13px;color:var(--text-secondary);" id="availReasonDesc">Please provide a reason so students see it on the kiosk and public display.</p>
       <textarea id="availReasonInput" rows="3" placeholder="Enter reason for closing..." style="width:100%;padding:10px 12px;border:1.5px solid var(--border-mid);border-radius:10px;font-size:13px;font-family:var(--font);outline:none;resize:vertical;transition:border-color 0.2s;" onfocus="this.style.borderColor='var(--green-accent)'" onblur="this.style.borderColor='var(--border-mid)'"></textarea>
+      <div id="breakFieldsWrap" style="display:none;flex-direction:column;gap:12px">
+        <div>
+          <label style="display:block;font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:6px">Break type</label>
+          <select id="breakTypeSelect" style="width:100%;padding:10px 12px;border:1.5px solid var(--border-mid);border-radius:10px;font-size:13px;font-family:var(--font);outline:none;background:var(--white);cursor:pointer">
+            <option value="">Select break type...</option>
+            <option value="Breakfast">Breakfast</option>
+            <option value="Lunch">Lunch</option>
+          </select>
+        </div>
+        <div>
+          <label style="display:block;font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:6px">Back at</label>
+          <input type="time" id="breakBackTime" style="width:100%;padding:10px 12px;border:1.5px solid var(--border-mid);border-radius:10px;font-size:13px;font-family:var(--font);outline:none">
+        </div>
+      </div>
     </div>
     <div class="modal-footer">
       <button class="mbtn mbtn-confirm" id="availReasonConfirmBtn" onclick="confirmAvailabilityChange()"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> <span id="availReasonConfirmText">Mark Unavailable</span></button>
@@ -825,6 +848,7 @@
   let isVoicePlaying = false;
   let lastReminderTime = 0;
   const REMINDER_INTERVAL = 120000;
+  let announcedEscalations = new Set();
 
   function updateNotificationStatus() {
     const dot = document.getElementById('notifDot');
@@ -1012,6 +1036,49 @@
       }
     }
     previousWaitingCount = currentCount;
+  }
+
+  async function playEscalationVoice(tokenNumber, fromOffice) {
+    if (!soundEnabled) return;
+    const spelled = tokenNumber.split('').join(' ');
+    const text = `Attention. Token ${spelled} escalated from ${fromOffice} please attend.`;
+    try {
+      const res = await fetch('/api/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text })
+      });
+      if (res.ok) {
+        const blob = await res.blob();
+        const audio = new Audio(URL.createObjectURL(blob));
+        voiceQueue.push(audio);
+        playNextVoice();
+      }
+    } catch (e) { console.error('Escalation voice error:', e); }
+  }
+
+  function checkAndNotifyEscalations(waitingList) {
+    if (!soundEnabled) return;
+    const currentKeys = new Set();
+    (waitingList || []).forEach(function(s) {
+      if (!s.escalated_from_office) return;
+      var m = String(s.escalated_from_office).match(/Escalated from \d+ \((.+?)\) to/);
+      if (!m) return;
+      var fromOffice = m[1];
+      var key = s.token_number + '|' + fromOffice;
+      currentKeys.add(key);
+      if (!announcedEscalations.has(key)) {
+        announcedEscalations.add(key);
+        playNotificationSound();
+        playEscalationVoice(s.token_number, fromOffice);
+        showToast(`${s.token_number} escalated from ${fromOffice} — now top priority`, 'info');
+        addLog(`Escalated token arrived: ${s.token_number} (from ${fromOffice})`, 'info');
+      }
+    });
+    // Forget tokens that left the queue so a re-escalation re-alerts
+    announcedEscalations.forEach(function(key) {
+      if (!currentKeys.has(key)) announcedEscalations.delete(key);
+    });
   }
 
   async function playReminderVoice(waitingList) {
@@ -1210,6 +1277,7 @@
     const completedEl = document.getElementById('completedToday');
     if (completedEl) completedEl.textContent = result.completed_today || 0;
     checkAndNotifyNewTokens(waiting);
+    checkAndNotifyEscalations(waiting);
     checkWaitingReminder(waiting);
     const sig = JSON.stringify([
       waiting.map(t => t.token_number + ':' + t.status),
@@ -1230,7 +1298,10 @@
         var idOrPhone = (s.service_code && s.service_code.toUpperCase() === 'PS')
           ? (s.parent_phone || 'No phone')
           : (s.student_id || 'No ID');
-        return `<div class="queue-item"><div class="q-token">${s.token_number}</div><div class="q-info"><div class="q-service">${ic.tag} ${s.service_name || s.service_code}</div><div class="q-student">${ic.user} ${s.student_name || 'Student'} · ${idOrPhone}</div><div class="q-wait">${ic.clock} ${s.waiting_minutes || 0} min waiting</div></div><button class="call-btn" onclick="callStudent('${s.token_number}', this)">${ic.phone} Call</button></div>`;
+        var escMatch = s.escalated_from_office ? String(s.escalated_from_office).match(/Escalated from \d+ \((.+?)\) to/) : null;
+        var escBadge = escMatch ? `<div class="q-escalated"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><span>Escalated from ${escapeHtml(escMatch[1])}</span></div>` : '';
+        var escClass = escMatch ? ' queue-item-escalated' : '';
+        return `<div class="queue-item${escClass}"><div class="q-token">${s.token_number}</div><div class="q-info"><div class="q-service">${ic.tag} ${s.service_name || s.service_code}</div><div class="q-student">${ic.user} ${s.student_name || 'Student'} · ${idOrPhone}</div><div class="q-wait">${ic.clock} ${s.waiting_minutes || 0} min waiting</div>${escBadge}</div><button class="call-btn" onclick="callStudent('${s.token_number}', this)">${ic.phone} Call</button></div>`;
       }).join('');
     }
     const servEl = document.getElementById('servingContainer');
@@ -1250,9 +1321,11 @@
           const actionBtn = isServing
             ? `<button class="action-btn btn-complete" onclick="completeToken('${t.token_number}', this)">${ic.check} Complete</button>`
             : `<button class="action-btn btn-serve" onclick="serveToken('${t.token_number}', this)">${ic.play} Start Serving</button>`;
+          var bMatch = t.escalated_from_office ? String(t.escalated_from_office).match(/Escalated from \d+ \((.+?)\) to/) : null;
+          var bBadge = bMatch ? `<div style="font-size:10px;font-weight:700;color:#fcd34d;display:flex;align-items:center;gap:4px"><svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><span>from ${escapeHtml(bMatch[1])}</span></div>` : '';
           return `<div class="batch-row">
             <div class="batch-row-token">${t.token_number}</div>
-            <div class="batch-row-info"><div class="batch-row-name">${t.student_name || 'Student'}</div><div class="batch-row-service">${t.service_name || t.service_code || ''}</div></div>
+            <div class="batch-row-info"><div class="batch-row-name">${t.student_name || 'Student'}</div><div class="batch-row-service">${t.service_name || t.service_code || ''}</div>${bBadge}</div>
             <div class="batch-row-actions">${actionBtn}<button class="action-btn btn-skip" onclick="skipToken('${t.token_number}', this)">${ic.skip} Skip</button><button class="action-btn btn-recall" onclick="recallToken('${t.token_number}', this)">${ic.repeat} Recall</button></div>
           </div>`;
         }).join('');
@@ -1265,7 +1338,9 @@
       } else {
         const t = tokens[0];
         const isCalled = t.status === 'called';
-                  if (!batchInteracting) servEl.innerHTML = `<div class="serving-hero"><div class="serving-label">${isCalled ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.5 12.38a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.41 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.29 6.29l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Now Called' : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Now Serving'}</div><div class="serving-token-num">${t.token_number}</div><div class="serving-service-name"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg> ${t.service_name || t.service_code}</div><div class="serving-status-text"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> ${isCalled ? 'Called — please proceed to window' : 'Being served now'}</div></div><div class="action-grid">${isCalled ? '<button class="action-btn btn-serve" onclick="serveStudent()">' + ic.play + ' Start Serving</button>' : '<button class="action-btn btn-complete" onclick="completeService()">' + ic.check + ' Complete</button>'}<button class="action-btn btn-recall" onclick="recallStudent()">${ic.repeat} Recall</button><button class="action-btn btn-skip" onclick="skipStudent()">${ic.skip} Skip</button><button class="action-btn btn-reset" onclick="resetQueue()">${ic.reset} Reset Queue</button></div>`;
+        var sMatch = t.escalated_from_office ? String(t.escalated_from_office).match(/Escalated from \d+ \((.+?)\) to/) : null;
+        var sBadge = sMatch ? `<div style="font-size:11px;font-weight:700;color:#fcd34d;margin-top:4px;display:flex;align-items:center;justify-content:center;gap:4px"><svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg><span>Escalated from ${escapeHtml(sMatch[1])}</span></div>` : '';
+                  if (!batchInteracting) servEl.innerHTML = `<div class="serving-hero"><div class="serving-label">${isCalled ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.5 12.38a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.41 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9.91a16 16 0 0 0 6.29 6.29l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg> Now Called' : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg> Now Serving'}</div><div class="serving-token-num">${t.token_number}</div><div class="serving-service-name"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" stroke-width="2"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg> ${t.service_name || t.service_code}</div>${sBadge}<div class="serving-status-text"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> ${isCalled ? 'Called — please proceed to window' : 'Being served now'}</div></div><div class="action-grid">${isCalled ? '<button class="action-btn btn-serve" onclick="serveStudent()">' + ic.play + ' Start Serving</button>' : '<button class="action-btn btn-complete" onclick="completeService()">' + ic.check + ' Complete</button>'}<button class="action-btn btn-recall" onclick="recallStudent()">${ic.repeat} Recall</button><button class="action-btn btn-skip" onclick="skipStudent()">${ic.skip} Skip</button><button class="action-btn btn-reset" onclick="resetQueue()">${ic.reset} Reset Queue</button></div>`;
         statusDot.className = 'status-dot dot-amber';
         statusText.textContent = isCalled ? 'Called' : 'Serving';
         tokenBadge.textContent = t.token_number;
@@ -1582,20 +1657,41 @@
   document.querySelectorAll('.overlay').forEach(el => { el.addEventListener('click', e => { if (e.target === el && el.id !== 'ratingOverlay') el.classList.remove('open'); }); });
 
   async function loadOfficeStatus() {
-    const result = await apiCall(`/api/offices`);
-    if (!result.success || !result.offices) { showToast('Failed to load office status', 'error'); return; }
-    const office = result.offices.find(o => o.id === currentOfficer.office_id);
-    if (!office) return;
-    updateOfficeAvailabilityUI(office.availability_status, office.unavailability_notice);
+    if (!currentOfficer || !currentOfficer.office_id) return;
+    try {
+      const response = await fetch(`${API_BASE_URL}/api/offices`, { cache: 'no-store' });
+      const result = await response.json();
+      if (!result.success || !result.offices) { showToast('Failed to load office status', 'error'); return; }
+      const office = result.offices.find(o => o.id === currentOfficer.office_id);
+      if (!office) { showToast('Office not found — please re-login', 'error'); return; }
+      updateOfficeAvailabilityUI(office.availability_status, office.unavailability_notice);
+    } catch (e) {
+      showToast('Failed to load office status', 'error');
+    }
   }
 
   function updateOfficeAvailabilityUI(status, notice) {
     const btn = document.getElementById('availToggleBtn');
     const text = document.getElementById('availToggleText');
-    const isAvail = status === 'available';
-    btn.className = `avail-toggle ${isAvail ? 'available' : 'unavailable'}`;
-    text.textContent = isAvail ? 'Office: Available' : 'Office: Unavailable';
-    btn.title = isAvail ? 'Office is open — click to mark unavailable' : (notice || 'Office is closed — click to mark available');
+    const breakBtn = document.getElementById('breakToggleBtn');
+    const breakText = document.getElementById('breakToggleText');
+    const norm = (status || 'available').toLowerCase();
+    const isAvail = norm === 'available';
+    const isBreak = norm === 'on_break';
+    btn.className = `avail-toggle ${isAvail ? 'available' : (isBreak ? 'on-break' : 'unavailable')}`;
+    text.textContent = isAvail ? 'Office: Available' : (isBreak ? 'Office: On Break' : 'Office: Unavailable');
+    btn.title = isAvail ? 'Office is open — click to mark unavailable' : (notice || (isBreak ? 'Office is on break — click to reopen' : 'Office is closed — click to mark available'));
+    if (breakBtn && breakText) {
+      if (isBreak) {
+        breakBtn.style.display = '';
+        breakBtn.className = 'avail-toggle on-break';
+        breakText.textContent = 'Return from Break';
+      } else {
+        breakBtn.style.display = '';
+        breakBtn.className = 'avail-toggle';
+        breakText.textContent = 'Take a Break';
+      }
+    }
   }
 
   let pendingAvailChange = null;
@@ -1610,6 +1706,12 @@
     const confirmBtn = document.getElementById('availReasonConfirmBtn');
     const confirmText = document.getElementById('availReasonConfirmText');
     input.value = '';
+    const breakWrap = document.getElementById('breakFieldsWrap');
+    const breakType = document.getElementById('breakTypeSelect');
+    const breakTime = document.getElementById('breakBackTime');
+    breakType.value = '';
+    breakTime.value = '';
+    breakWrap.style.display = 'none';
     if (newStatus === 'available') {
       icon.style.background = 'var(--green-soft)';
       icon.style.color = 'var(--green-accent)';
@@ -1620,6 +1722,17 @@
       confirmBtn.style.background = 'var(--green-accent, #22C55E)';
       confirmBtn.style.color = '#fff';
       input.style.display = 'none';
+    } else if (newStatus === 'on_break') {
+      icon.style.background = '#fef3c7';
+      icon.style.color = '#b45309';
+      icon.innerHTML = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8h1a4 4 0 0 1 0 8h-1"/><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/><line x1="6" y1="1" x2="6" y2="4"/><line x1="10" y1="1" x2="10" y2="4"/><line x1="14" y1="1" x2="14" y2="4"/></svg>';
+      title.textContent = 'Take a Break?';
+      desc.innerHTML = 'New tokens will be paused and the office will show <strong>On Break</strong> on the public display. People already waiting stay in the queue. Choose the break type and when you will return.';
+      confirmText.textContent = 'Start Break';
+      confirmBtn.style.background = '#f59e0b';
+      confirmBtn.style.color = '#fff';
+      input.style.display = 'none';
+      breakWrap.style.display = 'flex';
     } else {
       icon.style.background = 'var(--red-soft)';
       icon.style.color = 'var(--red)';
@@ -1646,20 +1759,55 @@
     openAvailReasonModal(office, newStatus);
   }
 
+  async function takeOfficeBreak() {
+    cancelOfficeLogoutCountdown();
+    const result = await apiCall(`/api/offices`);
+    if (!result.success || !result.offices) return;
+    const office = result.offices.find(o => o.id === (currentOfficer && currentOfficer.office_id));
+    if (!office) return;
+    const currentStatus = (office.availability_status || 'available').toLowerCase();
+    if (currentStatus === 'on_break') {
+      openAvailReasonModal(office, 'available');
+    } else if (currentStatus === 'available') {
+      openAvailReasonModal(office, 'on_break');
+    } else {
+      showToast('Office is closed — reopen it first before taking a break', 'warning');
+    }
+  }
+
   async function confirmAvailabilityChange() {
     if (!pendingAvailChange) return;
     const btn = document.getElementById('availReasonConfirmBtn');
     setLoading(btn, true);
     const { office, newStatus } = pendingAvailChange;
     const input = document.getElementById('availReasonInput');
-    const reason = newStatus === 'available' ? '' : input.value.trim();
-    if (newStatus === 'unavailable' && !reason) {
-      showToast('Please enter a reason for closing the office', 'warning');
-      input.focus();
-      setLoading(btn, false);
-      return;
+    let reason = '';
+    if (newStatus === 'on_break') {
+      const bType = document.getElementById('breakTypeSelect').value;
+      const bTime = document.getElementById('breakBackTime').value;
+      if (!bType) {
+        showToast('Please select a break type (Breakfast or Lunch)', 'warning');
+        document.getElementById('breakTypeSelect').focus();
+        setLoading(btn, false);
+        return;
+      }
+      if (!bTime) {
+        showToast('Please select what time you will be back', 'warning');
+        document.getElementById('breakBackTime').focus();
+        setLoading(btn, false);
+        return;
+      }
+      reason = `${bType} break — back at ${bTime}`;
+    } else if (newStatus === 'unavailable') {
+      reason = input.value.trim();
+      if (!reason) {
+        showToast('Please enter a reason for closing the office', 'warning');
+        input.focus();
+        setLoading(btn, false);
+        return;
+      }
     }
-    const notice = newStatus === 'unavailable' ? reason : '';
+    const notice = newStatus === 'available' ? '' : reason;
     const officeId = currentOfficer && currentOfficer.office_id;
     if (!officeId) {
       showToast('Office ID not found — please re-login', 'error');
@@ -1682,7 +1830,9 @@
       if (updateResult.success) {
         showToast(`Office marked as ${newStatus}`, newStatus === 'available' ? 'success' : 'warning');
         addLog(`Office availability changed to ${newStatus}${reason ? ': ' + reason : ''}`, newStatus === 'available' ? 'success' : 'warning');
-        await loadOfficeStatus();
+        // Optimistic repaint: toggle corrects instantly even if the re-fetch fails
+        try { updateOfficeAvailabilityUI(newStatus, notice); } catch (e) {}
+        try { await loadOfficeStatus(); } catch (e) {}
         syncDrawer();
         if (newStatus === 'unavailable') {
           startOfficeLogoutCountdown();
