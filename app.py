@@ -410,6 +410,23 @@ try:
 except Exception as e:
     print(f"[WARN] Could not pre-create database: {e}")
 
+def _run_alter(cursor, connection, sql, ok_msg):
+    """Run a boot ALTER idempotently: two gunicorn workers racing the same
+    migration get duplicate-column/key instead of aborting the whole boot."""
+    try:
+        cursor.execute(sql)
+        connection.commit()
+        print(ok_msg)
+        return True
+    except mysql.connector.Error as e:
+        msg = str(e)
+        if ("Duplicate column name" in msg or "Duplicate key name" in msg
+                or "Can't DROP" in msg or "already exists" in msg):
+            print(f"[OK] Already applied, skipping: {ok_msg}")
+            return True
+        print(f"[WARN] Migration failed: {e}")
+        return False
+
 try:
     connection = mysql.connector.connect(**DB_CONFIG)
     if connection.is_connected():
@@ -426,74 +443,54 @@ try:
         cursor.execute("SHOW COLUMNS FROM officers LIKE 'status_reason'")
         if not cursor.fetchone():
             print("[WARN] officers table missing status_reason column! Adding...")
-            cursor.execute("ALTER TABLE officers ADD COLUMN status_reason TEXT DEFAULT NULL AFTER status")
-            connection.commit()
-            print("[OK] status_reason column added to officers")
+            _run_alter(cursor, connection, "ALTER TABLE officers ADD COLUMN status_reason TEXT DEFAULT NULL AFTER status", "[OK] status_reason column added to officers")
         
         cursor.execute("SHOW COLUMNS FROM officers LIKE 'desk_status'")
         if not cursor.fetchone():
             print("[WARN] officers table missing desk_status column! Adding...")
-            cursor.execute("ALTER TABLE officers ADD COLUMN desk_status ENUM('open','closed') DEFAULT 'open'")
-            connection.commit()
-            print("[OK] desk_status column added to officers")
+            _run_alter(cursor, connection, "ALTER TABLE officers ADD COLUMN desk_status ENUM('open','closed') DEFAULT 'open'", "[OK] desk_status column added to officers")
         
         cursor.execute("SHOW COLUMNS FROM officers LIKE 'pin_code'")
         if not cursor.fetchone():
             print("[WARN] officers table missing pin_code column! Adding...")
-            cursor.execute("ALTER TABLE officers ADD COLUMN pin_code VARCHAR(20) DEFAULT '1234'")
-            connection.commit()
-            print("[OK] pin_code column added to officers")
+            _run_alter(cursor, connection, "ALTER TABLE officers ADD COLUMN pin_code VARCHAR(20) DEFAULT '1234'", "[OK] pin_code column added to officers")
 
         cursor.execute("SHOW COLUMNS FROM officer_sessions LIKE 'login_location'")
         if not cursor.fetchone():
             print("[WARN] officer_sessions table missing login_location column! Adding...")
-            cursor.execute("ALTER TABLE officer_sessions ADD COLUMN login_location VARCHAR(255) DEFAULT NULL AFTER login_ip")
-            connection.commit()
-            print("[OK] login_location column added to officer_sessions")
+            _run_alter(cursor, connection, "ALTER TABLE officer_sessions ADD COLUMN login_location VARCHAR(255) DEFAULT NULL AFTER login_ip", "[OK] login_location column added to officer_sessions")
 
         cursor.execute("SHOW COLUMNS FROM officer_sessions LIKE 'logout_ip'")
         if not cursor.fetchone():
             print("[WARN] officer_sessions table missing logout_ip column! Adding...")
-            cursor.execute("ALTER TABLE officer_sessions ADD COLUMN logout_ip VARCHAR(45) AFTER login_location")
-            connection.commit()
-            print("[OK] logout_ip column added to officer_sessions")
+            _run_alter(cursor, connection, "ALTER TABLE officer_sessions ADD COLUMN logout_ip VARCHAR(45) AFTER login_location", "[OK] logout_ip column added to officer_sessions")
 
         cursor.execute("SHOW COLUMNS FROM officer_sessions LIKE 'device_info'")
         if not cursor.fetchone():
             print("[WARN] officer_sessions table missing device_info column! Adding...")
-            cursor.execute("ALTER TABLE officer_sessions ADD COLUMN device_info VARCHAR(255) NULL AFTER logout_ip")
-            connection.commit()
-            print("[OK] device_info column added to officer_sessions")
+            _run_alter(cursor, connection, "ALTER TABLE officer_sessions ADD COLUMN device_info VARCHAR(255) NULL AFTER logout_ip", "[OK] device_info column added to officer_sessions")
 
         cursor.execute("SHOW COLUMNS FROM general_complaints LIKE 'email'")
         if not cursor.fetchone():
             print("[WARN] general_complaints table missing email column! Adding...")
-            cursor.execute("ALTER TABLE general_complaints ADD COLUMN email VARCHAR(100) DEFAULT NULL AFTER contact")
-            connection.commit()
-            print("[OK] email column added to general_complaints")
+            _run_alter(cursor, connection, "ALTER TABLE general_complaints ADD COLUMN email VARCHAR(100) DEFAULT NULL AFTER contact", "[OK] email column added to general_complaints")
 
         # ── OFFICES: availability columns (token endpoint reads these first) ──
         cursor.execute("SHOW COLUMNS FROM offices LIKE 'availability_status'")
         if not cursor.fetchone():
             print("[WARN] offices table missing availability_status column! Adding...")
-            cursor.execute("ALTER TABLE offices ADD COLUMN availability_status VARCHAR(20) DEFAULT 'available' AFTER display_order")
-            connection.commit()
-            print("[OK] availability_status column added to offices")
+            _run_alter(cursor, connection, "ALTER TABLE offices ADD COLUMN availability_status VARCHAR(20) DEFAULT 'available' AFTER display_order", "[OK] availability_status column added to offices")
 
         cursor.execute("SHOW COLUMNS FROM offices LIKE 'unavailability_notice'")
         if not cursor.fetchone():
             print("[WARN] offices table missing unavailability_notice column! Adding...")
-            cursor.execute("ALTER TABLE offices ADD COLUMN unavailability_notice TEXT DEFAULT NULL AFTER availability_status")
-            connection.commit()
-            print("[OK] unavailability_notice column added to offices")
+            _run_alter(cursor, connection, "ALTER TABLE offices ADD COLUMN unavailability_notice TEXT DEFAULT NULL AFTER availability_status", "[OK] unavailability_notice column added to offices")
 
         # ── UNIVERSITY TOKENS: per-day token numbering (token_date + composite unique) ──
         cursor.execute("SHOW COLUMNS FROM university_tokens LIKE 'token_date'")
         if not cursor.fetchone():
             print("[WARN] university_tokens table missing token_date column! Adding...")
-            cursor.execute("ALTER TABLE university_tokens ADD COLUMN token_date DATE NULL AFTER token_number")
-            connection.commit()
-            print("[OK] token_date column added to university_tokens")
+            _run_alter(cursor, connection, "ALTER TABLE university_tokens ADD COLUMN token_date DATE NULL AFTER token_number", "[OK] token_date column added to university_tokens")
 
         cursor.execute("UPDATE university_tokens SET token_date = DATE(requested_at) WHERE token_date IS NULL")
         connection.commit()
@@ -502,31 +499,23 @@ try:
         cursor.execute("SHOW COLUMNS FROM university_tokens LIKE 'served_count_excluded'")
         if not cursor.fetchone():
             print("[WARN] university_tokens table missing served_count_excluded column! Adding...")
-            cursor.execute("ALTER TABLE university_tokens ADD COLUMN served_count_excluded TINYINT(1) DEFAULT 0 AFTER feedback_submitted_at")
-            connection.commit()
-            print("[OK] served_count_excluded column added to university_tokens")
+            _run_alter(cursor, connection, "ALTER TABLE university_tokens ADD COLUMN served_count_excluded TINYINT(1) DEFAULT 0 AFTER feedback_submitted_at", "[OK] served_count_excluded column added to university_tokens")
 
         cursor.execute("SHOW COLUMNS FROM university_tokens LIKE 'escalated_at'")
         if not cursor.fetchone():
             print("[WARN] university_tokens table missing escalated_at column! Adding...")
-            cursor.execute("ALTER TABLE university_tokens ADD COLUMN escalated_at TIMESTAMP NULL DEFAULT NULL AFTER served_count_excluded")
-            connection.commit()
-            print("[OK] escalated_at column added to university_tokens")
+            _run_alter(cursor, connection, "ALTER TABLE university_tokens ADD COLUMN escalated_at TIMESTAMP NULL DEFAULT NULL AFTER served_count_excluded", "[OK] escalated_at column added to university_tokens")
 
         cursor.execute("SHOW INDEX FROM university_tokens WHERE Column_name = 'token_number' AND Non_unique = 0")
         has_global_unique = cursor.fetchone()
         if has_global_unique:
             print("[WARN] Dropping global UNIQUE index on token_number (replaced by per-day unique)...")
-            cursor.execute("ALTER TABLE university_tokens DROP INDEX token_number")
-            connection.commit()
-            print("[OK] Dropped global UNIQUE index on token_number")
+            _run_alter(cursor, connection, "ALTER TABLE university_tokens DROP INDEX token_number", "[OK] Dropped global UNIQUE index on token_number")
 
         cursor.execute("SHOW INDEX FROM university_tokens WHERE Key_name = 'uq_token_number_date'")
         if not cursor.fetchone():
             print("[WARN] Adding per-day UNIQUE constraint uq_token_number_date...")
-            cursor.execute("ALTER TABLE university_tokens ADD CONSTRAINT uq_token_number_date UNIQUE (token_number, token_date)")
-            connection.commit()
-            print("[OK] Added per-day UNIQUE constraint uq_token_number_date")
+            _run_alter(cursor, connection, "ALTER TABLE university_tokens ADD CONSTRAINT uq_token_number_date UNIQUE (token_number, token_date)", "[OK] Added per-day UNIQUE constraint uq_token_number_date")
 
         # ── SEED DATA ──
         cursor.execute("SELECT COUNT(*) FROM offices")
