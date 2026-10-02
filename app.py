@@ -857,7 +857,8 @@ def auto_expire_sessions(conn=None):
 
 def auto_escalate_overdue_tokens(conn=None, batch_limit=20):
     """Move waiting tokens that stayed beyond their estimated wait to a linked
-    office with a matching service. Escalated tokens become priority (is_priority=1,
+    office (link alone is sufficient — no service guards). Escalated tokens
+    keep their original service and become priority (is_priority=1,
     escalated_at=NOW()) so the linked office calls them first. Chains allowed
     (A->B->C) but a token never returns to an office it was escalated from.
     Only available + active linked offices qualify as targets."""
@@ -924,7 +925,8 @@ def auto_escalate_overdue_tokens(conn=None, batch_limit=20):
             candidates = [i for i in linked_ids if i not in seen]
             if not candidates:
                 continue
-            # Qualify: active + available + matching service, pick shortest queue
+            # Qualify: active + available linked office, pick shortest queue.
+            # No service guards: link alone is sufficient to forward.
             best = None
             for target_id in candidates:
                 cursor.execute("""
@@ -937,21 +939,13 @@ def auto_escalate_overdue_tokens(conn=None, batch_limit=20):
                 if (office.get('availability_status') or 'available').lower() != 'available':
                     continue
                 cursor.execute("""
-                    SELECT id FROM services
-                    WHERE office_id = %s AND service_code = %s AND is_active = 1
-                    LIMIT 1
-                """, (target_id, tok['service_code'],))
-                svc = cursor.fetchone()
-                if not svc:
-                    continue
-                cursor.execute("""
                     SELECT COUNT(*) AS waiting_count FROM university_tokens
                     WHERE office_id = %s AND status = 'waiting'
                 """, (target_id,))
                 waiting_count = (cursor.fetchone() or {}).get('waiting_count', 0)
                 if best is None or waiting_count < best['waiting_count']:
                     best = {'office_id': target_id, 'office_name': office['office_name'],
-                            'service_id': svc['id'], 'waiting_count': waiting_count}
+                            'waiting_count': waiting_count}
             if best is None:
                 continue
             cursor.execute("SELECT office_name FROM offices WHERE id = %s", (tok['office_id'],))
@@ -959,9 +953,9 @@ def auto_escalate_overdue_tokens(conn=None, batch_limit=20):
             src_name = (src_row or {}).get('office_name', str(tok['office_id']))
             cursor.execute("""
                 UPDATE university_tokens
-                SET office_id = %s, service_id = %s, is_priority = 1, escalated_at = NOW()
+                SET office_id = %s, is_priority = 1, escalated_at = NOW()
                 WHERE id = %s AND status = 'waiting'
-            """, (best['office_id'], best['service_id'], tok['id'],))
+            """, (best['office_id'], tok['id'],))
             if cursor.rowcount:
                 cursor.execute("""
                     INSERT INTO queue_logs (token_number, officer_id, action, action_details, created_at)
