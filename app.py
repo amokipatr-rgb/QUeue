@@ -472,6 +472,21 @@ try:
             connection.commit()
             print("[OK] email column added to general_complaints")
 
+        # ── OFFICES: availability columns (token endpoint reads these first) ──
+        cursor.execute("SHOW COLUMNS FROM offices LIKE 'availability_status'")
+        if not cursor.fetchone():
+            print("[WARN] offices table missing availability_status column! Adding...")
+            cursor.execute("ALTER TABLE offices ADD COLUMN availability_status VARCHAR(20) DEFAULT 'available' AFTER display_order")
+            connection.commit()
+            print("[OK] availability_status column added to offices")
+
+        cursor.execute("SHOW COLUMNS FROM offices LIKE 'unavailability_notice'")
+        if not cursor.fetchone():
+            print("[WARN] offices table missing unavailability_notice column! Adding...")
+            cursor.execute("ALTER TABLE offices ADD COLUMN unavailability_notice TEXT DEFAULT NULL AFTER availability_status")
+            connection.commit()
+            print("[OK] unavailability_notice column added to offices")
+
         # ── UNIVERSITY TOKENS: per-day token numbering (token_date + composite unique) ──
         cursor.execute("SHOW COLUMNS FROM university_tokens LIKE 'token_date'")
         if not cursor.fetchone():
@@ -1236,6 +1251,13 @@ def admin_create_service():
     
     if not office_id:
         return jsonify({'success': False, 'message': 'Office ID is required'}), 400
+
+    try:
+        estimated_time_minutes = int(estimated_time_minutes)
+    except (TypeError, ValueError):
+        estimated_time_minutes = 15
+    if estimated_time_minutes < 1 or estimated_time_minutes > 480:
+        return jsonify({'success': False, 'message': 'Service time must be between 1 and 480 minutes'}), 400
     
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
@@ -1290,6 +1312,13 @@ def admin_update_service(service_id):
     
     if not service_code or not service_name:
         return jsonify({'success': False, 'message': 'Service code and service name are required'}), 400
+
+    try:
+        estimated_time_minutes = int(estimated_time_minutes)
+    except (TypeError, ValueError):
+        estimated_time_minutes = 15
+    if estimated_time_minutes < 1 or estimated_time_minutes > 480:
+        return jsonify({'success': False, 'message': 'Service time must be between 1 and 480 minutes'}), 400
     
     conn = get_db_connection()
     cursor = conn.cursor(dictionary=True)
@@ -1815,11 +1844,13 @@ def get_office_services(office_id):
 # ============================================
 @app.route('/api/student/token', methods=['POST'])
 def generate_student_token():
-    data = request.get_json()
+    data = request.get_json(silent=True) or {}
 
     office_id = data.get('office_id')
     service_id = data.get('service_id')
     service_code = data.get('service_code')
+    if not office_id or not service_id or not service_code:
+        return jsonify({'success': False, 'message': 'Office and service are required'}), 400
     student_name = data.get('student_name')
     student_id = data.get('student_id')
     student_phone = data.get('student_phone')
@@ -1828,10 +1859,10 @@ def generate_student_token():
 
     is_priority = 1 if service_code and service_code.upper() == 'PS' else 0
 
-    conn = get_db_connection()
-    cursor = conn.cursor(dictionary=True)
-
     try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
         cursor.execute("""
             SELECT id, office_code, office_name, location,
                 COALESCE(NULLIF(TRIM(availability_status), ''), 'available') AS availability_status,
@@ -1921,7 +1952,7 @@ def generate_student_token():
         ahead_count = ahead['ahead_count'] if ahead else 0
 
         queue_position = ahead_count + 1
-        estimated_wait = ahead_count * service['estimated_time_minutes']
+        estimated_wait = ahead_count * (service['estimated_time_minutes'] or 15)
 
         cursor.execute("""
             INSERT INTO university_tokens
@@ -1961,7 +1992,8 @@ def generate_student_token():
         })
 
     except Exception as e:
-        conn.rollback()
+        try: conn.rollback()
+        except: pass
         logger.error(f"Token generation error: {e}")
         logger.error(traceback.format_exc())
 
@@ -1971,8 +2003,10 @@ def generate_student_token():
         }), 500
 
     finally:
-        cursor.close()
-        conn.close()
+        try: cursor.close()
+        except: pass
+        try: conn.close()
+        except: pass
 
 
 # ============================================

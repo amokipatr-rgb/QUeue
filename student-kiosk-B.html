@@ -1231,6 +1231,7 @@ async function doApiCall(name, studentNumber, parentPhone){
     });
     const data=await res.json();
     loadingOverlay.style.display='none';
+    const serverError = res.status >= 500;
 
     if(data.success){
       const ts=now();
@@ -1292,11 +1293,11 @@ async function doApiCall(name, studentNumber, parentPhone){
           '</div>'+
         '</div>';
     } else {
-      restoreStep3(data.message||'Failed to generate token. Please try again.');
+      restoreStep3(serverError ? 'Something went wrong. If it persists, please inform the IT officer.' : (data.message||'Failed to generate token. Please try again.'));
     }
   } catch(err){
     loadingOverlay.style.display='none';
-    restoreStep3('Network error. Please check your connection and try again.');
+    restoreStep3('Something went wrong. If it persists, please inform the IT officer.');
   }
 }
 
