@@ -2729,6 +2729,19 @@ def get_officer_queue(officer_id):
         completed_row = cursor.fetchone()
         completed_today = completed_row['cnt'] if completed_row else 0
 
+        cursor.execute("""
+            SELECT COUNT(DISTINCT t.id) as cnt FROM university_tokens t
+            WHERE t.office_id = %s
+              AND t.status = 'completed'
+              AND COALESCE(t.served_count_excluded, 0) = 0
+              AND DATE(t.completed_at) = CURDATE()
+              AND EXISTS (SELECT 1 FROM queue_logs q
+                          WHERE q.token_number = t.token_number AND q.action = 'escalated'
+                            AND DATE(q.created_at) = CURDATE())
+        """, (officer['office_id'],))
+        esc_row = cursor.fetchone()
+        escalated_completed_today = esc_row['cnt'] if esc_row else 0
+
         cursor.close()
         conn.close()
 
@@ -2740,7 +2753,8 @@ def get_officer_queue(officer_id):
             'office_code': officer['office_code'],
             'office_name': officer['office_name'],
             'location': officer.get('location', ''),
-            'completed_today': completed_today
+            'completed_today': completed_today,
+            'escalated_completed_today': escalated_completed_today
         })
 
     except Exception as e:
