@@ -875,7 +875,7 @@ def auto_escalate_overdue_tokens(conn=None, batch_limit=20):
         # Overdue waiting tokens with an estimate to compare against
         cursor.execute("""
             SELECT t.id, t.token_number, t.office_id, t.service_id, t.service_code,
-                   t.student_name, t.estimated_wait_minutes
+                   t.student_name, t.estimated_wait_minutes, t.requested_at
             FROM university_tokens t
             WHERE t.status = 'waiting'
               AND t.estimated_wait_minutes IS NOT NULL
@@ -911,11 +911,13 @@ def auto_escalate_overdue_tokens(conn=None, batch_limit=20):
             linked_ids = [r['linked_office_id'] for r in cursor.fetchall()]
             if not linked_ids:
                 continue
-            # Offices this token already escalated from (chain guard: no ping-pong)
+            # Offices this token already escalated from (chain guard: no ping-pong,
+            # date-scoped so recycled numbers don't inherit yesterday's history)
             cursor.execute("""
                 SELECT DISTINCT action_details FROM queue_logs
                 WHERE token_number = %s AND action = 'escalated'
-            """, (tok['token_number'],))
+                  AND DATE(created_at) = DATE(%s)
+            """, (tok['token_number'], tok['requested_at'],))
             seen = set()
             for r in cursor.fetchall():
                 try:
@@ -1727,12 +1729,31 @@ def admin_create_office_link():
 def admin_delete_office_link(link_id):
     try:
         conn = get_db_connection()
-        cursor = conn.cursor()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT source_office_id, linked_office_id FROM office_links WHERE id = %s", (link_id,))
+        link = cursor.fetchone()
+        if not link:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'message': 'Link not found'}), 404
+        src_id = link['source_office_id']
+        tgt_id = link['linked_office_id']
         cursor.execute("DELETE FROM office_links WHERE id = %s", (link_id,))
+        # Unwind: demote waiting tokens that arrived via this link back to
+        # normal priority so the offices return to normal process immediately.
+        cursor.execute("""
+            UPDATE university_tokens t
+            SET t.is_priority = 0, t.escalated_at = NULL
+            WHERE t.office_id = %s AND t.status = 'waiting' AND t.is_priority = 1
+              AND EXISTS (SELECT 1 FROM queue_logs q
+                          WHERE q.token_number = t.token_number AND q.action = 'escalated'
+                            AND q.action_details LIKE %s)
+        """, (tgt_id, f'Escalated from {src_id} %'))
+        reset_count = cursor.rowcount
         conn.commit()
         cursor.close()
         conn.close()
-        return jsonify({'success': True, 'message': 'Link removed'})
+        return jsonify({'success': True, 'message': f'Link removed, {reset_count} token(s) returned to normal queue'})
     except Exception as e:
         logger.error(f"Delete office link error: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
@@ -2720,6 +2741,7 @@ def get_officer_queue(officer_id):
                    TIMESTAMPDIFF(MINUTE, t.requested_at, NOW()) as waiting_minutes,
                    (SELECT action_details FROM queue_logs q
                      WHERE q.token_number = t.token_number AND q.action = 'escalated'
+                       AND DATE(q.created_at) = DATE(t.requested_at)
                      ORDER BY q.created_at DESC LIMIT 1) AS escalated_from_office
             FROM university_tokens t
             LEFT JOIN services s ON t.service_id = s.id
@@ -2733,6 +2755,7 @@ def get_officer_queue(officer_id):
                    t.service_code, s.service_name, t.student_name,
                    (SELECT action_details FROM queue_logs q
                      WHERE q.token_number = t.token_number AND q.action = 'escalated'
+                       AND DATE(q.created_at) = DATE(t.requested_at)
                      ORDER BY q.created_at DESC LIMIT 1) AS escalated_from_office
             FROM university_tokens t
             LEFT JOIN services s ON t.service_id = s.id
@@ -2760,7 +2783,7 @@ def get_officer_queue(officer_id):
               AND DATE(t.completed_at) = CURDATE()
               AND EXISTS (SELECT 1 FROM queue_logs q
                           WHERE q.token_number = t.token_number AND q.action = 'escalated'
-                            AND DATE(q.created_at) = CURDATE())
+                            AND DATE(q.created_at) = DATE(t.requested_at))
         """, (officer['office_id'],))
         esc_row = cursor.fetchone()
         escalated_completed_today = esc_row['cnt'] if esc_row else 0
