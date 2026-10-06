@@ -119,6 +119,12 @@
     .btn-sm:hover { filter: brightness(0.92); }
     .btn-blue { background: var(--blue-soft); color: var(--blue); border: 1px solid rgba(59,130,246,0.2); }
     .btn-red  { background: var(--red-soft);  color: var(--red);  border: 1px solid var(--red-border); }
+    /* SMOOTH FEEL: tactile press feedback on every button */
+    button { -webkit-tap-highlight-color: transparent; }
+    .call-btn:active, .action-btn:active, .mbtn:active, .post-btn:active,
+    .avail-toggle:active, .btn-sm:active, .icon-btn:active, .logout-btn:active,
+    .pin-toggle-eye:active { transform: scale(0.97); }
+    .logout-btn, .icon-btn { transition: all 0.15s; }
 
     /* QUEUE */
     .queue-scroll { max-height: 520px; overflow-y: auto; }
