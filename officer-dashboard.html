@@ -966,6 +966,41 @@
     } catch(e) { console.log('Audio error:', e); }
   }
 
+  // Kenyan-matched local voice ladder: en-KE first (what users know),
+  // then female English, then any English, else device default.
+  let _cachedLocalVoice = null;
+  function pickLocalVoice() {
+    try {
+      const vs = speechSynthesis.getVoices() || [];
+      if (!vs.length) return _cachedLocalVoice;
+      const lower = function(s) { return (s || '').toLowerCase(); };
+      const v = vs.find(function(x) { return lower(x.lang).indexOf('en-ke') === 0; }) ||
+        vs.find(function(x) { return lower(x.lang).indexOf('en') === 0 && /female|zira|samantha|google uk english female|natural/i.test(x.name || ''); }) ||
+        vs.find(function(x) { return lower(x.lang).indexOf('en') === 0; });
+      if (v) _cachedLocalVoice = v;
+      return _cachedLocalVoice;
+    } catch (e) { return _cachedLocalVoice; }
+  }
+  try {
+    if ('speechSynthesis' in window) {
+      speechSynthesis.onvoiceschanged = function() { pickLocalVoice(); };
+    }
+  } catch (e) {}
+
+  function speakLocalOfficer(text) {
+    try {
+      if (!soundEnabled) return;
+      if (!('speechSynthesis' in window)) return;
+      const u = new SpeechSynthesisUtterance(text);
+      u.rate = 0.95;
+      u.pitch = 1;
+      const v = pickLocalVoice();
+      if (v) u.voice = v;
+      speechSynthesis.cancel();
+      speechSynthesis.speak(u);
+    } catch (e) { console.error('Local voice error:', e); }
+  }
+
   async function playTokenVoice(tokenNumber, studentName) {
     if (!soundEnabled) return;
     const spelled = tokenNumber.split('').join(' ');
@@ -983,8 +1018,10 @@
         const audio = new Audio(URL.createObjectURL(blob));
         voiceQueue.push(audio);
         playNextVoice();
+      } else {
+        speakLocalOfficer(text);
       }
-    } catch (e) { console.error('Token voice error:', e); }
+    } catch (e) { console.error('Token voice error:', e); speakLocalOfficer(text); }
   }
 
   function playNextVoice() {
@@ -1059,8 +1096,10 @@
         const audio = new Audio(URL.createObjectURL(blob));
         voiceQueue.push(audio);
         playNextVoice();
+      } else {
+        speakLocalOfficer(text);
       }
-    } catch (e) { console.error('Escalation voice error:', e); }
+    } catch (e) { console.error('Escalation voice error:', e); speakLocalOfficer(text); }
   }
 
   function checkAndNotifyEscalations(waitingList) {
@@ -1105,8 +1144,10 @@
         const audio = new Audio(URL.createObjectURL(blob));
         voiceQueue.push(audio);
         playNextVoice();
+      } else {
+        speakLocalOfficer(text);
       }
-    } catch (e) { console.error('Reminder voice error:', e); }
+    } catch (e) { console.error('Reminder voice error:', e); speakLocalOfficer(text); }
   }
 
   function checkWaitingReminder(waitingList) {
@@ -1255,8 +1296,10 @@
         const audio = new Audio(URL.createObjectURL(blob));
         voiceQueue.push(audio);
         playNextVoice();
+      } else {
+        speakLocalOfficer(text);
       }
-    } catch (e) { console.error('Welcome voice error:', e); }
+    } catch (e) { console.error('Welcome voice error:', e); speakLocalOfficer(text); }
   }
 
 

@@ -1089,13 +1089,124 @@
         setInterval(updateDateTime, 1000);
 
         // ── VOICE WITH STUDENT NAMES ──
+        let voiceInflight = new Set();
+
+        // Kenyan-matched local voice ladder: en-KE first (what users know),
+        // then female English, then any English, else device default.
+        let _cachedLocalVoice = null;
+        function pickLocalVoice() {
+            try {
+                const vs = speechSynthesis.getVoices() || [];
+                if (!vs.length) return _cachedLocalVoice;
+                const lower = function(s) { return (s || '').toLowerCase(); };
+                const v = vs.find(function(x) { return lower(x.lang).indexOf('en-ke') === 0; }) ||
+                    vs.find(function(x) { return lower(x.lang).indexOf('en') === 0 && /female|zira|samantha|google uk english female|natural/i.test(x.name || ''); }) ||
+                    vs.find(function(x) { return lower(x.lang).indexOf('en') === 0; });
+                if (v) _cachedLocalVoice = v;
+                return _cachedLocalVoice;
+            } catch (e) { return _cachedLocalVoice; }
+        }
+        try {
+            if ('speechSynthesis' in window) {
+                speechSynthesis.onvoiceschanged = function() { pickLocalVoice(); };
+            }
+        } catch (e) {}
+
+        function speakLocal(text) {
+            return new Promise(function(resolve) {
+                try {
+                    if (!('speechSynthesis' in window)) return resolve(false);
+                    const u = new SpeechSynthesisUtterance(text);
+                    u.rate = 0.95;
+                    u.pitch = 1;
+                    const v = pickLocalVoice();
+                    if (v) u.voice = v;
+                    let done = false;
+                    const finish = function(ok) { if (!done) { done = true; resolve(ok); } };
+                    u.onend = function() { finish(true); };
+                    u.onerror = function() { finish(false); };
+                    setTimeout(function() { finish(false); }, 60000);
+                    speechSynthesis.cancel();
+                    speechSynthesis.speak(u);
+                } catch (e) { resolve(false); }
+            });
+        }
+
+        async function fetchTTSBlob(text) {
+            const controller = new AbortController();
+            const tid = setTimeout(function() { controller.abort(); }, 30000);
+            try {
+                const response = await fetch('/api/tts', {
+                    method: 'POST',
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ text }),
+                    signal: controller.signal
+                });
+                clearTimeout(tid);
+                if (!response.ok) return null;
+                return await response.blob();
+            } catch (e) {
+                clearTimeout(tid);
+                return null;
+            }
+        }
+
+        function queueServerAudio(blob) {
+            const el = document.createElement('video');
+            el.playsInline = true;
+            el.style.cssText = 'position:fixed;width:0;height:0;opacity:0;pointer-events:none';
+            el.src = URL.createObjectURL(blob);
+            el.load();
+            document.body.appendChild(el);
+            audioQueue.push(el);
+            playNextAudio();
+        }
+
+        function voiceStatusDone(label) {
+            const vi = document.getElementById('voiceIndicator');
+            const vt = document.getElementById('voiceText');
+            vt.textContent = `Done: ${label}`;
+            vi.style.borderColor = 'rgba(0,230,118,0.3)';
+            setTimeout(() => {
+                vt.textContent = 'Voice SMQSS Ready';
+                vi.style.borderColor = 'rgba(255,255,255,0.08)';
+            }, 2000);
+        }
+
+        function voiceStatusLocal(label) {
+            const vi = document.getElementById('voiceIndicator');
+            const vt = document.getElementById('voiceText');
+            vt.textContent = `Local voice: ${label}`;
+            vi.style.borderColor = 'rgba(33,150,243,0.5)';
+            setTimeout(() => {
+                vt.textContent = 'Voice SMQSS Ready';
+                vi.style.borderColor = 'rgba(255,255,255,0.08)';
+            }, 2000);
+        }
+
+        function voiceStatusRetry() {
+            const vi = document.getElementById('voiceIndicator');
+            const vt = document.getElementById('voiceText');
+            vt.textContent = 'Voice failed — retrying...';
+            vi.style.borderColor = 'rgba(255,193,7,0.4)';
+            setTimeout(() => {
+                if (vt.textContent.indexOf('retrying') !== -1) {
+                    vt.textContent = 'Voice SMQSS Ready';
+                    vi.style.borderColor = 'rgba(255,255,255,0.08)';
+                }
+            }, 4000);
+        }
+
         async function generateVoice(token, studentName, officeName, actionType) {
             const annKey = `${token}|${officeName}|${actionType}`;
             const annNow = Date.now();
             if (recentAnnouncements[annKey] && annNow - recentAnnouncements[annKey] < 1000) {
-                return;
+                return false;
             }
-            recentAnnouncements[annKey] = annNow;
+            if (voiceInflight.has(annKey)) {
+                return false;
+            }
+            voiceInflight.add(annKey);
 
             const vi = document.getElementById('voiceIndicator');
             const vt = document.getElementById('voiceText');
@@ -1128,34 +1239,29 @@
             
             vt.textContent = `Announcing ${token}...`;
             vi.style.borderColor = 'rgba(255,193,7,0.4)';
-            
+
             try {
-                const response = await fetch('/api/tts', {
-                    method: 'POST',
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ text })
-                });
-                if (response.ok) {
-                    const blob = await response.blob();
-                    const el = document.createElement('video');
-                    el.playsInline = true;
-                    el.style.cssText = 'position:fixed;width:0;height:0;opacity:0;pointer-events:none';
-                    el.src = URL.createObjectURL(blob);
-                    el.load();
-                    document.body.appendChild(el);
-                    audioQueue.push(el); 
-                    playNextAudio();
-                    vt.textContent = `Done: ${token}`;
-                    vi.style.borderColor = 'rgba(0,230,118,0.3)';
-                    setTimeout(() => { 
-                        vt.textContent = 'Voice SMQSS Ready'; 
-                        vi.style.borderColor = 'rgba(255,255,255,0.08)'; 
-                    }, 2000);
+                const blob = await fetchTTSBlob(text);
+                if (blob) {
+                    queueServerAudio(blob);
+                    voiceStatusDone(token);
+                    recentAnnouncements[annKey] = Date.now();
+                    return true;
                 }
-            } catch(e) { 
-                console.error('Voice error:', e); 
-                vt.textContent = 'Voice Error'; 
-                setTimeout(() => { vt.textContent = 'Voice SMQSS Ready'; }, 2000); 
+                const localOk = await speakLocal(text);
+                if (localOk) {
+                    voiceStatusLocal(token);
+                    recentAnnouncements[annKey] = Date.now();
+                    return true;
+                }
+                voiceStatusRetry();
+                return false;
+            } catch(e) {
+                console.error('Voice error:', e);
+                voiceStatusRetry();
+                return false;
+            } finally {
+                voiceInflight.delete(annKey);
             }
         }
 
@@ -1182,9 +1288,12 @@
             const annKey = `batch|${batchSig}|${officeName}|called`;
             const annNow = Date.now();
             if (recentAnnouncements[annKey] && annNow - recentAnnouncements[annKey] < 5000) {
-                return;
+                return false;
             }
-            recentAnnouncements[annKey] = annNow;
+            if (voiceInflight.has(annKey)) {
+                return false;
+            }
+            voiceInflight.add(annKey);
 
             const vi = document.getElementById('voiceIndicator');
             const vt = document.getElementById('voiceText');
@@ -1203,34 +1312,29 @@
 
             vt.textContent = `Announcing ${batchSig}...`;
             vi.style.borderColor = 'rgba(255,193,7,0.4)';
-            
+
             try {
-                const response = await fetch('/api/tts', {
-                    method: 'POST',
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ text })
-                });
-                if (response.ok) {
-                    const blob = await response.blob();
-                    const el = document.createElement('video');
-                    el.playsInline = true;
-                    el.style.cssText = 'position:fixed;width:0;height:0;opacity:0;pointer-events:none';
-                    el.src = URL.createObjectURL(blob);
-                    el.load();
-                    document.body.appendChild(el);
-                    audioQueue.push(el); 
-                    playNextAudio();
-                    vt.textContent = `Done: ${batchSig}`;
-                    vi.style.borderColor = 'rgba(0,230,118,0.3)';
-                    setTimeout(() => { 
-                        vt.textContent = 'Voice SMQSS Ready'; 
-                        vi.style.borderColor = 'rgba(255,255,255,0.08)'; 
-                    }, 2000);
+                const blob = await fetchTTSBlob(text);
+                if (blob) {
+                    queueServerAudio(blob);
+                    voiceStatusDone(batchSig);
+                    recentAnnouncements[annKey] = Date.now();
+                    return true;
                 }
-            } catch(e) { 
-                console.error('Voice error:', e); 
-                vt.textContent = 'Voice Error'; 
-                setTimeout(() => { vt.textContent = 'Voice SMQSS Ready'; }, 2000); 
+                const localOk = await speakLocal(text);
+                if (localOk) {
+                    voiceStatusLocal(batchSig);
+                    recentAnnouncements[annKey] = Date.now();
+                    return true;
+                }
+                voiceStatusRetry();
+                return false;
+            } catch(e) {
+                console.error('Voice error:', e);
+                voiceStatusRetry();
+                return false;
+            } finally {
+                voiceInflight.delete(annKey);
             }
         }
 
@@ -1322,9 +1426,9 @@
                     if (data.recalls?.length) {
                         for (const recall of data.recalls) {
                             if (!announcedRecalls.has(recall.id)) {
-                                announcedRecalls.add(recall.id);
                                 showRecallBanner(recall.token_number, recall.office_name, recall.student_name);
-                                await generateVoice(recall.token_number, recall.student_name, recall.office_name, 'recall');
+                                const ok = await generateVoice(recall.token_number, recall.student_name, recall.office_name, 'recall');
+                                if (ok) announcedRecalls.add(recall.id);
                             }
                         }
                         if (announcedRecalls.size > 50) {
@@ -1516,11 +1620,14 @@
                     const calledSet = new Set(calledList.map(t => t.token_number));
                     const newTokens = calledList.filter(t => !lastCalledTokens[office.office_code].has(t.token_number));
                     if (newTokens.length) {
-                        newTokens.forEach(t => lastCalledTokens[office.office_code].add(t.token_number));
                         if (newTokens.length > 1) {
-                            generateVoiceBatch(newTokens, office.office_name);
+                            generateVoiceBatch(newTokens, office.office_name).then(function(ok) {
+                                if (ok) newTokens.forEach(t => lastCalledTokens[office.office_code].add(t.token_number));
+                            });
                         } else {
-                            generateVoice(newTokens[0].token_number, newTokens[0].student_name, office.office_name, 'called');
+                            generateVoice(newTokens[0].token_number, newTokens[0].student_name, office.office_name, 'called').then(function(ok) {
+                                if (ok) lastCalledTokens[office.office_code].add(newTokens[0].token_number);
+                            });
                         }
                     }
                     for (const t of [...lastCalledTokens[office.office_code]]) {
