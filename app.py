@@ -431,7 +431,9 @@ try:
     connection = mysql.connector.connect(**DB_CONFIG)
     if connection.is_connected():
         print("[OK] Successfully connected to the database")
-        cursor = connection.cursor()
+        # Buffered: SHOW/SELECT + fetchone() must not leave pending rows
+        # ("Unread result found" would abort the whole boot sequence).
+        cursor = connection.cursor(buffered=True)
 
         # ── CREATE ALL TABLES (IF NOT EXISTS) ──
         for name, sql in _ALL_TABLES:
@@ -568,6 +570,19 @@ _SERVER_START = datetime.now()
 
 try:
     import edge_tts
+    # Microsoft migrated Read Aloud off speech.platform.bing.com (handshake 403s
+    # since Oct 2026). Retarget to api.msedgeservices.com with the client token
+    # as Ocp-Apim-Subscription-Key (verified working 2026-10-12, incl. en-KE voices).
+    try:
+        from edge_tts import constants as _edge_constants
+        from edge_tts import communicate as _edge_communicate
+        _EDGE_WSS_URL = ("wss://api.msedgeservices.com/tts/cognitiveservices/websocket/v1"
+                         "?Ocp-Apim-Subscription-Key=6A5AA1D4EAFF4E9FB37E23D68491D6F4")
+        _edge_constants.WSS_URL = _EDGE_WSS_URL
+        _edge_communicate.WSS_URL = _EDGE_WSS_URL
+        print("[OK] Edge TTS endpoint retargeted to api.msedgeservices.com")
+    except Exception as _edge_patch_e:
+        print(f"[WARN] Could not retarget Edge TTS endpoint: {_edge_patch_e}")
     print(f"[OK] Edge TTS ready (voice: {_TTS_VOICE})")
 except ImportError:
     print("[WARN] edge-tts not installed. Voice announcements disabled.")
