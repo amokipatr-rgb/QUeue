@@ -5184,8 +5184,8 @@ def text_to_speech():
 
     if not text:
         return jsonify({'success': False, 'message': 'Text is required'}), 400
-    if len(text) > 1000:
-        return jsonify({'success': False, 'message': 'Text too long'}), 400
+    if len(text) > 5000:
+        return jsonify({'success': False, 'message': 'Text too long (max 5000 characters)'}), 400
 
     try:
         async def _synthesize():
