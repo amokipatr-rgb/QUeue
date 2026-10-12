@@ -5161,11 +5161,16 @@ def text_to_speech():
     if not _TTS_AVAILABLE:
         return jsonify({'success': False, 'message': 'TTS engine not available'}), 503
 
-    data = request.get_json()
-    text = data.get('text', '').strip()
+    data = request.get_json(silent=True) or {}
+    text = data.get('text', '')
+    if not isinstance(text, str):
+        return jsonify({'success': False, 'message': 'Text must be a string'}), 400
+    text = text.strip()
 
     if not text:
         return jsonify({'success': False, 'message': 'Text is required'}), 400
+    if len(text) > 1000:
+        return jsonify({'success': False, 'message': 'Text too long'}), 400
 
     try:
         async def _synthesize():
@@ -5176,7 +5181,11 @@ def text_to_speech():
                     audio += chunk["data"]
             return audio
 
-        audio_data = asyncio.run(_synthesize())
+        try:
+            audio_data = asyncio.run(asyncio.wait_for(_synthesize(), timeout=25))
+        except asyncio.TimeoutError:
+            logger.error("TTS error: synthesis timed out after 25s")
+            return jsonify({'success': False, 'message': 'TTS provider timed out'}), 504
 
         if not audio_data:
             return jsonify({'success': False, 'message': 'No audio generated'}), 500
@@ -5184,6 +5193,10 @@ def text_to_speech():
         return audio_data, 200, {'Content-Type': 'audio/mpeg'}
 
     except Exception as e:
+        msg = str(e)
+        if '403' in msg or 'Invalid response status' in msg:
+            logger.error("TTS error: provider handshake rejected (403) — Microsoft endpoint may have moved; client voices fall back to local speech")
+            return jsonify({'success': False, 'message': 'TTS provider handshake rejected'}), 502
         logger.error(f"TTS error: {e}")
         return jsonify({'success': False, 'message': str(e)}), 500
 

@@ -966,6 +966,23 @@
     } catch(e) { console.log('Audio error:', e); }
   }
 
+  function speakLocalOfficer(text) {
+    try {
+      if (!soundEnabled) return;
+      if (!('speechSynthesis' in window)) return;
+      const u = new SpeechSynthesisUtterance(text);
+      u.rate = 1;
+      u.pitch = 1;
+      try {
+        const vs = speechSynthesis.getVoices() || [];
+        const en = vs.find(function(v) { return v.lang && v.lang.toLowerCase().indexOf('en') === 0; });
+        if (en) u.voice = en;
+      } catch (e) {}
+      speechSynthesis.cancel();
+      speechSynthesis.speak(u);
+    } catch (e) { console.error('Local voice error:', e); }
+  }
+
   async function playTokenVoice(tokenNumber, studentName) {
     if (!soundEnabled) return;
     const spelled = tokenNumber.split('').join(' ');
@@ -983,8 +1000,10 @@
         const audio = new Audio(URL.createObjectURL(blob));
         voiceQueue.push(audio);
         playNextVoice();
+      } else {
+        speakLocalOfficer(text);
       }
-    } catch (e) { console.error('Token voice error:', e); }
+    } catch (e) { console.error('Token voice error:', e); speakLocalOfficer(text); }
   }
 
   function playNextVoice() {
@@ -1059,8 +1078,10 @@
         const audio = new Audio(URL.createObjectURL(blob));
         voiceQueue.push(audio);
         playNextVoice();
+      } else {
+        speakLocalOfficer(text);
       }
-    } catch (e) { console.error('Escalation voice error:', e); }
+    } catch (e) { console.error('Escalation voice error:', e); speakLocalOfficer(text); }
   }
 
   function checkAndNotifyEscalations(waitingList) {
@@ -1105,8 +1126,10 @@
         const audio = new Audio(URL.createObjectURL(blob));
         voiceQueue.push(audio);
         playNextVoice();
+      } else {
+        speakLocalOfficer(text);
       }
-    } catch (e) { console.error('Reminder voice error:', e); }
+    } catch (e) { console.error('Reminder voice error:', e); speakLocalOfficer(text); }
   }
 
   function checkWaitingReminder(waitingList) {
@@ -1255,8 +1278,10 @@
         const audio = new Audio(URL.createObjectURL(blob));
         voiceQueue.push(audio);
         playNextVoice();
+      } else {
+        speakLocalOfficer(text);
       }
-    } catch (e) { console.error('Welcome voice error:', e); }
+    } catch (e) { console.error('Welcome voice error:', e); speakLocalOfficer(text); }
   }
 
 
