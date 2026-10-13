@@ -608,7 +608,7 @@
         </div>
         <div>
           <label style="display:block;font-size:13px;font-weight:600;color:var(--text-primary);margin-bottom:6px">Back at</label>
-          <input type="time" id="breakBackTime" style="width:100%;padding:10px 12px;border:1.5px solid var(--border-mid);border-radius:10px;font-size:13px;font-family:var(--font);outline:none">
+          <div id="breakBackOptions" style="display:flex;flex-direction:column;gap:8px"></div>
         </div>
       </div>
     </div>
@@ -1763,9 +1763,9 @@
     input.value = '';
     const breakWrap = document.getElementById('breakFieldsWrap');
     const breakType = document.getElementById('breakTypeSelect');
-    const breakTime = document.getElementById('breakBackTime');
+    const breakOpts = document.getElementById('breakBackOptions');
     breakType.value = '';
-    breakTime.value = '';
+    breakOpts.innerHTML = '';
     breakWrap.style.display = 'none';
     if (newStatus === 'available') {
       icon.style.background = 'var(--green-soft)';
@@ -1788,6 +1788,16 @@
       confirmBtn.style.color = '#fff';
       input.style.display = 'none';
       breakWrap.style.display = 'flex';
+      // Preset back times from now: 20 min minimum (preselected), then 30/45/60
+      breakOpts.innerHTML = [20, 30, 45, 60].map(function(mins, idx) {
+        const d = new Date(Date.now() + mins * 60000);
+        const hh = String(d.getHours()).padStart(2, '0');
+        const mm = String(d.getMinutes()).padStart(2, '0');
+        const t = hh + ':' + mm;
+        return `<label style="display:flex;align-items:center;gap:10px;padding:10px 14px;border:1.5px solid var(--border-mid);border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;min-height:44px;touch-action:manipulation">` +
+          `<input type="radio" name="breakBackAt" value="${t}"${idx === 0 ? ' checked' : ''} style="width:16px;height:16px;accent-color:#b45309">` +
+          `<span>${t} <span style="color:var(--text-muted);font-weight:500">(${mins} min)</span></span></label>`;
+      }).join('');
     } else {
       icon.style.background = 'var(--red-soft)';
       icon.style.color = 'var(--red)';
@@ -1844,7 +1854,8 @@
     let reason = '';
     if (newStatus === 'on_break') {
       const bType = document.getElementById('breakTypeSelect').value;
-      const bTime = document.getElementById('breakBackTime').value;
+      const picked = document.querySelector('input[name="breakBackAt"]:checked');
+      const bTime = picked ? picked.value : '';
       if (!bType) {
         showToast('Please select a break type (Breakfast or Lunch)', 'warning');
         document.getElementById('breakTypeSelect').focus();
@@ -1853,7 +1864,6 @@
       }
       if (!bTime) {
         showToast('Please select what time you will be back', 'warning');
-        document.getElementById('breakBackTime').focus();
         setLoading(btn, false);
         return;
       }
