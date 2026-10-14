@@ -1,0 +1,302 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bottlenecks — SMQSS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --green-dark: #1a3c2c;
+            --green-mid: #2a5a3a;
+            --green-light: #e8f5e9;
+            --bg: #f0f2f5;
+            --white: #ffffff;
+            --border: #e4e8ee;
+            --text-primary: #0a0f18;
+            --text-secondary: #2a3a4e;
+            --text-muted: #4a5a6e;
+            --red: #e53935;
+            --red-light: #ffebee;
+            --amber: #ef6c00;
+            --amber-light: #fff3e0;
+            --success: #00a84f;
+            --success-light: #e8f5e9;
+            --blue: #1565c0;
+            --blue-light: #e3f2fd;
+            --shadow-sm: 0 1px 4px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04);
+            --radius: 12px;
+            --radius-sm: 8px;
+            --sidebar-width: 256px;
+            --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 500; background: var(--bg); min-height: 100vh; display: flex; color: var(--text-primary); -webkit-font-smoothing: antialiased; }
+        button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+        .sidebar { width: var(--sidebar-width); background: var(--white); min-height: 100vh; position: fixed; left: 0; top: 0; bottom: 0; padding: 20px 14px; overflow-y: auto; z-index: 100; border-right: 1px solid var(--border); }
+        .sidebar-logo { display: flex; align-items: center; gap: 12px; padding: 6px 10px 18px; border-bottom: 1px solid var(--border); margin-bottom: 14px; }
+        .logo-icon { width: 38px; height: 38px; background: linear-gradient(135deg, var(--green-dark), var(--green-mid)); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .logo-icon svg { width: 20px; height: 20px; }
+        .logo-title { font-size: 15px; font-weight: 800; color: var(--green-dark); letter-spacing: -0.01em; }
+        .logo-sub { font-size: 10px; font-weight: 600; color: var(--green-mid); text-transform: uppercase; letter-spacing: 0.08em; }
+        .nav-section-label { font-size: 9.5px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.12em; padding: 18px 20px 6px; }
+        .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text-secondary); border-left: 2px solid transparent; transition: all 0.15s ease; min-height: 44px; user-select: none; }
+        .nav-item:hover { background: var(--green-light); color: var(--green-dark); }
+        .nav-item.active { background: var(--green-light); color: var(--green-dark); border-left: 2px solid var(--green-dark); font-weight: 700; }
+        .nav-item.soon { opacity: 0.45; cursor: default; }
+        .nav-item.soon:hover { background: none; color: var(--text-secondary); }
+        .nav-icon { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); background: var(--green-light); flex-shrink: 0; transition: all 0.15s ease; }
+        .nav-item.active .nav-icon { background: var(--green-dark); color: white; }
+        .nav-item.active .nav-icon svg { stroke: white; }
+        .nav-icon svg { width: 15px; height: 15px; }
+        .nav-soon-tag { margin-left: auto; font-size: 9px; font-weight: 700; background: var(--green-light); color: var(--green-mid); padding: 2px 7px; border-radius: 20px; letter-spacing: 0.5px; }
+        .main { flex: 1; margin-left: var(--sidebar-width); padding: 22px 26px 60px; min-width: 0; }
+        .topbar h1 { font-size: 21px; font-weight: 800; }
+        .topbar .sub { font-size: 13px; color: var(--text-muted); margin-bottom: 18px; }
+        .controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 20px; background: var(--white); padding: 14px 16px; border-radius: var(--radius); box-shadow: var(--shadow-sm); }
+        .controls label { font-size: 12px; font-weight: 700; color: var(--text-muted); }
+        .date-input { padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; font-family: inherit; background: var(--white); min-height: 44px; }
+        .chip { border: 1px solid var(--border); background: var(--white); padding: 10px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; font-family: inherit; cursor: pointer; min-height: 44px; transition: all 0.15s; }
+        .chip:active { transform: scale(0.97); }
+        .chip.on { background: var(--green-dark); color: #fff; border-color: var(--green-dark); }
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 10px 18px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer; border: none; transition: all 0.15s; min-height: 44px; }
+        .btn:active { transform: scale(0.97); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+        .btn-primary { background: var(--green-dark); color: #fff; }
+        .btn-primary:hover { filter: brightness(1.15); }
+        .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 20px; }
+        .stat-card { background: var(--white); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow-sm); animation: rise 0.35s ease backwards; }
+        .stat-card:nth-child(2) { animation-delay: 0.06s; }
+        .stat-card:nth-child(3) { animation-delay: 0.12s; }
+        @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+        .stat-top { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); margin-bottom: 6px; }
+        .stat-main { font-size: 17px; font-weight: 800; }
+        .stat-sub { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+        .section { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow-sm); margin-bottom: 20px; overflow: hidden; }
+        .section-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .section-title { font-size: 15px; font-weight: 800; }
+        .table-wrap { overflow-x: auto; }
+        table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 760px; }
+        table.data-table th { text-align: left; padding: 12px 16px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); border-bottom: 1px solid var(--border); background: #fafbfc; white-space: nowrap; }
+        table.data-table td { padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        table.data-table tr:last-child td { border-bottom: none; }
+        table.data-table tbody tr { animation: fadein 0.3s ease backwards; }
+        @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+        .pill { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+        .pill-green { background: var(--success-light); color: var(--success); }
+        .pill-amber { background: var(--amber-light); color: var(--amber); }
+        .pill-red { background: var(--red-light); color: var(--red); }
+        .pill-grey { background: #f1f3f5; color: var(--text-muted); }
+        .pill-blue { background: var(--blue-light); color: var(--blue); }
+        .btn-sm { font-size: 11px; font-weight: 700; padding: 7px 12px; border-radius: 7px; border: 1px solid var(--border); background: var(--white); cursor: pointer; font-family: inherit; min-height: 36px; transition: all 0.15s; white-space: nowrap; }
+        .btn-sm:active { transform: scale(0.97); }
+        .btn-sm:hover { border-color: var(--green-dark); }
+        .btn-sm:disabled { opacity: 0.5; cursor: not-allowed; }
+        .empty-box { padding: 36px 20px; text-align: center; color: var(--text-muted); font-size: 13px; }
+        .mono { font-family: ui-monospace, monospace; }
+        .skel { border-radius: 8px; background: linear-gradient(90deg, #eef1f4 25%, #e2e7ec 50%, #eef1f4 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; }
+        @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+        #toastContainer { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+        .toast { background: var(--green-dark); color: #fff; padding: 11px 22px; border-radius: 10px; font-size: 13px; font-weight: 600; box-shadow: 0 4px 16px rgba(0,0,0,0.12); animation: toastin 0.25s ease; max-width: 92vw; }
+        .toast.error { background: var(--red); }
+        @keyframes toastin { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+        .toast.hiding { opacity: 0; transition: opacity 0.28s; }
+        .formula-note { font-size: 11.5px; color: var(--text-muted); padding: 12px 20px; border-top: 1px dashed var(--border); }
+        @media (max-width: 860px) { .sidebar { display: none; } .main { margin-left: 0; padding: 16px 14px 60px; } }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.001s !important; transition-duration: 0.001s !important; } }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-logo">
+            <div class="logo-icon"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div>
+            <div><div class="logo-title">SMQSS</div><div class="logo-sub">Accountability</div></div>
+        </div>
+        <div class="nav-section-label">System</div>
+        <div class="nav-item" onclick="goBackToAdmin()">
+            <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg></div>
+            <span>Back to Dashboard</span>
+        </div>
+        <div class="nav-section-label">Accountability</div>
+        <div class="nav-item" onclick="goToSLA()">
+            <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+            <span>SLA Dashboard</span>
+        </div>
+        <div class="nav-item" onclick="goToCustomers()">
+            <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+            <span>Customers</span>
+        </div>
+        <div class="nav-item" onclick="goToBenchmarks()">
+            <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg></div>
+            <span>Benchmarks</span>
+        </div>
+        <div class="nav-item active">
+            <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="6" x2="12" y2="12"/><line x1="16" y1="12" x2="12" y2="12"/></svg></div>
+            <span>Bottlenecks</span>
+        </div>
+        <div class="nav-item" onclick="goToReports()"><div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><span>Reports</span></div>
+    </div>
+
+    <div class="main">
+        <div class="topbar" style="margin-bottom:18px">
+            <h1 style="font-size:21px;font-weight:800">Bottlenecks</h1>
+            <div style="font-size:13px;color:var(--text-muted)">Where demand outruns capacity — ranked by pressure</div>
+        </div>
+
+        <div class="controls" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:20px;background:var(--white);padding:14px 16px;border-radius:var(--radius);box-shadow:var(--shadow-sm)">
+            <button class="chip on" data-p="7" onclick="setPreset(7, this)">Last 7 days</button>
+            <button class="chip" data-p="30" onclick="setPreset(30, this)">Last 30 days</button>
+            <label style="font-size:12px;font-weight:700;color:var(--text-muted)">From</label>
+            <input type="date" class="date-input" id="bnFrom">
+            <label style="font-size:12px;font-weight:700;color:var(--text-muted)">To</label>
+            <input type="date" class="date-input" id="bnTo">
+            <button class="btn btn-primary" id="bnLoadBtn" onclick="loadBottlenecks()">Apply</button>
+        </div>
+
+        <div class="stat-row" id="bnPeaks" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:20px"></div>
+
+        <div class="section">
+            <div class="section-header"><div class="section-title">Pressure Ranking</div><span class="pill pill-grey" id="bnCount"></span></div>
+            <div class="table-wrap"><table class="data-table">
+                <thead><tr><th>#</th><th>Office</th><th>Day</th><th>Demand</th><th>Avg Wait</th><th>Officers</th><th>Breaches</th><th>Pressure</th><th></th></tr></thead>
+                <tbody id="bnRows"><tr><td colspan="9"><div class="skel" style="height:40px"></div></td></tr></tbody>
+            </table></div>
+            <div class="formula-note">Pressure = avg wait × demand ÷ officers on duty. High wait with high demand and thin staffing ranks first.</div>
+        </div>
+    </div>
+
+    <div id="toastContainer"></div>
+
+<script>
+const API_BASE_URL = typeof window !== 'undefined' ? window.location.origin : '';
+function checkLogin() {
+    const loggedIn = sessionStorage.getItem('loggedInUser');
+    if (!loggedIn) { window.location.href = '/'; return null; }
+    const user = JSON.parse(loggedIn);
+    if (user.role !== 'admin') { window.location.href = '/'; return null; }
+    return user;
+}
+function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t == null ? '' : t; return d.innerHTML; }
+function setLoading(btn, loading) {
+    if (!btn) return;
+    if (loading) { btn._origText = btn.textContent; btn.textContent = 'Processing...'; btn.disabled = true; }
+    else { btn.textContent = btn._origText || btn.textContent; btn.disabled = false; }
+}
+function showToast(message, type) {
+    const c = document.getElementById('toastContainer');
+    const el = document.createElement('div');
+    el.className = 'toast' + (type === 'error' ? ' error' : '');
+    el.textContent = message;
+    c.appendChild(el);
+    setTimeout(function() { el.classList.add('hiding'); setTimeout(function() { el.remove(); }, 300); }, 2600);
+}
+async function goBackToAdmin() {
+    try { const r = await fetch(`${API_BASE_URL}/api/admin/admin-token`); const d = await r.json(); window.location.href = d.url || '/'; }
+    catch (e) { window.location.href = '/'; }
+}
+async function goToSLA() {
+    try { const r = await fetch(`${API_BASE_URL}/api/admin/sla-token`); const d = await r.json(); window.location.href = d.url || '/'; }
+    catch (e) { window.location.href = '/'; }
+}
+async function goToCustomers() {
+    try { const r = await fetch(`${API_BASE_URL}/api/admin/customers-token`); const d = await r.json(); window.location.href = d.url || '/'; }
+    catch (e) { window.location.href = '/'; }
+}
+async function goToBenchmarks() {
+    try { const r = await fetch(`${API_BASE_URL}/api/admin/benchmarks-token`); const d = await r.json(); window.location.href = d.url || '/'; }
+    catch (e) { window.location.href = '/'; }
+}
+async function goToReports() {
+    try { const r = await fetch(`${API_BASE_URL}/api/admin/reports-token`); const d = await r.json(); window.location.href = d.url || '/'; }
+    catch (e) { window.location.href = '/'; }
+}
+async function goToSLADate(date) {
+    try {
+        const r = await fetch(`${API_BASE_URL}/api/admin/sla-token`);
+        const d = await r.json();
+        sessionStorage.setItem('slaPrefillDate', date);
+        window.location.href = d.url || '/';
+    } catch (e) { window.location.href = '/'; }
+}
+function isoDay(d) { return d.toISOString().slice(0, 10); }
+function setPreset(days, el) {
+    document.querySelectorAll('.chip').forEach(function(x) { x.classList.remove('on'); });
+    if (el) el.classList.add('on');
+    const t = new Date();
+    document.getElementById('bnTo').value = isoDay(t);
+    document.getElementById('bnFrom').value = isoDay(new Date(t.getTime() - (days - 1) * 86400000));
+    loadBottlenecks();
+}
+function pressurePill(p) {
+    if (p >= 100) return `<span class="pill pill-red">${p}</span>`;
+    if (p >= 30) return `<span class="pill pill-amber">${p}</span>`;
+    return `<span class="pill pill-green">${p}</span>`;
+}
+async function loadBottlenecks() {
+    const btn = document.getElementById('bnLoadBtn');
+    const from = document.getElementById('bnFrom').value;
+    const to = document.getElementById('bnTo').value;
+    if (!from || !to) { showToast('Pick from and to dates', 'error'); return; }
+    setLoading(btn, true);
+    document.getElementById('bnRows').innerHTML = '<tr><td colspan="9"><div class="skel" style="height:40px"></div></td></tr>';
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/admin/bottlenecks?from=${from}&to=${to}`);
+        const data = await res.json();
+        if (!data.success) { showToast(data.message || 'Load failed', 'error'); return; }
+        renderPeaks(data.peaks || {});
+        renderRows(data.bottlenecks || []);
+    } catch (e) {
+        showToast('Network error', 'error');
+    } finally {
+        setLoading(btn, false);
+    }
+}
+function peakCard(top, main, sub) {
+    return `<div class="stat-card" style="background:var(--white);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow-sm);animation:rise 0.35s ease backwards"><div class="stat-top">${top}</div><div class="stat-main" style="font-size:17px;font-weight:800">${main}</div><div class="stat-sub" style="font-size:12px;color:var(--text-muted);margin-top:4px">${sub}</div></div>`;
+}
+function renderPeaks(peaks) {
+    const el = document.getElementById('bnPeaks');
+    const cards = [];
+    if (peaks.worst_pressure) {
+        const w = peaks.worst_pressure;
+        cards.push(peakCard('Worst pressure', `${escapeHtml(w.office_name)} · ${escapeHtml(w.day)}`, `Pressure ${w.pressure} — ${w.demand} tokens, ${w.avg_wait || '—'} min avg wait, ${w.officers} officer(s)`));
+    }
+    if (peaks.peak_demand) {
+        const p = peaks.peak_demand;
+        cards.push(peakCard('Peak demand', `${escapeHtml(p.office_name)} · ${escapeHtml(p.day)}`, `${p.demand} tokens in a day`));
+    }
+    if (peaks.peak_wait) {
+        const p = peaks.peak_wait;
+        cards.push(peakCard('Longest wait', `${escapeHtml(p.office_name)} · ${escapeHtml(p.day)}`, `${p.avg_wait || '—'} min average wait`));
+    }
+    el.innerHTML = cards.length ? cards.join('') : '<div class="empty-box">No data in range.</div>';
+    const st = document.createElement('style');
+    st.textContent = '@keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}';
+    if (!document.getElementById('bnRiseKey')) { st.id = 'bnRiseKey'; document.head.appendChild(st); }
+}
+function renderRows(rows) {
+    const tb = document.getElementById('bnRows');
+    document.getElementById('bnCount').textContent = rows.length + ' rows';
+    if (!rows.length) { tb.innerHTML = '<tr><td colspan="9"><div class="empty-box">No demand in range — no bottlenecks. Quiet period.</div></td></tr>'; return; }
+    tb.innerHTML = rows.map((r, i) =>
+        `<tr><td><strong>${i + 1}</strong></td>` +
+        `<td><strong>${escapeHtml(r.office_name)}</strong><br><span style="color:var(--text-muted);font-size:11px">${escapeHtml(r.office_code)}</span></td>` +
+        `<td class="mono">${escapeHtml(r.day)}</td>` +
+        `<td>${r.demand}</td>` +
+        `<td>${r.avg_wait != null ? r.avg_wait + ' min' : '—'}</td>` +
+        `<td>${r.officers}</td>` +
+        `<td>${(r.breaches || 0) > 0 ? `<span class="pill pill-red">${r.breaches}</span>` : '<span class="pill pill-green">0</span>'}</td>` +
+        `<td>${pressurePill(r.pressure)}</td>` +
+        `<td><button class="btn-sm" onclick="goToSLADate('${escapeHtml(r.day)}')">SLA</button></td></tr>`
+    ).join('');
+}
+let currentAdmin = checkLogin();
+if (currentAdmin) {
+    const t = new Date();
+    document.getElementById('bnTo').value = isoDay(t);
+    document.getElementById('bnFrom').value = isoDay(new Date(t.getTime() - 6 * 86400000));
+    loadBottlenecks();
+}
+</script>
+</body>
+</html>

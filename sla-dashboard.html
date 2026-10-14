@@ -1,0 +1,469 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SLA Dashboard — SMQSS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --green-dark: #1a3c2c;
+            --green-mid: #2a5a3a;
+            --green-light: #e8f5e9;
+            --gold: #ffd700;
+            --bg: #f0f2f5;
+            --white: #ffffff;
+            --border: #e4e8ee;
+            --text-primary: #0a0f18;
+            --text-secondary: #2a3a4e;
+            --text-muted: #4a5a6e;
+            --red: #e53935;
+            --red-light: #ffebee;
+            --amber: #ef6c00;
+            --amber-light: #fff3e0;
+            --success: #00a84f;
+            --success-light: #e8f5e9;
+            --blue: #1565c0;
+            --blue-light: #e3f2fd;
+            --shadow-sm: 0 1px 4px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04);
+            --shadow-md: 0 4px 16px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04);
+            --radius: 12px;
+            --radius-sm: 8px;
+            --sidebar-width: 256px;
+            --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 500; background: var(--bg); min-height: 100vh; display: flex; color: var(--text-primary); -webkit-font-smoothing: antialiased; }
+        button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+
+        /* ── SIDEBAR ── */
+        .sidebar { width: var(--sidebar-width); background: var(--white); min-height: 100vh; position: fixed; left: 0; top: 0; bottom: 0; padding: 20px 14px; overflow-y: auto; z-index: 100; border-right: 1px solid var(--border); }
+        .sidebar-logo { display: flex; align-items: center; gap: 12px; padding: 6px 10px 18px; border-bottom: 1px solid var(--border); margin-bottom: 14px; }
+        .logo-icon { width: 38px; height: 38px; background: linear-gradient(135deg, var(--green-dark), var(--green-mid)); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .logo-icon svg { width: 20px; height: 20px; }
+        .logo-title { font-size: 15px; font-weight: 800; color: var(--green-dark); letter-spacing: -0.01em; }
+        .logo-sub { font-size: 10px; font-weight: 600; color: var(--green-mid); text-transform: uppercase; letter-spacing: 0.08em; }
+        .nav-section-label { font-size: 9.5px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.12em; padding: 18px 20px 6px; }
+        .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text-secondary); border-left: 2px solid transparent; transition: all 0.15s ease; min-height: 44px; user-select: none; }
+        .nav-item:hover { background: var(--green-light); color: var(--green-dark); }
+        .nav-item.active { background: var(--green-light); color: var(--green-dark); border-left: 2px solid var(--green-dark); font-weight: 700; }
+        .nav-item.soon { opacity: 0.45; cursor: default; }
+        .nav-item.soon:hover { background: none; color: var(--text-secondary); }
+        .nav-icon { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); background: var(--green-light); flex-shrink: 0; transition: all 0.15s ease; }
+        .nav-item.active .nav-icon { background: var(--green-dark); color: white; }
+        .nav-item.active .nav-icon svg { stroke: white; }
+        .nav-icon svg { width: 15px; height: 15px; }
+        .nav-soon-tag { margin-left: auto; font-size: 9px; font-weight: 700; background: var(--green-light); color: var(--green-mid); padding: 2px 7px; border-radius: 20px; letter-spacing: 0.5px; }
+
+        /* ── MAIN ── */
+        .main { flex: 1; margin-left: var(--sidebar-width); padding: 22px 26px 60px; min-width: 0; }
+        .topbar { display: flex; align-items: center; gap: 14px; margin-bottom: 20px; flex-wrap: wrap; }
+        .topbar h1 { font-size: 21px; font-weight: 800; }
+        .topbar .sub { font-size: 13px; color: var(--text-muted); }
+        .topbar-spacer { flex: 1; }
+        .date-input { padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; font-family: inherit; background: var(--white); min-height: 44px; }
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 10px 18px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer; border: none; transition: all 0.15s; min-height: 44px; }
+        .btn:active { transform: scale(0.97); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+        .btn-primary { background: var(--green-dark); color: #fff; }
+        .btn-primary:hover { filter: brightness(1.15); }
+        .btn-outline { background: var(--white); color: var(--text-secondary); border: 1px solid var(--border); }
+        .btn-outline:hover { border-color: var(--green-dark); }
+
+        /* ── CARDS ── */
+        .stat-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 20px; }
+        .stat-card { background: var(--white); border-radius: var(--radius); padding: 18px; box-shadow: var(--shadow-sm); display: flex; gap: 14px; align-items: center; animation: rise 0.35s ease backwards; }
+        .stat-card:nth-child(2) { animation-delay: 0.06s; }
+        .stat-card:nth-child(3) { animation-delay: 0.12s; }
+        @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+        .stat-icon { width: 46px; height: 46px; border-radius: 12px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .stat-icon svg { width: 22px; height: 22px; }
+        .icon-green { background: var(--success-light); color: var(--success); }
+        .icon-red { background: var(--red-light); color: var(--red); }
+        .icon-amber { background: var(--amber-light); color: var(--amber); }
+        .stat-num { font-size: 26px; font-weight: 800; line-height: 1; }
+        .stat-lbl { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+
+        /* ── SECTIONS ── */
+        .section { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow-sm); margin-bottom: 20px; overflow: hidden; }
+        .section-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+        .section-title { font-size: 15px; font-weight: 800; }
+        .section-body { padding: 0; }
+        .table-wrap { overflow-x: auto; }
+        table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 640px; }
+        table.data-table th { text-align: left; padding: 12px 16px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); border-bottom: 1px solid var(--border); background: #fafbfc; white-space: nowrap; }
+        table.data-table td { padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        table.data-table tr:last-child td { border-bottom: none; }
+        table.data-table tbody tr { animation: fadein 0.3s ease backwards; }
+        table.data-table tbody tr:nth-child(2) { animation-delay: 0.03s; }
+        table.data-table tbody tr:nth-child(3) { animation-delay: 0.06s; }
+        table.data-table tbody tr:nth-child(n+4) { animation-delay: 0.09s; }
+        @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+        .pill { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+        .pill-green { background: var(--success-light); color: var(--success); }
+        .pill-amber { background: var(--amber-light); color: var(--amber); }
+        .pill-red { background: var(--red-light); color: var(--red); }
+        .pill-blue { background: var(--blue-light); color: var(--blue); }
+        .pill-grey { background: #f1f3f5; color: var(--text-muted); }
+        .btn-sm { font-size: 11px; font-weight: 700; padding: 7px 12px; border-radius: 7px; border: 1px solid var(--border); background: var(--white); cursor: pointer; font-family: inherit; min-height: 36px; transition: all 0.15s; white-space: nowrap; }
+        .btn-sm:active { transform: scale(0.97); }
+        .btn-sm:hover { border-color: var(--green-dark); }
+        .btn-sm:disabled { opacity: 0.5; cursor: not-allowed; }
+        .empty-box { padding: 36px 20px; text-align: center; color: var(--text-muted); font-size: 13px; }
+        .mono { font-family: ui-monospace, monospace; }
+
+        /* ── SKELETON ── */
+        .skel { border-radius: 8px; background: linear-gradient(90deg, #eef1f4 25%, #e2e7ec 50%, #eef1f4 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; }
+        @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+        /* ── TRACE RAIL (GitLab-style) ── */
+        .trace-wrap { padding: 20px; overflow-x: auto; }
+        .trace-meta { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-bottom: 18px; font-size: 13px; }
+        .trace-rail { display: flex; align-items: flex-start; min-width: 620px; padding: 6px 2px 2px; }
+        .trace-stage { flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; cursor: pointer; min-width: 0; }
+        .trace-stage::before { content: ''; position: absolute; top: 17px; left: -50%; width: 100%; height: 3px; background: var(--border); z-index: 0; }
+        .trace-stage:first-child::before { display: none; }
+        .trace-stage.done::before { background: var(--success); }
+        .trace-stage.bad::before { background: var(--red); }
+        .trace-dot { width: 37px; height: 37px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: #eef1f4; color: #9aa5b1; border: 3px solid var(--border); z-index: 1; transition: transform 0.15s; animation: pop 0.3s ease backwards; }
+        .trace-stage:nth-child(2) .trace-dot { animation-delay: 0.06s; }
+        .trace-stage:nth-child(3) .trace-dot { animation-delay: 0.12s; }
+        .trace-stage:nth-child(4) .trace-dot { animation-delay: 0.18s; }
+        .trace-stage:nth-child(5) .trace-dot { animation-delay: 0.24s; }
+        @keyframes pop { from { opacity: 0; transform: scale(0.5); } to { opacity: 1; transform: scale(1); } }
+        .trace-stage:hover .trace-dot { transform: scale(1.08); }
+        .trace-dot svg { width: 16px; height: 16px; }
+        .trace-stage.done .trace-dot { background: var(--success); border-color: var(--success); color: #fff; }
+        .trace-stage.warn .trace-dot { background: var(--amber); border-color: var(--amber); color: #fff; }
+        .trace-stage.bad .trace-dot { background: var(--red); border-color: var(--red); color: #fff; }
+        .trace-stage.open .trace-dot { border-color: var(--blue); color: var(--blue); box-shadow: 0 0 0 4px var(--blue-light); }
+        .trace-lbl { font-size: 11px; font-weight: 700; margin-top: 8px; text-align: center; }
+        .trace-time { font-size: 10.5px; color: var(--text-muted); font-family: ui-monospace, monospace; margin-top: 2px; }
+        .trace-branch { display: flex; align-items: center; gap: 8px; margin: 12px 0 0 8%; padding: 8px 12px; background: var(--amber-light); border: 1px dashed var(--amber); border-radius: var(--radius-sm); font-size: 12px; font-weight: 600; color: #92400E; cursor: pointer; max-width: 84%; animation: fadein 0.3s ease; }
+        .trace-log { margin: 10px 0 0; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; animation: fadein 0.25s ease; }
+        .trace-log-row { display: flex; gap: 10px; padding: 9px 14px; font-size: 12px; border-bottom: 1px solid var(--border); align-items: baseline; }
+        .trace-log-row:last-child { border-bottom: none; }
+        .trace-log-time { font-family: ui-monospace, monospace; color: var(--text-muted); white-space: nowrap; font-size: 11px; }
+        .trace-search { display: flex; gap: 10px; padding: 18px 20px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+        .trace-search input { flex: 1; min-width: 180px; padding: 10px 14px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; font-family: inherit; min-height: 44px; }
+
+        /* ── TOAST ── */
+        #toastContainer { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+        .toast { background: var(--green-dark); color: #fff; padding: 11px 22px; border-radius: 10px; font-size: 13px; font-weight: 600; box-shadow: var(--shadow-md); animation: toastin 0.25s ease; max-width: 92vw; }
+        .toast.error { background: var(--red); }
+        @keyframes toastin { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+        .toast.hiding { opacity: 0; transition: opacity 0.28s; }
+
+        @media (max-width: 860px) {
+            .sidebar { display: none; }
+            .main { margin-left: 0; padding: 16px 14px 60px; }
+            .stat-row { grid-template-columns: 1fr; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after { animation-duration: 0.001s !important; transition-duration: 0.001s !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-logo">
+            <div class="logo-icon"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div>
+            <div><div class="logo-title">SMQSS</div><div class="logo-sub">Accountability</div></div>
+        </div>
+        <div class="nav-section-label">System</div>
+        <div class="nav-item" onclick="goBackToAdmin()">
+            <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg></div>
+            <span>Back to Dashboard</span>
+        </div>
+        <div class="nav-section-label">Accountability</div>
+        <div class="nav-item active">
+            <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+            <span>SLA Dashboard</span>
+        </div>
+        <div class="nav-item" onclick="goToCustomers()">
+            <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+            <span>Customers</span>
+        </div>
+        <div class="nav-item" onclick="goToBenchmarks()">
+            <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg></div>
+            <span>Benchmarks</span>
+        </div>
+        <div class="nav-item" onclick="goToBottlenecks()">
+            <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="6" x2="12" y2="12"/><line x1="16" y1="12" x2="12" y2="12"/></svg></div>
+            <span>Bottlenecks</span>
+        </div>
+        <div class="nav-item" onclick="goToReports()"><div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><span>Reports</span></div>
+    </div>
+
+    <div class="main">
+        <div class="topbar">
+            <div><h1>SLA Dashboard</h1><div class="sub">Service targets vs actuals — breaches, offices, token traces</div></div>
+            <div class="topbar-spacer"></div>
+            <input type="date" class="date-input" id="slaDate">
+            <button class="btn btn-primary" id="slaRefreshBtn" onclick="loadSLA(this)">Refresh</button>
+        </div>
+
+        <div class="stat-row" id="slaCards">
+            <div class="stat-card"><div class="skel" style="width:46px;height:46px;border-radius:12px"></div><div style="flex:1"><div class="skel" style="height:26px;width:70px;margin-bottom:6px"></div><div class="skel" style="height:12px;width:110px"></div></div></div>
+            <div class="stat-card"><div class="skel" style="width:46px;height:46px;border-radius:12px"></div><div style="flex:1"><div class="skel" style="height:26px;width:70px;margin-bottom:6px"></div><div class="skel" style="height:12px;width:110px"></div></div></div>
+            <div class="stat-card"><div class="skel" style="width:46px;height:46px;border-radius:12px"></div><div style="flex:1"><div class="skel" style="height:26px;width:70px;margin-bottom:6px"></div><div class="skel" style="height:12px;width:110px"></div></div></div>
+        </div>
+
+        <div class="section">
+            <div class="section-header"><div class="section-title">Offices vs Target</div></div>
+            <div class="table-wrap"><table class="data-table">
+                <thead><tr><th>Office</th><th>Served</th><th>Avg Wait</th><th>Target</th><th>Breached</th><th>Breach Rate</th><th>Waiting Now</th></tr></thead>
+                <tbody id="slaOfficeRows"><tr><td colspan="7"><div class="skel" style="height:40px"></div></td></tr></tbody>
+            </table></div>
+        </div>
+
+        <div class="section">
+            <div class="section-header"><div class="section-title">Breach List</div><span class="pill pill-grey" id="breachCount"></span></div>
+            <div class="table-wrap"><table class="data-table">
+                <thead><tr><th>Token</th><th>Person</th><th>Service</th><th>Office</th><th>Waited</th><th>Target</th><th>Over By</th><th>Status</th><th></th></tr></thead>
+                <tbody id="slaBreachRows"><tr><td colspan="9"><div class="skel" style="height:40px"></div></td></tr></tbody>
+            </table></div>
+        </div>
+
+        <div class="section">
+            <div class="section-header"><div class="section-title">Token Journey Trace</div></div>
+            <div class="trace-search">
+                <input id="traceTokenInput" placeholder="Enter token number (e.g. AR01)" maxlength="20">
+                <button class="btn btn-primary" id="traceBtn" onclick="openTrace()">Trace</button>
+            </div>
+            <div id="traceBody"><div class="empty-box">Enter a token number above — or press Trace on any breach row — to see its GitLab-style journey rail.</div></div>
+        </div>
+    </div>
+
+    <div id="toastContainer"></div>
+
+<script>
+const API_BASE_URL = typeof window !== 'undefined' ? window.location.origin : '';
+let currentAdmin = null;
+
+function checkLogin() {
+    const loggedIn = sessionStorage.getItem('loggedInUser');
+    if (!loggedIn) { window.location.href = '/'; return null; }
+    const user = JSON.parse(loggedIn);
+    if (user.role !== 'admin') { window.location.href = '/'; return null; }
+    return user;
+}
+function logout() { sessionStorage.removeItem('loggedInUser'); window.location.href = '/'; }
+function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t == null ? '' : t; return d.innerHTML; }
+function setLoading(btn, loading) {
+    if (!btn) return;
+    if (loading) { btn._origText = btn.textContent; btn.textContent = 'Processing...'; btn.disabled = true; }
+    else { btn.textContent = btn._origText || btn.textContent; btn.disabled = false; }
+}
+function showToast(message, type) {
+    const c = document.getElementById('toastContainer');
+    const el = document.createElement('div');
+    el.className = 'toast' + (type === 'error' ? ' error' : '');
+    el.textContent = message;
+    c.appendChild(el);
+    setTimeout(function() { el.classList.add('hiding'); setTimeout(function() { el.remove(); }, 300); }, 2600);
+}
+async function goBackToAdmin() {
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/admin/admin-token`);
+        const data = await res.json();
+        window.location.href = data.url || '/';
+    } catch (e) { window.location.href = '/'; }
+}
+async function goToCustomers() {
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/admin/customers-token`);
+        const data = await res.json();
+        window.location.href = data.url || '/';
+    } catch (e) { window.location.href = '/'; }
+}
+async function goToBenchmarks() {
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/admin/benchmarks-token`);
+        const data = await res.json();
+        window.location.href = data.url || '/';
+    } catch (e) { window.location.href = '/'; }
+}
+async function goToBottlenecks() {
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/admin/bottlenecks-token`);
+        const data = await res.json();
+        window.location.href = data.url || '/';
+    } catch (e) { window.location.href = '/'; }
+}
+async function goToReports() {
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/admin/reports-token`);
+        const data = await res.json();
+        window.location.href = data.url || '/';
+    } catch (e) { window.location.href = '/'; }
+}
+function fmtTime(iso) {
+    if (!iso) return '—';
+    try { return new Date(iso).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}); } catch (e) { return '—'; }
+}
+function todayStr() { return new Date().toISOString().slice(0, 10); }
+
+async function loadSLA(btn) {
+    setLoading(btn, true);
+    const date = document.getElementById('slaDate').value || todayStr();
+    try {
+        const [ovRes, brRes] = await Promise.all([
+            fetch(`${API_BASE_URL}/api/admin/sla-overview?date=${encodeURIComponent(date)}`),
+            fetch(`${API_BASE_URL}/api/admin/sla-breaches?date=${encodeURIComponent(date)}`)
+        ]);
+        const ov = await ovRes.json();
+        const br = await brRes.json();
+        if (ov.success) renderSLACards(ov);
+        if (br.success) renderBreaches(br.breaches || []);
+        if (ov.success) renderOffices(ov.offices || []);
+        if (!ov.success || !br.success) showToast('Failed to load SLA data', 'error');
+    } catch (e) {
+        showToast('Network error', 'error');
+    } finally {
+        setLoading(btn, false);
+    }
+}
+
+function renderSLACards(ov) {
+    const rate = ov.overall_breach_rate || 0;
+    const rateCls = rate === 0 ? 'icon-green' : (rate < 10 ? 'icon-amber' : 'icon-red');
+    document.getElementById('slaCards').innerHTML =
+        `<div class="stat-card"><div class="stat-icon icon-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="stat-num">${ov.total_served || 0}</div><div class="stat-lbl">Served (${escapeHtml(ov.date || '')})</div></div></div>` +
+        `<div class="stat-card"><div class="stat-icon icon-red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div><div class="stat-num">${ov.total_breached || 0}</div><div class="stat-lbl">Breached target</div></div></div>` +
+        `<div class="stat-card"><div class="stat-icon ${rateCls}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg></div><div><div class="stat-num">${rate}%</div><div class="stat-lbl">Breach rate</div></div></div>`;
+}
+
+function ratePill(rate) {
+    if (!rate) return '<span class="pill pill-green">On target</span>';
+    if (rate < 10) return `<span class="pill pill-amber">${rate}%</span>`;
+    return `<span class="pill pill-red">${rate}%</span>`;
+}
+
+function renderOffices(offices) {
+    const tb = document.getElementById('slaOfficeRows');
+    if (!offices.length) { tb.innerHTML = '<tr><td colspan="7"><div class="empty-box">No offices found.</div></td></tr>'; return; }
+    tb.innerHTML = offices.map(o =>
+        `<tr><td><strong>${escapeHtml(o.office_name)}</strong><br><span style="color:var(--text-muted);font-size:11px">${escapeHtml(o.office_code)}</span></td>` +
+        `<td>${o.served || 0}</td>` +
+        `<td>${o.avg_wait_minutes != null ? o.avg_wait_minutes + ' min' : '—'}</td>` +
+        `<td>${o.avg_target_minutes != null ? o.avg_target_minutes + ' min' : '—'}</td>` +
+        `<td>${o.breached || 0}</td>` +
+        `<td>${ratePill(o.breach_rate)}</td>` +
+        `<td>${o.current_waiting || 0}${(o.waiting_breached || 0) > 0 ? ` <span class="pill pill-red">${o.waiting_breached} over</span>` : ''}</td></tr>`
+    ).join('');
+}
+
+function renderBreaches(breaches) {
+    document.getElementById('breachCount').textContent = breaches.length + ' breaches';
+    const tb = document.getElementById('slaBreachRows');
+    if (!breaches.length) { tb.innerHTML = '<tr><td colspan="9"><div class="empty-box">No breaches — every service met its target. Clean day.</div></td></tr>'; return; }
+    tb.innerHTML = breaches.map(b =>
+        `<tr><td class="mono"><strong>${escapeHtml(b.token_number)}</strong></td>` +
+        `<td>${escapeHtml(b.student_name || '—')}</td>` +
+        `<td>${escapeHtml(b.service_name || b.service_code || '—')}</td>` +
+        `<td>${escapeHtml(b.office_name || '')}</td>` +
+        `<td>${b.waited_minutes} min</td>` +
+        `<td>${b.target_minutes} min</td>` +
+        `<td><span class="pill pill-red">+${b.over_by_minutes} min</span></td>` +
+        `<td>${b.still_waiting ? '<span class="pill pill-amber">Waiting</span>' : '<span class="pill pill-green">Served</span>'}${b.was_escalated ? ' <span class="pill pill-blue">Escalated</span>' : ''}</td>` +
+        `<td><button class="btn-sm" onclick="openTrace('${escapeHtml(b.token_number)}', this)">Trace</button></td></tr>`
+    ).join('');
+}
+
+/* ── GITLAB-STYLE TRACE RAIL ── */
+const STAGE_ICON_OK = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>';
+const STAGE_ICON_WAIT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="9"/></svg>';
+const STAGE_ICON_SKIP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>';
+
+async function openTrace(tokenNumber, btn) {
+    const token = (tokenNumber || document.getElementById('traceTokenInput').value || '').trim().toUpperCase();
+    if (!token) { showToast('Enter a token number', 'error'); return; }
+    const body = document.getElementById('traceBody');
+    setLoading(btn || document.getElementById('traceBtn'), true);
+    body.innerHTML = '<div class="trace-wrap"><div class="skel" style="height:90px"></div></div>';
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/admin/token-trace?token_number=${encodeURIComponent(token)}`);
+        const data = await res.json();
+        if (!data.success) { body.innerHTML = `<div class="empty-box">${escapeHtml(data.message || 'Trace failed')}</div>`; return; }
+        renderTrace(data.token, data.events || []);
+    } catch (e) {
+        body.innerHTML = '<div class="empty-box">Network error. <button class="btn-sm" onclick="openTrace()">Retry</button></div>';
+    } finally {
+        setLoading(btn || document.getElementById('traceBtn'), false);
+    }
+}
+
+function stageState(reachedTs, targetMin, actualMin) {
+    if (!reachedTs) return { cls: '', icon: STAGE_ICON_WAIT };
+    if (actualMin == null || targetMin == null) return { cls: 'done', icon: STAGE_ICON_OK };
+    if (actualMin > targetMin) return { cls: 'bad', icon: STAGE_ICON_OK };
+    if (actualMin >= targetMin * 0.8) return { cls: 'warn', icon: STAGE_ICON_OK };
+    return { cls: 'done', icon: STAGE_ICON_OK };
+}
+
+function renderTrace(t, events) {
+    const body = document.getElementById('traceBody');
+    const target = 15;
+    const waitMin = t.serving_started_at
+        ? Math.round((new Date(t.serving_started_at) - new Date(t.requested_at)) / 60000)
+        : (t.status === 'waiting' ? Math.round((Date.now() - new Date(t.requested_at)) / 60000) : null);
+    const stages = [
+        { key: 'requested_at', label: 'Arrived' },
+        { key: 'called_at', label: 'Called' },
+        { key: 'serving_started_at', label: 'Serving' },
+        { key: t.status === 'skipped' ? 'skipped_at' : 'completed_at', label: t.status === 'skipped' ? 'Skipped' : 'Served' }
+    ];
+    let railHtml = '<div class="trace-rail">';
+    stages.forEach(function(s, i) {
+        const ts = t[s.key];
+        let st;
+        if (i === 1 && ts) st = stageState(ts, target, waitMin);
+        else if (ts) st = { cls: (t.status === 'skipped' && i === 3) ? 'warn' : 'done', icon: t.status === 'skipped' && i === 3 ? STAGE_ICON_SKIP : STAGE_ICON_OK };
+        else st = { cls: (i === 3 && (t.status === 'waiting' || t.status === 'called' || t.status === 'serving')) ? 'open' : '', icon: STAGE_ICON_WAIT };
+        railHtml += `<div class="trace-stage ${st.cls}" data-stage="${i}" onclick="toggleStageLog(${i})"><div class="trace-dot">${st.icon}</div><div class="trace-lbl">${s.label}</div><div class="trace-time">${fmtTime(ts)}</div></div>`;
+    });
+    railHtml += '</div>';
+
+    let branchHtml = '';
+    events.forEach(function(ev, i) {
+        const a = (ev.action || '').toLowerCase();
+        if (a === 'escalated' || a === 'recall' || a === 'skipped') {
+            const label = a === 'escalated' ? ('Escalated — ' + (ev.action_details || '')) : (a === 'recall' ? 'Recalled' : 'Skipped');
+            branchHtml += `<div class="trace-branch" onclick="toggleStageLog('ev${i}')">◆ ${escapeHtml(label)} · ${fmtTime(ev.created_at)}</div><div class="trace-log" id="stagelog-ev${i}" style="display:none"><div class="trace-log-row"><span class="trace-log-time">${escapeHtml(ev.created_at || '')}</span><span>${escapeHtml(ev.action_details || ev.action)}</span></div></div>`;
+        }
+    });
+
+    const logRows = events.map(ev =>
+        `<div class="trace-log-row"><span class="trace-log-time">${escapeHtml(ev.created_at || '')}</span><span><strong>${escapeHtml(ev.action || '')}</strong> — ${escapeHtml(ev.action_details || '')}</span></div>`
+    ).join('');
+
+    body.innerHTML =
+        `<div class="trace-wrap">` +
+        `<div class="trace-meta"><span class="pill pill-blue mono">${escapeHtml(t.token_number)}</span>` +
+        `<span><strong>${escapeHtml(t.student_name || '—')}</strong> · ${escapeHtml(t.service_name || t.service_code || '')}</span>` +
+        `<span style="color:var(--text-muted)">${escapeHtml(t.office_name || '')} · target ${target} min</span>` +
+        (t.assigned_officer_number ? `<span class="pill pill-grey">Officer #${escapeHtml(String(t.assigned_officer_number))}</span>` : '') +
+        `</div>` + railHtml + branchHtml +
+        `<div class="trace-log" id="stagelog-full" style="display:none">${logRows || '<div class="trace-log-row">No events logged.</div>'}</div>` +
+        `<div style="margin-top:12px"><button class="btn-sm" onclick="toggleStageLog('full')">Show full log</button></div>` +
+        `</div>`;
+    window._traceEvents = events;
+}
+
+function toggleStageLog(id) {
+    const el = document.getElementById('stagelog-' + id);
+    if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+}
+
+/* ── INIT ── */
+currentAdmin = checkLogin();
+if (currentAdmin) {
+    const prefill = sessionStorage.getItem('slaPrefillDate');
+    if (prefill) sessionStorage.removeItem('slaPrefillDate');
+    document.getElementById('slaDate').value = prefill || todayStr();
+    loadSLA(document.getElementById('slaRefreshBtn'));
+}
+</script>
+</body>
+</html>

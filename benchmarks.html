@@ -1,0 +1,445 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Benchmarks — SMQSS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --green-dark: #1a3c2c;
+            --green-mid: #2a5a3a;
+            --green-light: #e8f5e9;
+            --bg: #f0f2f5;
+            --white: #ffffff;
+            --border: #e4e8ee;
+            --text-primary: #0a0f18;
+            --text-secondary: #2a3a4e;
+            --text-muted: #4a5a6e;
+            --red: #e53935;
+            --red-light: #ffebee;
+            --amber: #ef6c00;
+            --amber-light: #fff3e0;
+            --success: #00a84f;
+            --success-light: #e8f5e9;
+            --blue: #1565c0;
+            --blue-light: #e3f2fd;
+            --purple: #7c3aed;
+            --teal: #0d9488;
+            --shadow-sm: 0 1px 4px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04);
+            --radius: 12px;
+            --radius-sm: 8px;
+            --sidebar-width: 256px;
+            --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 500; background: var(--bg); min-height: 100vh; display: flex; color: var(--text-primary); -webkit-font-smoothing: antialiased; }
+        button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+        .sidebar { width: var(--sidebar-width); background: var(--white); min-height: 100vh; position: fixed; left: 0; top: 0; bottom: 0; padding: 20px 14px; overflow-y: auto; z-index: 100; border-right: 1px solid var(--border); }
+        .sidebar-logo { display: flex; align-items: center; gap: 12px; padding: 6px 10px 18px; border-bottom: 1px solid var(--border); margin-bottom: 14px; }
+        .logo-icon { width: 38px; height: 38px; background: linear-gradient(135deg, var(--green-dark), var(--green-mid)); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .logo-icon svg { width: 20px; height: 20px; }
+        .logo-title { font-size: 15px; font-weight: 800; color: var(--green-dark); letter-spacing: -0.01em; }
+        .logo-sub { font-size: 10px; font-weight: 600; color: var(--green-mid); text-transform: uppercase; letter-spacing: 0.08em; }
+        .nav-section-label { font-size: 9.5px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.12em; padding: 18px 20px 6px; }
+        .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text-secondary); border-left: 2px solid transparent; transition: all 0.15s ease; min-height: 44px; user-select: none; }
+        .nav-item:hover { background: var(--green-light); color: var(--green-dark); }
+        .nav-item.active { background: var(--green-light); color: var(--green-dark); border-left: 2px solid var(--green-dark); font-weight: 700; }
+        .nav-item.soon { opacity: 0.45; cursor: default; }
+        .nav-item.soon:hover { background: none; color: var(--text-secondary); }
+        .nav-icon { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); background: var(--green-light); flex-shrink: 0; transition: all 0.15s ease; }
+        .nav-item.active .nav-icon { background: var(--green-dark); color: white; }
+        .nav-item.active .nav-icon svg { stroke: white; }
+        .nav-icon svg { width: 15px; height: 15px; }
+        .nav-soon-tag { margin-left: auto; font-size: 9px; font-weight: 700; background: var(--green-light); color: var(--green-mid); padding: 2px 7px; border-radius: 20px; letter-spacing: 0.5px; }
+        .main { flex: 1; margin-left: var(--sidebar-width); padding: 22px 26px 60px; min-width: 0; }
+        .topbar h1 { font-size: 21px; font-weight: 800; }
+        .topbar .sub { font-size: 13px; color: var(--text-muted); margin-bottom: 18px; }
+        .controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 20px; background: var(--white); padding: 14px 16px; border-radius: var(--radius); box-shadow: var(--shadow-sm); }
+        .controls label { font-size: 12px; font-weight: 700; color: var(--text-muted); }
+        .date-input, .sel-input { padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; font-family: inherit; background: var(--white); min-height: 44px; }
+        .seg { display: flex; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+        .seg button { border: none; background: var(--white); padding: 10px 16px; font-size: 12px; font-weight: 700; font-family: inherit; cursor: pointer; min-height: 44px; color: var(--text-muted); }
+        .seg button.on { background: var(--green-dark); color: #fff; }
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 10px 18px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer; border: none; transition: all 0.15s; min-height: 44px; }
+        .btn:active { transform: scale(0.97); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+        .btn-primary { background: var(--green-dark); color: #fff; }
+        .btn-primary:hover { filter: brightness(1.15); }
+        .section { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow-sm); margin-bottom: 20px; overflow: hidden; }
+        .section-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .section-title { font-size: 15px; font-weight: 800; }
+        .table-wrap { overflow-x: auto; }
+        table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 720px; }
+        table.data-table th { text-align: left; padding: 12px 16px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); border-bottom: 1px solid var(--border); background: #fafbfc; white-space: nowrap; }
+        table.data-table td { padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        table.data-table tr:last-child td { border-bottom: none; }
+        table.data-table tbody tr { animation: fadein 0.3s ease backwards; }
+        @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+        .pill { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+        .pill-green { background: var(--success-light); color: var(--success); }
+        .pill-red { background: var(--red-light); color: var(--red); }
+        .pill-grey { background: #f1f3f5; color: var(--text-muted); }
+        .pill-blue { background: var(--blue-light); color: var(--blue); }
+        .mono { font-family: ui-monospace, monospace; }
+        .empty-box { padding: 36px 20px; text-align: center; color: var(--text-muted); font-size: 13px; }
+        .skel { border-radius: 8px; background: linear-gradient(90deg, #eef1f4 25%, #e2e7ec 50%, #eef1f4 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; }
+        @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+        /* line graph */
+        .graph-wrap { padding: 18px 20px 8px; overflow-x: auto; }
+        .graph-legend { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 20px 16px; }
+        .legend-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 7px 12px; border-radius: 20px; border: 1px solid var(--border); background: var(--white); cursor: pointer; min-height: 36px; transition: all 0.15s; }
+        .legend-chip:active { transform: scale(0.97); }
+        .legend-chip.off { opacity: 0.4; }
+        .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .graph-tip { position: absolute; pointer-events: none; background: var(--green-dark); color: #fff; font-size: 11.5px; font-weight: 600; padding: 8px 12px; border-radius: 8px; white-space: nowrap; z-index: 5; opacity: 0; transition: opacity 0.15s; box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
+        .graph-svg text { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .graph-line { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; animation: draw 0.9s ease backwards; }
+        @keyframes draw { from { stroke-dasharray: 1200; stroke-dashoffset: 1200; } to { stroke-dasharray: 1200; stroke-dashoffset: 0; } }
+        .graph-dot-breach { animation: pop 0.3s ease backwards; }
+        @keyframes pop { from { opacity: 0; transform: scale(0.4); } to { opacity: 1; transform: scale(1); } }
+        #toastContainer { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+        .toast { background: var(--green-dark); color: #fff; padding: 11px 22px; border-radius: 10px; font-size: 13px; font-weight: 600; box-shadow: 0 4px 16px rgba(0,0,0,0.12); animation: toastin 0.25s ease; max-width: 92vw; }
+        .toast.error { background: var(--red); }
+        @keyframes toastin { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+        .toast.hiding { opacity: 0; transition: opacity 0.28s; }
+        @media (max-width: 860px) { .sidebar { display: none; } .main { margin-left: 0; padding: 16px 14px 60px; } }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.001s !important; transition-duration: 0.001s !important; } }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-logo">
+            <div class="logo-icon"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div>
+            <div><div class="logo-title">SMQSS</div><div class="logo-sub">Accountability</div></div>
+        </div>
+        <div class="nav-section-label">System</div>
+        <div class="nav-item" onclick="goBackToAdmin()">
+            <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg></div>
+            <span>Back to Dashboard</span>
+        </div>
+        <div class="nav-section-label">Accountability</div>
+        <div class="nav-item" onclick="goToSLA()">
+            <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+            <span>SLA Dashboard</span>
+        </div>
+        <div class="nav-item" onclick="goToCustomers()">
+            <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+            <span>Customers</span>
+        </div>
+        <div class="nav-item active">
+            <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg></div>
+            <span>Benchmarks</span>
+        </div>
+        <div class="nav-item" onclick="goToBottlenecks()">
+            <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="6" x2="12" y2="12"/><line x1="16" y1="12" x2="12" y2="12"/></svg></div>
+            <span>Bottlenecks</span>
+        </div>
+        <div class="nav-item" onclick="goToReports()"><div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><span>Reports</span></div>
+    </div>
+
+    <div class="main">
+        <div class="topbar">
+            <h1>Benchmarks</h1>
+            <div class="sub">Officer rankings vs target — how each officer is working over time</div>
+        </div>
+
+        <div class="controls">
+            <label>From</label><input type="date" class="date-input" id="bmFrom">
+            <label>To</label><input type="date" class="date-input" id="bmTo">
+            <div class="seg" id="bmBucketSeg">
+                <button data-b="day" class="on" onclick="setBucket('day')">Day</button>
+                <button data-b="hour" onclick="setBucket('hour')">Hour</button>
+            </div>
+            <select class="sel-input" id="bmOfficer"><option value="">All officers</option></select>
+            <button class="btn btn-primary" id="bmLoadBtn" onclick="loadBenchmarks()">Load</button>
+        </div>
+
+        <div class="section">
+            <div class="section-header"><div class="section-title">Tokens Served Over Time</div><span class="pill pill-grey" id="bmRangeLbl"></span></div>
+            <div class="graph-wrap" style="position:relative" id="bmGraphWrap">
+                <div class="empty-box" id="bmGraphEmpty">Pick a range and press Load — one line per officer, red dots where waits breached target.</div>
+                <svg id="bmGraph" class="graph-svg" style="display:none" role="img" aria-label="Officer activity line graph"></svg>
+                <div class="graph-tip" id="bmTip"></div>
+            </div>
+            <div class="graph-legend" id="bmLegend"></div>
+        </div>
+
+        <div class="section">
+            <div class="section-header"><div class="section-title">Officer Rankings</div><span class="pill pill-grey" id="bmRankLbl"></span></div>
+            <div class="table-wrap"><table class="data-table">
+                <thead><tr><th>#</th><th>Officer</th><th>Office</th><th>Served</th><th>Avg Wait</th><th>Breaches</th><th>On Duty</th><th>vs Prev</th></tr></thead>
+                <tbody id="bmRankRows"><tr><td colspan="8"><div class="empty-box">No data yet — load a range above.</div></td></tr></tbody>
+            </table></div>
+        </div>
+    </div>
+
+    <div id="toastContainer"></div>
+
+<script>
+const API_BASE_URL = typeof window !== 'undefined' ? window.location.origin : '';
+const LINE_COLORS = ['#00a84f', '#1565c0', '#7c3aed', '#ef6c00', '#0d9488', '#e53935', '#b8960a', '#64748b'];
+let _bmData = null;
+let _bmPrev = null;
+let _bmHidden = new Set();
+let _bmBucket = 'day';
+
+function checkLogin() {
+    const loggedIn = sessionStorage.getItem('loggedInUser');
+    if (!loggedIn) { window.location.href = '/'; return null; }
+    const user = JSON.parse(loggedIn);
+    if (user.role !== 'admin') { window.location.href = '/'; return null; }
+    return user;
+}
+function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t == null ? '' : t; return d.innerHTML; }
+function setLoading(btn, loading) {
+    if (!btn) return;
+    if (loading) { btn._origText = btn.textContent; btn.textContent = 'Processing...'; btn.disabled = true; }
+    else { btn.textContent = btn._origText || btn.textContent; btn.disabled = false; }
+}
+function showToast(message, type) {
+    const c = document.getElementById('toastContainer');
+    const el = document.createElement('div');
+    el.className = 'toast' + (type === 'error' ? ' error' : '');
+    el.textContent = message;
+    c.appendChild(el);
+    setTimeout(function() { el.classList.add('hiding'); setTimeout(function() { el.remove(); }, 300); }, 2600);
+}
+async function goBackToAdmin() {
+    try { const r = await fetch(`${API_BASE_URL}/api/admin/admin-token`); const d = await r.json(); window.location.href = d.url || '/'; }
+    catch (e) { window.location.href = '/'; }
+}
+async function goToSLA() {
+    try { const r = await fetch(`${API_BASE_URL}/api/admin/sla-token`); const d = await r.json(); window.location.href = d.url || '/'; }
+    catch (e) { window.location.href = '/'; }
+}
+async function goToCustomers() {
+    try { const r = await fetch(`${API_BASE_URL}/api/admin/customers-token`); const d = await r.json(); window.location.href = d.url || '/'; }
+    catch (e) { window.location.href = '/'; }
+}
+async function goToBottlenecks() {
+    try { const r = await fetch(`${API_BASE_URL}/api/admin/bottlenecks-token`); const d = await r.json(); window.location.href = d.url || '/'; }
+    catch (e) { window.location.href = '/'; }
+}
+async function goToReports() {
+    try { const r = await fetch(`${API_BASE_URL}/api/admin/reports-token`); const d = await r.json(); window.location.href = d.url || '/'; }
+    catch (e) { window.location.href = '/'; }
+}
+function setBucket(b) {
+    _bmBucket = b;
+    document.querySelectorAll('#bmBucketSeg button').forEach(function(x) { x.classList.toggle('on', x.dataset.b === b); });
+}
+function isoDay(d) { return d.toISOString().slice(0, 10); }
+
+async function fetchSeries(from, to, bucket, officerId) {
+    let url = `${API_BASE_URL}/api/admin/officer-activity-series?from=${from}&to=${to}&bucket=${bucket}`;
+    if (officerId) url += `&officer_id=${officerId}`;
+    const res = await fetch(url);
+    return res.json();
+}
+
+async function loadBenchmarks() {
+    const btn = document.getElementById('bmLoadBtn');
+    const from = document.getElementById('bmFrom').value;
+    const to = document.getElementById('bmTo').value;
+    const officerId = document.getElementById('bmOfficer').value;
+    if (!from || !to) { showToast('Pick from and to dates', 'error'); return; }
+    setLoading(btn, true);
+    document.getElementById('bmGraphEmpty').innerHTML = '<div class="skel" style="height:280px"></div>';
+    try {
+        const data = await fetchSeries(from, to, _bmBucket, officerId);
+        if (!data.success) { showToast(data.message || 'Load failed', 'error'); return; }
+        _bmData = data;
+        _bmHidden = new Set();
+        // previous equal range for deltas
+        const fD = new Date(from), tD = new Date(to);
+        const span = Math.round((tD - fD) / 86400000) + 1;
+        const pTo = new Date(fD.getTime() - 86400000);
+        const pFrom = new Date(pTo.getTime() - (span - 1) * 86400000);
+        try {
+            const prev = await fetchSeries(isoDay(pFrom), isoDay(pTo), 'day', officerId);
+            _bmPrev = prev.success ? prev : null;
+        } catch (e) { _bmPrev = null; }
+        fillOfficerFilter(data.officers || []);
+        renderGraph();
+        renderRankings();
+        document.getElementById('bmRangeLbl').textContent = `${from} → ${to} · ${_bmBucket}`;
+    } catch (e) {
+        showToast('Network error', 'error');
+    } finally {
+        setLoading(btn, false);
+    }
+}
+
+function fillOfficerFilter(officers) {
+    const sel = document.getElementById('bmOfficer');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">All officers</option>' + officers.map(o =>
+        `<option value="${o.officer_id}">${escapeHtml(o.officer_name || ('#' + o.officer_id))}${o.office_name ? ' — ' + escapeHtml(o.office_name) : ''}</option>`
+    ).join('');
+    sel.value = cur;
+}
+
+function visibleSeries() {
+    if (!_bmData) return [];
+    return (_bmData.series || []).filter(s => !_bmHidden.has(String(s.officer_id)));
+}
+
+function prevTotals() {
+    const m = {};
+    if (_bmPrev && _bmPrev.series) _bmPrev.series.forEach(s => { m[String(s.officer_id)] = s.total_served || 0; });
+    return m;
+}
+
+function renderRankings() {
+    const tb = document.getElementById('bmRankRows');
+    const series = visibleSeries();
+    const prev = prevTotals();
+    document.getElementById('bmRankLbl').textContent = series.length + ' officers';
+    if (!series.length) { tb.innerHTML = '<tr><td colspan="8"><div class="empty-box">No officers in range.</div></td></tr>'; return; }
+    tb.innerHTML = series.map((s, i) => {
+        let totWait = 0, totB = 0, dutyMin = 0, wN = 0;
+        s.points.forEach(p => {
+            if (p.avg_wait != null) { totWait += p.avg_wait; wN++; }
+            totB += p.breaches || 0;
+            dutyMin += p.on_duty_min || 0;
+        });
+        const avgW = wN ? (totWait / wN).toFixed(1) : null;
+        const pTot = prev[String(s.officer_id)];
+        let delta = '<span class="pill pill-grey">—</span>';
+        if (pTot != null) {
+            if (pTot === 0 && s.total_served > 0) delta = '<span class="pill pill-green">new</span>';
+            else if (pTot === 0) delta = '<span class="pill pill-grey">—</span>';
+            else {
+                const pc = Math.round(((s.total_served - pTot) / pTot) * 100);
+                delta = pc >= 0 ? `<span class="pill pill-green">+${pc}%</span>` : `<span class="pill pill-red">${pc}%</span>`;
+            }
+        }
+        const hrs = (dutyMin / 60).toFixed(1);
+        return `<tr><td><strong>${i + 1}</strong></td>` +
+            `<td>${escapeHtml(s.officer_name || ('#' + s.officer_id))}</td>` +
+            `<td>${escapeHtml(s.office_name || '—')}</td>` +
+            `<td><strong>${s.total_served}</strong></td>` +
+            `<td>${avgW != null ? avgW + ' min' : '—'}</td>` +
+            `<td>${totB > 0 ? `<span class="pill pill-red">${totB}</span>` : '<span class="pill pill-green">0</span>'}</td>` +
+            `<td>${hrs}h</td><td>${delta}</td></tr>`;
+    }).join('');
+}
+
+function renderGraph() {
+    const svg = document.getElementById('bmGraph');
+    const empty = document.getElementById('bmGraphEmpty');
+    const series = visibleSeries();
+    if (!series.length || !_bmData) { svg.style.display = 'none'; empty.style.display = ''; empty.textContent = 'No officers in range.'; renderLegend(); return; }
+    const buckets = [];
+    series.forEach(s => s.points.forEach(p => { if (!buckets.includes(p.bucket)) buckets.push(p.bucket); }));
+    buckets.sort();
+    if (!buckets.length) { svg.style.display = 'none'; empty.style.display = ''; return; }
+    empty.style.display = 'none';
+    svg.style.display = 'block';
+
+    const W = 920, H = 320, padL = 44, padR = 16, padT = 16, padB = 40;
+    let yMax = 5;
+    series.forEach(s => s.points.forEach(p => { if (p.served > yMax) yMax = p.served; }));
+    yMax = Math.ceil(yMax * 1.15);
+    const x = i => buckets.length === 1 ? padL + (W - padL - padR) / 2 : padL + (W - padL - padR) * (i / (buckets.length - 1));
+    const y = v => padT + (H - padT - padB) * (1 - v / yMax);
+
+    let html = '';
+    // gridlines + y labels
+    const steps = 4;
+    for (let g = 0; g <= steps; g++) {
+        const v = Math.round(yMax * g / steps);
+        const yy = y(v);
+        html += `<line x1="${padL}" y1="${yy}" x2="${W - padR}" y2="${yy}" stroke="#e4e8ee" stroke-width="1"/>` +
+                `<text x="${padL - 8}" y="${yy + 4}" font-size="10" fill="#4a5a6e" text-anchor="end">${v}</text>`;
+    }
+    // x labels (max ~8)
+    const skip = Math.max(1, Math.ceil(buckets.length / 8));
+    buckets.forEach((b, i) => {
+        if (i % skip !== 0 && i !== buckets.length - 1) return;
+        const lbl = _bmBucket === 'hour' ? b.slice(11) : b.slice(5);
+        html += `<text x="${x(i)}" y="${H - 12}" font-size="10" fill="#4a5a6e" text-anchor="middle">${escapeHtml(lbl)}</text>`;
+    });
+    // lines
+    series.forEach((s, si) => {
+        const color = LINE_COLORS[si % LINE_COLORS.length];
+        const pts = buckets.map(b => {
+            const p = s.points.find(q => q.bucket === b) || { served: 0 };
+            return p;
+        });
+        html += `<polyline class="graph-line" points="${pts.map((p, i) => `${x(i).toFixed(1)},${y(p.served).toFixed(1)}`).join(' ')}" stroke="${color}" style="animation-delay:${si * 0.1}s"/>`;
+        pts.forEach((p, i) => {
+            if ((p.breaches || 0) > 0) {
+                html += `<circle class="graph-dot-breach" cx="${x(i)}" cy="${y(p.served)}" r="5" fill="#e53935" stroke="#fff" stroke-width="2" style="animation-delay:${si * 0.1 + 0.4}s"><title>${p.breaches} breach(es)</title></circle>`;
+            }
+        });
+        // hover targets
+        pts.forEach((p, i) => {
+            html += `<rect x="${(x(i) - (W / Math.max(buckets.length, 1)) / 2).toFixed(1)}" y="${padT}" width="${(W / Math.max(buckets.length, 1)).toFixed(1)}" height="${H - padT - padB}" fill="transparent" data-si="${si}" data-bi="${i}"/>`;
+        });
+    });
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.style.width = '100%';
+    svg.style.height = 'auto';
+    svg.innerHTML = html;
+    svg.querySelectorAll('rect[data-si]').forEach(r => {
+        r.addEventListener('mousemove', onGraphHover);
+        r.addEventListener('mouseleave', hideTip);
+    });
+    renderLegend();
+}
+
+function onGraphHover(ev) {
+    const si = parseInt(ev.target.dataset.si), bi = parseInt(ev.target.dataset.bi);
+    const series = visibleSeries();
+    const s = series[si];
+    if (!s) return;
+    const buckets = [];
+    series.forEach(x => x.points.forEach(p => { if (!buckets.includes(p.bucket)) buckets.push(p.bucket); }));
+    buckets.sort();
+    const b = buckets[bi];
+    const p = s.points.find(q => q.bucket === b) || { served: 0 };
+    const tip = document.getElementById('bmTip');
+    const wrap = document.getElementById('bmGraphWrap').getBoundingClientRect();
+    tip.innerHTML = `<strong>${escapeHtml(s.officer_name || ('#' + s.officer_id))}</strong><br>${escapeHtml(b)}<br>Served: <strong>${p.served}</strong>` +
+        (p.avg_wait != null ? `<br>Avg wait: ${p.avg_wait} min` : '') +
+        (p.breaches ? `<br>Breaches: ${p.breaches}` : '') +
+        `<br>On duty: ${Math.round(p.on_duty_min || 0)} min`;
+    tip.style.opacity = '1';
+    let lx = ev.clientX - wrap.left + 14, ly = ev.clientY - wrap.top - 10;
+    if (lx + 190 > wrap.width) lx -= 200;
+    tip.style.left = lx + 'px';
+    tip.style.top = Math.max(ly, 4) + 'px';
+}
+function hideTip() { document.getElementById('bmTip').style.opacity = '0'; }
+
+function renderLegend() {
+    const lg = document.getElementById('bmLegend');
+    if (!_bmData || !_bmData.series) { lg.innerHTML = ''; return; }
+    lg.innerHTML = _bmData.series.map((s, si) => {
+        const color = LINE_COLORS[si % LINE_COLORS.length];
+        const off = _bmHidden.has(String(s.officer_id));
+        return `<button class="legend-chip${off ? ' off' : ''}" onclick="toggleOfficer('${s.officer_id}')"><span class="legend-dot" style="background:${color}"></span>${escapeHtml(s.officer_name || ('#' + s.officer_id))} (${s.total_served})</button>`;
+    }).join('');
+}
+function toggleOfficer(id) {
+    id = String(id);
+    if (_bmHidden.has(id)) _bmHidden.delete(id);
+    else _bmHidden.add(id);
+    renderGraph();
+    renderRankings();
+}
+
+/* ── INIT ── */
+let currentAdmin = checkLogin();
+if (currentAdmin) {
+    const t = new Date();
+    const to = t.toISOString().slice(0, 10);
+    const from = new Date(t.getTime() - 6 * 86400000).toISOString().slice(0, 10);
+    document.getElementById('bmFrom').value = from;
+    document.getElementById('bmTo').value = to;
+}
+</script>
+</body>
+</html>

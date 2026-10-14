@@ -1,0 +1,784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports — SMQSS</title>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --green-dark: #1a3c2c;
+            --green-mid: #2a5a3a;
+            --green-light: #e8f5e9;
+            --bg: #f0f2f5;
+            --white: #ffffff;
+            --border: #e4e8ee;
+            --text-primary: #0a0f18;
+            --text-secondary: #2a3a4e;
+            --text-muted: #4a5a6e;
+            --red: #e53935;
+            --red-light: #ffebee;
+            --amber: #ef6c00;
+            --amber-light: #fff3e0;
+            --success: #00a84f;
+            --success-light: #e8f5e9;
+            --blue: #1565c0;
+            --blue-light: #e3f2fd;
+            --shadow-sm: 0 1px 4px rgba(0,0,0,0.06), 0 2px 8px rgba(0,0,0,0.04);
+            --radius: 12px;
+            --radius-sm: 8px;
+            --sidebar-width: 256px;
+            --transition: 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; font-weight: 500; background: var(--bg); min-height: 100vh; display: flex; color: var(--text-primary); -webkit-font-smoothing: antialiased; }
+        button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+        .sidebar { width: var(--sidebar-width); background: var(--white); min-height: 100vh; position: fixed; left: 0; top: 0; bottom: 0; padding: 20px 14px; overflow-y: auto; z-index: 100; border-right: 1px solid var(--border); }
+        .sidebar-logo { display: flex; align-items: center; gap: 12px; padding: 6px 10px 18px; border-bottom: 1px solid var(--border); margin-bottom: 14px; }
+        .logo-icon { width: 38px; height: 38px; background: linear-gradient(135deg, var(--green-dark), var(--green-mid)); border-radius: 10px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .logo-icon svg { width: 20px; height: 20px; }
+        .logo-title { font-size: 15px; font-weight: 800; color: var(--green-dark); letter-spacing: -0.01em; }
+        .logo-sub { font-size: 10px; font-weight: 600; color: var(--green-mid); text-transform: uppercase; letter-spacing: 0.08em; }
+        .nav-section-label { font-size: 9.5px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.12em; padding: 18px 20px 6px; }
+        .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--radius-sm); cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text-secondary); border-left: 2px solid transparent; transition: all 0.15s ease; min-height: 44px; user-select: none; }
+        .nav-item:hover { background: var(--green-light); color: var(--green-dark); }
+        .nav-item.active { background: var(--green-light); color: var(--green-dark); border-left: 2px solid var(--green-dark); font-weight: 700; }
+        .nav-icon { width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-sm); background: var(--green-light); flex-shrink: 0; transition: all 0.15s ease; }
+        .nav-item.active .nav-icon { background: var(--green-dark); color: white; }
+        .nav-item.active .nav-icon svg { stroke: white; }
+        .nav-icon svg { width: 15px; height: 15px; }
+        .main { flex: 1; margin-left: var(--sidebar-width); padding: 22px 26px 60px; min-width: 0; }
+        .topbar h1 { font-size: 21px; font-weight: 800; }
+        .topbar .sub { font-size: 13px; color: var(--text-muted); margin-bottom: 18px; }
+        .controls { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-bottom: 20px; background: var(--white); padding: 14px 16px; border-radius: var(--radius); box-shadow: var(--shadow-sm); }
+        .controls label { font-size: 12px; font-weight: 700; color: var(--text-muted); }
+        .date-input, .sel-input { padding: 10px 12px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; font-family: inherit; background: var(--white); min-height: 44px; }
+        .seg { display: flex; border: 1px solid var(--border); border-radius: var(--radius-sm); overflow: hidden; }
+        .seg button { border: none; background: var(--white); padding: 10px 16px; font-size: 12px; font-weight: 700; font-family: inherit; cursor: pointer; min-height: 44px; color: var(--text-muted); }
+        .seg button.on { background: var(--green-dark); color: #fff; }
+        .chip { border: 1px solid var(--border); background: var(--white); padding: 10px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; font-family: inherit; cursor: pointer; min-height: 44px; transition: all 0.15s; }
+        .chip:active { transform: scale(0.97); }
+        .chip.on { background: var(--green-dark); color: #fff; border-color: var(--green-dark); }
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 10px 18px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; font-family: inherit; cursor: pointer; border: none; transition: all 0.15s; min-height: 44px; }
+        .btn:active { transform: scale(0.97); }
+        .btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+        .btn-primary { background: var(--green-dark); color: #fff; }
+        .btn-primary:hover { filter: brightness(1.15); }
+        .btn-outline { background: var(--white); color: var(--text-secondary); border: 1px solid var(--border); }
+        .btn-outline:hover { border-color: var(--green-dark); }
+        .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 20px; }
+        .stat-card { background: var(--white); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow-sm); animation: rise 0.35s ease backwards; }
+        .stat-card:nth-child(2) { animation-delay: 0.06s; }
+        .stat-card:nth-child(3) { animation-delay: 0.12s; }
+        .stat-card:nth-child(4) { animation-delay: 0.18s; }
+        @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+        .stat-num { font-size: 24px; font-weight: 800; line-height: 1; }
+        .stat-lbl { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+        .stat-delta { font-size: 11px; font-weight: 700; margin-top: 4px; }
+        .up { color: var(--success); }
+        .down { color: var(--red); }
+        .section { background: var(--white); border-radius: var(--radius); box-shadow: var(--shadow-sm); margin-bottom: 20px; overflow: hidden; }
+        .section-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+        .section-title { font-size: 15px; font-weight: 800; }
+        .table-wrap { overflow-x: auto; }
+        table.data-table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 680px; }
+        table.data-table th { text-align: left; padding: 12px 16px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); border-bottom: 1px solid var(--border); background: #fafbfc; white-space: nowrap; }
+        table.data-table td { padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+        table.data-table tr:last-child td { border-bottom: none; }
+        table.data-table tbody tr { animation: fadein 0.3s ease backwards; }
+        @keyframes fadein { from { opacity: 0; } to { opacity: 1; } }
+        .pill { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 700; padding: 3px 10px; border-radius: 20px; white-space: nowrap; }
+        .pill-green { background: var(--success-light); color: var(--success); }
+        .pill-amber { background: var(--amber-light); color: var(--amber); }
+        .pill-red { background: var(--red-light); color: var(--red); }
+        .pill-grey { background: #f1f3f5; color: var(--text-muted); }
+        .pill-blue { background: var(--blue-light); color: var(--blue); }
+        .empty-box { padding: 36px 20px; text-align: center; color: var(--text-muted); font-size: 13px; }
+        .mono { font-family: ui-monospace, monospace; font-size: 12px; }
+        .skel { border-radius: 8px; background: linear-gradient(90deg, #eef1f4 25%, #e2e7ec 50%, #eef1f4 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; }
+        @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+        .graph-wrap { padding: 18px 20px 8px; overflow-x: auto; }
+        .graph-legend { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 20px 16px; }
+        .legend-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 7px 12px; border-radius: 20px; border: 1px solid var(--border); background: var(--white); cursor: pointer; min-height: 36px; transition: all 0.15s; font-family: inherit; }
+        .legend-chip:active { transform: scale(0.97); }
+        .legend-chip.off { opacity: 0.4; }
+        .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
+        .graph-svg text { font-family: 'Plus Jakarta Sans', sans-serif; }
+        .graph-line { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; animation: draw 0.9s ease backwards; }
+        @keyframes draw { from { stroke-dasharray: 1200; stroke-dashoffset: 1200; } to { stroke-dasharray: 1200; stroke-dashoffset: 0; } }
+        .peak-dot { animation: pop 0.3s ease backwards; }
+        @keyframes pop { from { opacity: 0; transform: scale(0.4); } to { opacity: 1; transform: scale(1); } }
+        .graph-tip { position: absolute; pointer-events: none; background: var(--green-dark); color: #fff; font-size: 11.5px; font-weight: 600; padding: 8px 12px; border-radius: 8px; white-space: nowrap; z-index: 5; opacity: 0; transition: opacity 0.15s; box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
+        .bar-row { display: flex; align-items: center; gap: 10px; padding: 7px 20px; font-size: 12px; }
+        .bar-lbl { width: 92px; flex-shrink: 0; color: var(--text-muted); font-family: ui-monospace, monospace; font-size: 11px; }
+        .bar-track { flex: 1; background: #eef1f4; border-radius: 6px; height: 22px; position: relative; overflow: hidden; }
+        .bar-fill { height: 100%; border-radius: 6px; background: var(--green-dark); transition: width 0.5s ease; display: flex; align-items: center; justify-content: flex-end; padding-right: 8px; color: #fff; font-size: 10.5px; font-weight: 700; min-width: 28px; }
+        .traffic-flag { padding: 12px 20px; border-top: 1px dashed var(--border); font-size: 12.5px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        #toastContainer { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 8px; align-items: center; }
+        .toast { background: var(--green-dark); color: #fff; padding: 11px 22px; border-radius: 10px; font-size: 13px; font-weight: 600; box-shadow: 0 4px 16px rgba(0,0,0,0.12); animation: toastin 0.25s ease; max-width: 92vw; }
+        .toast.error { background: var(--red); }
+        @keyframes toastin { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+        .toast.hiding { opacity: 0; transition: opacity 0.28s; }
+        @media (max-width: 860px) { .sidebar { display: none; } .main { margin-left: 0; padding: 16px 14px 60px; } }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.001s !important; transition-duration: 0.001s !important; } }
+        @media print {
+            .sidebar, .controls, .no-print { display: none !important; }
+            .main { margin-left: 0; padding: 0; }
+            body { background: #fff; }
+            .section { box-shadow: none; border: 1px solid #ddd; break-inside: avoid; }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-logo">
+            <div class="logo-icon"><svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg></div>
+            <div><div class="logo-title">SMQSS</div><div class="logo-sub">Accountability</div></div>
+        </div>
+        <div class="nav-section-label">System</div>
+        <div class="nav-item" onclick="goBackToAdmin()">
+            <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 12H5"/><polyline points="12 19 5 12 12 5"/></svg></div>
+            <span>Back to Dashboard</span>
+        </div>
+        <div class="nav-section-label">Accountability</div>
+        <div class="nav-item" onclick="goToSLA()">
+            <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+            <span>SLA Dashboard</span>
+        </div>
+        <div class="nav-item" onclick="goToCustomers()">
+            <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg></div>
+            <span>Customers</span>
+        </div>
+        <div class="nav-item" onclick="goToBenchmarks()">
+            <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg></div>
+            <span>Benchmarks</span>
+        </div>
+        <div class="nav-item" onclick="goToBottlenecks()">
+            <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="6" x2="12" y2="12"/><line x1="16" y1="12" x2="12" y2="12"/></svg></div>
+            <span>Bottlenecks</span>
+        </div>
+        <div class="nav-item active">
+            <div class="nav-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
+            <span>Reports</span>
+        </div>
+    </div>
+
+    <div class="main">
+        <div class="topbar" style="margin-bottom:18px">
+            <h1 style="font-size:21px;font-weight:800">Reports</h1>
+            <div style="font-size:13px;color:var(--text-muted)">Served per office by day, week and month — for decision making</div>
+        </div>
+
+        <div class="controls">
+            <div class="seg" id="rpBucketSeg">
+                <button data-b="day" class="on" onclick="setBucket('day')">Day</button>
+                <button data-b="week" onclick="setBucket('week')">Week</button>
+                <button data-b="month" onclick="setBucket('month')">Month</button>
+            </div>
+            <button class="chip on" data-p="7" onclick="setPreset(7, this)">Last 7 days</button>
+            <button class="chip" data-p="30" onclick="setPreset(30, this)">Last 30 days</button>
+            <button class="chip" data-p="90" onclick="setPreset(90, this)">Last 90 days</button>
+            <label>From</label><input type="date" class="date-input" id="rpFrom">
+            <label>To</label><input type="date" class="date-input" id="rpTo">
+            <select class="sel-input" id="rpOffice"><option value="">All offices</option></select>
+            <button class="btn btn-primary" id="rpLoadBtn" onclick="loadReports()">Apply</button>
+            <button class="btn btn-outline no-print" onclick="exportCSV()">CSV</button>
+            <button class="btn btn-outline no-print" onclick="window.print()">Print</button>
+        </div>
+
+        <div class="stat-row" id="rpCards"></div>
+
+        <div class="section">
+            <div class="section-header"><div class="section-title">Served Over Time</div><span class="pill pill-grey" id="rpRangeLbl"></span>
+                <span id="rpScopeLbl" style="font-size:12px;font-weight:700;color:var(--green-dark)"></span>
+                <span id="rpCrumb" style="font-size:12px"></span>
+                <span style="flex:1"></span>
+                <div class="seg no-print" id="rpViewSeg">
+                    <button data-v="line" class="on" onclick="setView('line')">Lines</button>
+                    <button data-v="bars" onclick="setView('bars')">Bars</button>
+                </div>
+            </div>
+            <div class="graph-wrap" id="rpGraphWrap" style="position:relative;padding:18px 20px 8px;overflow-x:auto">
+                <div class="empty-box" id="rpGraphEmpty">Pick a period and press Apply — one line per office.</div>
+                <svg id="rpGraph" class="graph-svg" style="display:none;min-width:640px;width:100%;height:auto" role="img" aria-label="Served per office graph"></svg>
+                <div class="graph-tip" id="rpTip"></div>
+                <div id="rpBars" style="display:none;padding:6px 0 14px"></div>
+            </div>
+            <div class="graph-legend" id="rpLegend"></div>
+            <div class="traffic-flag" id="rpTraffic"></div>
+        </div>
+
+        <div class="section">
+            <div class="section-header"><div class="section-title">Overall Served</div><span class="pill pill-grey" id="rpOverallLbl"></span></div>
+            <div style="padding:18px 20px 8px;overflow-x:auto" id="rpOverallWrap">
+                <div class="empty-box" id="rpOverallEmpty">Apply a period to see total activity.</div>
+                <svg id="rpOverall" style="display:none;min-width:640px;width:100%;height:auto" role="img" aria-label="Overall served area chart"></svg>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-header"><div class="section-title">Officer Activity</div><span class="pill pill-grey" id="rpOffCount"></span></div>
+            <div id="rpOfficers" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:14px;padding:18px 20px;"><div class="empty-box">Apply a period to see per-officer charts.</div></div>
+        </div>
+            <div class="section-header"><div class="section-title">Per-Office Breakdown</div><span class="pill pill-grey" id="rpRowCount"></span></div>
+            <div class="table-wrap"><table class="data-table">
+                <thead><tr><th>Office</th><th>Total Served</th><th>Avg / <span id="rpAvgUnit">Day</span></th><th>Peak Period</th><th>Peak Served</th><th>vs Prev</th></tr></thead>
+                <tbody id="rpRows"><tr><td colspan="6"><div class="empty-box">No data yet — apply a period above.</div></td></tr></tbody>
+            </table></div>
+        </div>
+    </div>
+
+    <div id="toastContainer"></div>
+
+<script>
+const API_BASE_URL = typeof window !== 'undefined' ? window.location.origin : '';
+const LINE_COLORS = ['#00a84f', '#1565c0', '#7c3aed', '#ef6c00', '#0d9488', '#e53935', '#b8960a', '#64748b'];
+let _rpData = null, _rpPrev = null, _rpHidden = new Set(), _rpBucket = 'day', _rpView = 'line', _rpOfficers = null, _rpDrill = null;
+
+function checkLogin() {
+    const loggedIn = sessionStorage.getItem('loggedInUser');
+    if (!loggedIn) { window.location.href = '/'; return null; }
+    const user = JSON.parse(loggedIn);
+    if (user.role !== 'admin') { window.location.href = '/'; return null; }
+    return user;
+}
+function escapeHtml(t) { const d = document.createElement('div'); d.textContent = t == null ? '' : t; return d.innerHTML; }
+function setLoading(btn, loading) {
+    if (!btn) return;
+    if (loading) { btn._origText = btn.textContent; btn.textContent = 'Processing...'; btn.disabled = true; }
+    else { btn.textContent = btn._origText || btn.textContent; btn.disabled = false; }
+}
+function showToast(message, type) {
+    const c = document.getElementById('toastContainer');
+    const el = document.createElement('div');
+    el.className = 'toast' + (type === 'error' ? ' error' : '');
+    el.textContent = message;
+    c.appendChild(el);
+    setTimeout(function() { el.classList.add('hiding'); setTimeout(function() { el.remove(); }, 300); }, 2600);
+}
+async function goBackToAdmin() {
+    try { const r = await fetch(`${API_BASE_URL}/api/admin/admin-token`); const d = await r.json(); window.location.href = d.url || '/'; }
+    catch (e) { window.location.href = '/'; }
+}
+async function goToSLA() {
+    try { const r = await fetch(`${API_BASE_URL}/api/admin/sla-token`); const d = await r.json(); window.location.href = d.url || '/'; }
+    catch (e) { window.location.href = '/'; }
+}
+async function goToCustomers() {
+    try { const r = await fetch(`${API_BASE_URL}/api/admin/customers-token`); const d = await r.json(); window.location.href = d.url || '/'; }
+    catch (e) { window.location.href = '/'; }
+}
+async function goToBenchmarks() {
+    try { const r = await fetch(`${API_BASE_URL}/api/admin/benchmarks-token`); const d = await r.json(); window.location.href = d.url || '/'; }
+    catch (e) { window.location.href = '/'; }
+}
+async function goToBottlenecks() {
+    try { const r = await fetch(`${API_BASE_URL}/api/admin/bottlenecks-token`); const d = await r.json(); window.location.href = d.url || '/'; }
+    catch (e) { window.location.href = '/'; }
+}
+function setBucket(b) {
+    _rpBucket = b;
+    _rpDrill = null;
+    renderCrumb();
+    document.querySelectorAll('#rpBucketSeg button').forEach(function(x) { x.classList.toggle('on', x.dataset.b === b); });
+    document.getElementById('rpAvgUnit').textContent = b === 'day' ? 'Day' : (b === 'week' ? 'Week' : 'Month');
+}
+function monthName(ym) {
+    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const parts = ym.split('-');
+    return months[parseInt(parts[1], 10) - 1] + ' ' + parts[0];
+}
+function renderCrumb() {
+    const el = document.getElementById('rpCrumb');
+    if (!el) return;
+    if (!_rpDrill) { el.innerHTML = '<span style="color:var(--text-muted)">All periods</span>'; return; }
+    let html = '<a href="javascript:void(0)" onclick="drillReset()" style="color:var(--blue);font-weight:700;text-decoration:none">All</a>';
+    if (_rpDrill.level === 'month') {
+        html += ' <span style="color:var(--text-muted)">›</span> <strong>' + escapeHtml(monthName(_rpDrill.anchor.slice(0, 7))) + '</strong> <span style="color:var(--text-muted)">(weeks)</span>';
+    } else if (_rpDrill.level === 'week') {
+        html += ' <span style="color:var(--text-muted)">›</span> <a href="javascript:void(0)" onclick="drillUpToMonth()" style="color:var(--blue);font-weight:700;text-decoration:none">' + escapeHtml(monthName(_rpDrill.month)) + '</a>';
+        html += ' <span style="color:var(--text-muted)">›</span> <strong>Week of ' + escapeHtml(_rpDrill.anchor.slice(5)) + '</strong> <span style="color:var(--text-muted)">(days)</span>';
+    }
+    el.innerHTML = html;
+}
+function drillReset() {
+    _rpDrill = null;
+    renderCrumb();
+    loadReports();
+}
+function drillUpToMonth() {
+    if (!_rpDrill || !_rpDrill.month) return;
+    drillIntoMonth(_rpDrill.month + '-01', true);
+}
+function monthBounds(ym) {
+    const y = parseInt(ym.slice(0, 4), 10), m = parseInt(ym.slice(5, 7), 10);
+    const first = `${ym.slice(0, 7)}-01`;
+    const last = new Date(y, m, 0).toISOString().slice(0, 10);
+    return { first, last };
+}
+function drillInto(bucket) {
+    if (_rpBucket === 'month') {
+        drillIntoMonth(bucket, false);
+    } else if (_rpBucket === 'week') {
+        const mon = bucket.slice(0, 10);
+        const sun = new Date(new Date(mon + 'T00:00:00').getTime() + 6 * 86400000).toISOString().slice(0, 10);
+        _rpDrill = { level: 'week', anchor: mon, month: mon.slice(0, 7) };
+        document.getElementById('rpFrom').value = mon;
+        document.getElementById('rpTo').value = sun > isoDay(new Date()) ? isoDay(new Date()) : sun;
+        setBucketSilent('day');
+        renderCrumb();
+        loadReports(true);
+    }
+}
+function drillIntoMonth(bucket, keepDrill) {
+    const ym = bucket.slice(0, 7);
+    const b = monthBounds(ym);
+    const today = isoDay(new Date());
+    _rpDrill = { level: 'month', anchor: b.first };
+    document.getElementById('rpFrom').value = b.first;
+    document.getElementById('rpTo').value = b.last > today ? today : b.last;
+    setBucketSilent('week');
+    renderCrumb();
+    loadReports(true);
+}
+function setBucketSilent(b) {
+    _rpBucket = b;
+    document.querySelectorAll('#rpBucketSeg button').forEach(function(x) { x.classList.toggle('on', x.dataset.b === b); });
+    document.getElementById('rpAvgUnit').textContent = b === 'day' ? 'Day' : (b === 'week' ? 'Week' : 'Month');
+}
+function setView(v) {
+    _rpView = v;
+    document.querySelectorAll('#rpViewSeg button').forEach(function(x) { x.classList.toggle('on', x.dataset.v === v); });
+    renderMain();
+}
+function isoDay(d) { return d.toISOString().slice(0, 10); }
+function setPreset(days, el) {
+    document.querySelectorAll('.chip').forEach(function(x) { x.classList.remove('on'); });
+    if (el) el.classList.add('on');
+    const t = new Date();
+    document.getElementById('rpTo').value = isoDay(t);
+    document.getElementById('rpFrom').value = isoDay(new Date(t.getTime() - (days - 1) * 86400000));
+    loadReports();
+}
+function prettyBucket(b) {
+    if (_rpBucket === 'day') return b.slice(5);
+    if (_rpBucket === 'week') return 'w/o ' + b.slice(5);
+    return monthName(b.slice(0, 7));
+}
+function monthName(ym) {
+    const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+    const m = parseInt(String(ym).slice(5, 7), 10);
+    if (!m || m < 1 || m > 12) return ym;
+    return months[m - 1] + ' ' + String(ym).slice(0, 4);
+}
+function scopeTitle() {
+    if (_rpDrill && _rpDrill.level === 'month') return monthName(_rpDrill.anchor.slice(0, 7)) + ' — weeks';
+    if (_rpDrill && _rpDrill.level === 'week') return 'Week of ' + _rpDrill.anchor.slice(5) + ' — days';
+    if (_rpBucket === 'month') return 'By month';
+    if (_rpBucket === 'week') return 'By week';
+    return 'By day';
+}
+
+async function fetchRange(from, to, bucket, officeId) {
+    let url = `${API_BASE_URL}/api/admin/reports-office-served?from=${from}&to=${to}&bucket=${bucket}`;
+    if (officeId) url += `&office_id=${officeId}`;
+    const res = await fetch(url);
+    return res.json();
+}
+
+async function loadReports(keepDrill) {
+    const btn = document.getElementById('rpLoadBtn');
+    const from = document.getElementById('rpFrom').value;
+    const to = document.getElementById('rpTo').value;
+    const officeId = document.getElementById('rpOffice').value;
+    if (!from || !to) { showToast('Pick from and to dates', 'error'); return; }
+    if (!keepDrill) { _rpDrill = null; renderCrumb(); }
+    setLoading(btn, true);
+    try {
+        const data = await fetchRange(from, to, _rpBucket, officeId);
+        if (!data.success) { showToast(data.message || 'Load failed', 'error'); return; }
+        _rpData = data;
+        _rpHidden = new Set();
+        try {
+            const ores = await fetch(`${API_BASE_URL}/api/admin/officer-activity-series?from=${from}&to=${to}&bucket=day`);
+            const odata = await ores.json();
+            _rpOfficers = odata.success ? odata : null;
+        } catch (e) { _rpOfficers = null; }
+        const fD = new Date(from), tD = new Date(to);
+        const span = Math.round((tD - fD) / 86400000) + 1;
+        const pTo = new Date(fD.getTime() - 86400000);
+        const pFrom = new Date(pTo.getTime() - (span - 1) * 86400000);
+        try {
+            const prev = await fetchRange(isoDay(pFrom), isoDay(pTo), _rpBucket, officeId);
+            _rpPrev = prev.success ? prev : null;
+        } catch (e) { _rpPrev = null; }
+        fillOfficeFilter(data.offices || []);
+        renderAll();
+        document.getElementById('rpRangeLbl').textContent = `${from} → ${to} · ${_rpBucket}`;
+        document.getElementById('rpScopeLbl').textContent = scopeTitle();
+    } catch (e) {
+        showToast('Network error', 'error');
+    } finally {
+        setLoading(btn, false);
+    }
+}
+
+function fillOfficeFilter(offices) {
+    const sel = document.getElementById('rpOffice');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">All offices</option>' + offices.map(o =>
+        `<option value="${o.office_id || o.id}">${escapeHtml(o.office_name)} (${escapeHtml(o.office_code)})</option>`
+    ).join('');
+    sel.value = cur;
+}
+
+function visibleSeries() {
+    if (!_rpData) return [];
+    return (_rpData.series || []).filter(s => !_rpHidden.has(String(s.office_id)));
+}
+function prevTotals() {
+    const m = {};
+    if (_rpPrev && _rpPrev.series) _rpPrev.series.forEach(s => { m[String(s.office_id)] = s.total_served || 0; });
+    return m;
+}
+
+function renderAll() {
+    renderCards();
+    renderMain();
+    renderTable();
+    renderTraffic();
+    renderOverall();
+    renderOfficers();
+}
+
+function renderCards() {
+    const series = visibleSeries();
+    const total = series.reduce((a, s) => a + (s.total_served || 0), 0);
+    const n = (_rpData.buckets || []).length || 1;
+    const avg = (total / n).toFixed(1);
+    const prev = prevTotals();
+    let prevTotal = 0, hasPrev = false;
+    Object.keys(prev).forEach(k => { hasPrev = true; prevTotal += prev[k]; });
+    let delta = '<div class="stat-delta" style="color:var(--text-muted)">— vs prev period</div>';
+    if (hasPrev) {
+        if (prevTotal === 0 && total > 0) delta = '<div class="stat-delta up">new activity</div>';
+        else if (prevTotal > 0) {
+            const pc = Math.round(((total - prevTotal) / prevTotal) * 100);
+            delta = pc >= 0 ? `<div class="stat-delta up">+${pc}% vs prev</div>` : `<div class="stat-delta down">${pc}% vs prev</div>`;
+        }
+    }
+    let best = null;
+    series.forEach(s => { if (!best || s.total_served > best.total_served) best = s; });
+    document.getElementById('rpCards').innerHTML =
+        `<div class="stat-card"><div class="stat-num">${total}</div><div class="stat-lbl">Total served</div>${delta}</div>` +
+        `<div class="stat-card"><div class="stat-num">${avg}</div><div class="stat-lbl">Avg per ${_rpBucket}</div></div>` +
+        `<div class="stat-card"><div class="stat-num" style="font-size:18px">${best ? escapeHtml(best.office_name) : '—'}</div><div class="stat-lbl">Busiest office${best ? ` (${best.total_served} served)` : ''}</div></div>` +
+        `<div class="stat-card"><div class="stat-num">${series.length}</div><div class="stat-lbl">Offices reporting</div></div>`;
+}
+
+function renderMain() {
+    if (_rpView === 'line') {
+        document.getElementById('rpGraph').style.display = 'block';
+        document.getElementById('rpBars').style.display = 'none';
+        renderGraph();
+    } else {
+        document.getElementById('rpGraph').style.display = 'none';
+        document.getElementById('rpBars').style.display = 'block';
+        renderBars();
+    }
+    renderLegend();
+}
+
+function graphBuckets() {
+    const set = [];
+    visibleSeries().forEach(s => s.points.forEach(p => { if (!set.includes(p.bucket)) set.push(p.bucket); }));
+    set.sort();
+    return set;
+}
+
+function renderGraph() {
+    const svg = document.getElementById('rpGraph');
+    const empty = document.getElementById('rpGraphEmpty');
+    const series = visibleSeries();
+    if (!series.length) { svg.style.display = 'none'; empty.style.display = ''; empty.textContent = 'No offices in range.'; return; }
+    const buckets = graphBuckets();
+    if (!buckets.length) { svg.style.display = 'none'; empty.style.display = ''; return; }
+    empty.style.display = 'none';
+    svg.style.display = 'block';
+    const W = 920, H = 320, padL = 44, padR = 16, padT = 16, padB = 40;
+    let yMax = 5;
+    series.forEach(s => s.points.forEach(p => { if (p.served > yMax) yMax = p.served; }));
+    yMax = Math.ceil(yMax * 1.15);
+    const x = i => buckets.length === 1 ? padL + (W - padL - padR) / 2 : padL + (W - padL - padR) * (i / (buckets.length - 1));
+    const y = v => padT + (H - padT - padB) * (1 - v / yMax);
+    let html = '';
+    for (let g = 0; g <= 4; g++) {
+        const v = Math.round(yMax * g / 4), yy = y(v);
+        html += `<line x1="${padL}" y1="${yy}" x2="${W - padR}" y2="${yy}" stroke="#e4e8ee" stroke-width="1"/>` +
+                `<text x="${padL - 8}" y="${yy + 4}" font-size="10" fill="#4a5a6e" text-anchor="end">${v}</text>`;
+    }
+    const skip = Math.max(1, Math.ceil(buckets.length / 10));
+    const drillable = (_rpBucket === 'month' || _rpBucket === 'week');
+    buckets.forEach((b, i) => {
+        if (i % skip !== 0 && i !== buckets.length - 1) return;
+        html += `<text x="${x(i)}" y="${H - 12}" font-size="10" fill="${drillable ? '#1565c0' : '#4a5a6e'}" text-anchor="middle"${drillable ? ` style="cursor:pointer;font-weight:700" onclick="drillInto('${escapeHtml(b)}')"` : ''}>${escapeHtml(prettyBucket(b))}</text>`;
+    });
+    series.forEach((s, si) => {
+        const color = LINE_COLORS[si % LINE_COLORS.length];
+        const vals = buckets.map(b => { const p = s.points.find(q => q.bucket === b); return p ? p.served : 0; });
+        html += `<polyline class="graph-line" points="${vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')}" stroke="${color}" style="animation-delay:${si * 0.1}s"/>`;
+        if (s.peak && s.peak.served > 0) {
+            const pi = buckets.indexOf(s.peak.bucket);
+            if (pi >= 0) html += `<circle class="peak-dot" cx="${x(pi)}" cy="${y(s.peak.served)}" r="6" fill="${color}" stroke="#fff" stroke-width="2.5" style="animation-delay:${si * 0.1 + 0.4}s"><title>Peak: ${s.peak.served} on ${s.peak.bucket}</title></circle>`;
+        }
+        vals.forEach((v, i) => {
+            html += `<rect x="${(x(i) - (W / Math.max(buckets.length, 1)) / 2).toFixed(1)}" y="${padT}" width="${(W / Math.max(buckets.length, 1)).toFixed(1)}" height="${H - padT - padB}" fill="transparent" data-si="${si}" data-bi="${i}"/>`;
+        });
+    });
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.innerHTML = html;
+    svg.querySelectorAll('rect[data-si]').forEach(r => {
+        r.addEventListener('mousemove', onGraphHover);
+        r.addEventListener('mouseleave', hideTip);
+    });
+}
+
+function onGraphHover(ev) {
+    const si = parseInt(ev.target.dataset.si), bi = parseInt(ev.target.dataset.bi);
+    const series = visibleSeries();
+    const s = series[si];
+    if (!s) return;
+    const buckets = graphBuckets();
+    const b = buckets[bi];
+    const p = s.points.find(q => q.bucket === b);
+    const v = p ? p.served : 0;
+    const tip = document.getElementById('rpTip');
+    const wrap = document.getElementById('rpGraphWrap').getBoundingClientRect();
+    tip.innerHTML = `<strong>${escapeHtml(s.office_name)}</strong><br>${escapeHtml(b)}<br>Served: <strong>${v}</strong>`;
+    tip.style.opacity = '1';
+    let lx = ev.clientX - wrap.left + 14, ly = ev.clientY - wrap.top - 10;
+    if (lx + 190 > wrap.width) lx -= 200;
+    tip.style.left = lx + 'px';
+    tip.style.top = Math.max(ly, 4) + 'px';
+}
+function hideTip() { document.getElementById('rpTip').style.opacity = '0'; }
+
+function renderBars() {
+    const el = document.getElementById('rpBars');
+    const series = visibleSeries();
+    const buckets = graphBuckets();
+    if (!series.length || !buckets.length) { el.innerHTML = '<div class="empty-box">No data.</div>'; return; }
+    let mx = 1;
+    series.forEach(s => s.points.forEach(p => { if (p.served > mx) mx = p.served; }));
+    const colors = {};
+    series.forEach((s, si) => { colors[String(s.office_id)] = LINE_COLORS[si % LINE_COLORS.length]; });
+    el.innerHTML = buckets.map(b => {
+        const tot = series.reduce((a, s) => { const p = s.points.find(q => q.bucket === b); return a + (p ? p.served : 0); }, 0);
+        const clickable = (_rpBucket === 'month' || _rpBucket === 'week') && tot > 0;
+        const segs = series.map(s => {
+            const p = s.points.find(q => q.bucket === b);
+            const v = p ? p.served : 0;
+            if (!v) return '';
+            return `<div style="height:100%;width:${(v / Math.max(tot, 1) * 100).toFixed(1)}%;background:${colors[String(s.office_id)]}" title="${escapeHtml(s.office_name)}: ${v}"></div>`;
+        }).join('');
+        return `<div class="bar-row"><div class="bar-lbl">${escapeHtml(prettyBucket(b))}</div><div class="bar-track" style="display:flex;${clickable ? 'cursor:pointer' : ''}"${clickable ? ` onclick="drillInto('${escapeHtml(b)}')" title="Drill into ${escapeHtml(prettyBucket(b))}"` : ''}>${segs || `<div style="height:100%;width:4px;background:#e4e8ee"></div>`}</div><div style="width:44px;text-align:right;font-weight:800">${tot}</div></div>`;
+    }).join('');
+}
+
+function renderLegend() {
+    const lg = document.getElementById('rpLegend');
+    if (!_rpData || !_rpData.series) { lg.innerHTML = ''; return; }
+    lg.innerHTML = _rpData.series.map((s, si) => {
+        const color = LINE_COLORS[si % LINE_COLORS.length];
+        const off = _rpHidden.has(String(s.office_id));
+        return `<button class="legend-chip${off ? ' off' : ''}" onclick="toggleOffice('${s.office_id}')"><span class="legend-dot" style="background:${color}"></span>${escapeHtml(s.office_name)} (${s.total_served})</button>`;
+    }).join('');
+}
+function toggleOffice(id) {
+    id = String(id);
+    if (_rpHidden.has(id)) _rpHidden.delete(id);
+    else _rpHidden.add(id);
+    renderMain();
+    renderCards();
+    renderTable();
+    renderTraffic();
+}
+
+function renderTable() {
+    const tb = document.getElementById('rpRows');
+    const series = visibleSeries();
+    const prev = {};
+    if (_rpPrev && _rpPrev.series) _rpPrev.series.forEach(s => { prev[String(s.office_id)] = s.total_served || 0; });
+    const n = ((_rpData && _rpData.buckets) || []).length || 1;
+    document.getElementById('rpRowCount').textContent = series.length + ' offices';
+    if (!series.length) { tb.innerHTML = '<tr><td colspan="6"><div class="empty-box">No offices in range.</div></td></tr>'; return; }
+    tb.innerHTML = series.map(s => {
+        const avg = (s.total_served / n).toFixed(1);
+        const pTot = prev[String(s.office_id)];
+        let delta = '<span class="pill pill-grey">—</span>';
+        if (pTot != null) {
+            if (pTot === 0 && s.total_served > 0) delta = '<span class="pill pill-green">new</span>';
+            else if (pTot > 0) {
+                const pc = Math.round(((s.total_served - pTot) / pTot) * 100);
+                delta = pc >= 0 ? `<span class="pill pill-green">+${pc}%</span>` : `<span class="pill pill-red">${pc}%</span>`;
+            }
+        }
+        const peak = s.peak && s.peak.served > 0 ? `${escapeHtml(s.peak.bucket)} (${s.peak.served})` : '—';
+        return `<tr><td><strong>${escapeHtml(s.office_name)}</strong><br><span style="color:var(--text-muted);font-size:11px">${escapeHtml(s.office_code)}</span></td>` +
+            `<td><strong>${s.total_served}</strong></td><td>${avg}</td><td>${peak}</td><td>${s.peak ? s.peak.served : 0}</td><td>${delta}</td></tr>`;
+    }).join('');
+}
+
+function renderTraffic() {
+    const el = document.getElementById('rpTraffic');
+    const series = visibleSeries();
+    const flags = [];
+    series.forEach(s => {
+        if (s.peak && s.peak.served >= 10) {
+            flags.push(`<span class="pill pill-amber">Hard traffic</span><span><strong>${escapeHtml(s.office_name)}</strong> peaked <strong>${escapeHtml(s.peak.bucket)}</strong> with <strong>${s.peak.served}</strong> served — consider extra staffing that ${prettyBucket(s.peak.bucket)}.</span>`);
+        }
+    });
+    el.innerHTML = flags.length ? flags.map(f => `<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px">${f}</div>`).join('')
+        : '<span style="color:var(--text-muted)">No hard-traffic days in range — volumes look manageable.</span>';
+}
+
+function areaChartSVG(buckets, values, color, W, H, padL, padR, padT, padB, delayBase) {
+    let yMax = 5;
+    values.forEach(v => { if (v > yMax) yMax = v; });
+    yMax = Math.ceil(yMax * 1.15);
+    const x = i => buckets.length === 1 ? padL + (W - padL - padR) / 2 : padL + (W - padL - padR) * (i / (buckets.length - 1));
+    const y = v => padT + (H - padT - padB) * (1 - v / yMax);
+    let html = '';
+    for (let g = 0; g <= 4; g++) {
+        const v = Math.round(yMax * g / 4), yy = y(v);
+        html += `<line x1="${padL}" y1="${yy}" x2="${W - padR}" y2="${yy}" stroke="#e4e8ee" stroke-width="1"/>` +
+                `<text x="${padL - 8}" y="${yy + 4}" font-size="10" fill="#4a5a6e" text-anchor="end">${v}</text>`;
+    }
+    const skip = Math.max(1, Math.ceil(buckets.length / 8));
+    buckets.forEach((b, i) => {
+        if (i % skip !== 0 && i !== buckets.length - 1) return;
+        html += `<text x="${x(i)}" y="${H - 12}" font-size="10" fill="#4a5a6e" text-anchor="middle">${escapeHtml(prettyBucket(b))}</text>`;
+    });
+    const pts = values.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+    const base = H - padB;
+    html += `<polygon points="${padL},${base} ${pts} ${x(values.length - 1).toFixed(1)},${base}" fill="${color}" opacity="0.15" style="animation:fadein 0.6s ease backwards;animation-delay:${delayBase}s"/>` +
+            `<polyline class="graph-line" points="${pts}" stroke="${color}" style="animation-delay:${delayBase}s"/>`;
+    return { html, yMax };
+}
+
+function renderOverall() {
+    const svg = document.getElementById('rpOverall');
+    const empty = document.getElementById('rpOverallEmpty');
+    const series = visibleSeries();
+    if (!series.length || !_rpData) { svg.style.display = 'none'; empty.style.display = ''; return; }
+    const buckets = [];
+    series.forEach(s => s.points.forEach(p => { if (!buckets.includes(p.bucket)) buckets.push(p.bucket); }));
+    buckets.sort();
+    if (!buckets.length) { svg.style.display = 'none'; empty.style.display = ''; return; }
+    empty.style.display = 'none';
+    svg.style.display = 'block';
+    const totals = buckets.map(b => series.reduce((a, s) => { const p = s.points.find(q => q.bucket === b); return a + (p ? p.served : 0); }, 0));
+    const W = 920, H = 260, padL = 44, padR = 16, padT = 16, padB = 40;
+    const r = areaChartSVG(buckets, totals, '#1565c0', W, H, padL, padR, padT, padB, 0);
+    const sum = totals.reduce((a, v) => a + v, 0);
+    const avg = (sum / Math.max(totals.length, 1)).toFixed(1);
+    const mx = Math.max.apply(null, totals);
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.innerHTML = r.html +
+        `<g font-size="11" font-weight="700" fill="#4a5a6e"><text x="${padL}" y="${H - 28}">Total ${sum} · Avg ${avg} · Max ${mx}</text></g>`;
+    document.getElementById('rpOverallLbl').textContent = `Total ${sum} · Avg ${avg} · Max ${mx}`;
+}
+
+function bucketToDay(b) {
+    // report bucket label -> representative day for grouping daily officer points
+    return b;
+}
+function officerDayPoints() {
+    // aggregate officer daily points into current report buckets
+    if (!_rpOfficers || !_rpOfficers.series) return [];
+    return _rpOfficers.series.map(function(s) {
+        const groups = {};
+        (s.points || []).forEach(function(p) {
+            const d = (p.bucket || '').slice(0, 10);
+            if (!d) return;
+            let key = d;
+            if (_rpBucket === 'week') {
+                const dt = new Date(d + 'T00:00:00');
+                const mon = new Date(dt.getTime() - ((dt.getDay() + 6) % 7) * 86400000);
+                key = mon.toISOString().slice(0, 10);
+            } else if (_rpBucket === 'month') {
+                key = d.slice(0, 7) + '-01';
+            }
+            groups[key] = (groups[key] || 0) + (p.served || 0);
+        });
+        const pts = Object.keys(groups).sort().map(k => ({ bucket: k, served: groups[k] }));
+        const total = pts.reduce((a, p) => a + p.served, 0);
+        return { officer_id: s.officer_id, officer_name: s.officer_name, office_name: s.office_name, points: pts, total_served: total };
+    }).filter(s => s.total_served > 0).sort((a, b) => b.total_served - a.total_served).slice(0, 12);
+}
+
+function renderOfficers() {
+    const el = document.getElementById('rpOfficers');
+    const list = officerDayPoints();
+    document.getElementById('rpOffCount').textContent = list.length + ' officers';
+    if (!list.length) { el.innerHTML = '<div class="empty-box">No officer activity in range.</div>'; return; }
+    const colors = ['#00a84f', '#1565c0', '#7c3aed', '#ef6c00', '#0d9488', '#e53935', '#b8960a', '#64748b'];
+    el.innerHTML = list.map(function(s, si) {
+        const color = colors[si % colors.length];
+        const buckets = s.points.map(p => p.bucket);
+        const values = s.points.map(p => p.served);
+        const W = 300, H = 130, padL = 30, padR = 10, padT = 8, padB = 22;
+        const r = areaChartSVG(buckets, values, color, W, H, padL, padR, padT, padB, si * 0.05);
+        const avg = (s.total_served / Math.max(values.length, 1)).toFixed(1);
+        const mx = values.length ? Math.max.apply(null, values) : 0;
+        return `<div style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:14px 14px 10px;box-shadow:var(--shadow-sm)">` +
+            `<div style="font-size:13px;font-weight:800">${escapeHtml(s.officer_name || ('#' + s.officer_id))}</div>` +
+            `<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">${escapeHtml(s.office_name || '')}</div>` +
+            `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" role="img" aria-label="Activity for ${escapeHtml(s.officer_name || '')}">${r.html}</svg>` +
+            `<div style="font-size:11px;color:var(--text-muted);margin-top:4px"><span style="display:inline-block;width:18px;height:3px;background:${color};border-radius:2px;vertical-align:middle"></span> Served&nbsp;&nbsp;Avg ${avg}&nbsp;&nbsp;Max ${mx}</div>` +
+            `</div>`;
+    }).join('');
+}
+
+function csvEscape(v) {
+    v = v == null ? '' : String(v);
+    return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+}
+function exportCSV() {
+    if (!_rpData) { showToast('Load a report first', 'error'); return; }
+    const buckets = graphBuckets();
+    const series = visibleSeries();
+    const lines = [['Office', 'Code'].concat(buckets).concat(['Total']).map(csvEscape).join(',')];
+    series.forEach(s => {
+        const row = [s.office_name, s.office_code];
+        buckets.forEach(b => {
+            const p = s.points.find(q => q.bucket === b);
+            row.push(p ? p.served : 0);
+        });
+        row.push(s.total_served);
+        lines.push(row.map(csvEscape).join(','));
+    });
+    const from = document.getElementById('rpFrom').value, to = document.getElementById('rpTo').value;
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `served-report-${_rpBucket}-${from}-to-${to}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    showToast('CSV downloaded');
+}
+
+/* ── INIT ── */
+let currentAdmin = checkLogin();
+if (currentAdmin) {
+    const t = new Date();
+    document.getElementById('rpTo').value = isoDay(t);
+    document.getElementById('rpFrom').value = isoDay(new Date(t.getTime() - 29 * 86400000));
+    loadReports();
+}
+</script>
+</body>
+</html>

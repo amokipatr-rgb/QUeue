@@ -654,6 +654,26 @@ def admin_workflow_token():
 def admin_admin_token():
     return jsonify({'success': True, 'token': ADMIN_TOKEN, 'url': '/admin/' + ADMIN_TOKEN})
 
+@app.route('/api/admin/sla-token')
+def admin_sla_token():
+    return jsonify({'success': True, 'url': '/admin/' + ADMIN_TOKEN + '/sla'})
+
+@app.route('/api/admin/customers-token')
+def admin_customers_token():
+    return jsonify({'success': True, 'url': '/admin/' + ADMIN_TOKEN + '/customers'})
+
+@app.route('/api/admin/benchmarks-token')
+def admin_benchmarks_token():
+    return jsonify({'success': True, 'url': '/admin/' + ADMIN_TOKEN + '/benchmarks'})
+
+@app.route('/api/admin/bottlenecks-token')
+def admin_bottlenecks_token():
+    return jsonify({'success': True, 'url': '/admin/' + ADMIN_TOKEN + '/bottlenecks'})
+
+@app.route('/api/admin/reports-token')
+def admin_reports_token():
+    return jsonify({'success': True, 'url': '/admin/' + ADMIN_TOKEN + '/reports'})
+
 @app.route('/api/admin/officer-token')
 def admin_officer_token():
     return jsonify({'success': True, 'token': OFFICER_TOKEN, 'url': '/officer/' + OFFICER_TOKEN})
@@ -688,6 +708,35 @@ def admin_dashboard(token):
     resp.headers['Pragma'] = 'no-cache'
     resp.headers['Expires'] = '0'
     return resp
+
+def _serve_accountability_page(token, filename):
+    if token != ADMIN_TOKEN:
+        return redirect('/')
+    resp = send_from_directory('.', filename)
+    resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    resp.headers['Pragma'] = 'no-cache'
+    resp.headers['Expires'] = '0'
+    return resp
+
+@app.route('/admin/<token>/sla')
+def admin_sla_dashboard(token):
+    return _serve_accountability_page(token, 'sla-dashboard.html')
+
+@app.route('/admin/<token>/customers')
+def admin_customers_page(token):
+    return _serve_accountability_page(token, 'customers.html')
+
+@app.route('/admin/<token>/benchmarks')
+def admin_benchmarks_page(token):
+    return _serve_accountability_page(token, 'benchmarks.html')
+
+@app.route('/admin/<token>/bottlenecks')
+def admin_bottlenecks_page(token):
+    return _serve_accountability_page(token, 'bottlenecks.html')
+
+@app.route('/admin/<token>/reports')
+def admin_reports_page(token):
+    return _serve_accountability_page(token, 'reports.html')
 
 @app.route('/officer')
 def officer_decoy():
@@ -2098,6 +2147,99 @@ def rate_redirect(token):
     return redirect('/feedback.html/' + FEEDBACK_TOKEN + '/' + token + qs)
 
 
+@app.route('/api/admin/person-history', methods=['GET'])
+def admin_person_history():
+    """Customer 360 keyed on phone / student ID / name (test has no email column)."""
+    q = (request.args.get('q') or '').strip()
+    if not q:
+        return jsonify({'success': False, 'message': 'A search term (phone, ID, or name) is required'}), 400
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT t.token_number, t.token_date, t.student_name, t.student_id,
+                   t.student_phone, t.status, t.rating, t.feedback_text,
+                   t.feedback_submitted_at, t.requested_at, t.called_at,
+                   t.serving_started_at, t.completed_at, t.skipped_at,
+                   t.service_code, t.estimated_wait_minutes,
+                   off.office_name, off.office_code,
+                   s.service_name
+            FROM university_tokens t
+            JOIN offices off ON off.id = t.office_id
+            LEFT JOIN services s ON s.id = t.service_id
+            WHERE t.student_phone = %s OR t.student_id = %s OR t.student_name LIKE %s
+            ORDER BY t.requested_at DESC
+            LIMIT 100
+        """, (q, q, f'%{q}%'))
+        visits = cursor.fetchall()
+
+        total = len(visits)
+        completed = sum(1 for v in visits if v.get('status') == 'completed')
+        ratings = [v['rating'] for v in visits if v.get('rating')]
+        avg_rating = round(sum(ratings) / len(ratings), 1) if ratings else None
+        names = sorted(set(v.get('student_name') for v in visits if v.get('student_name')))
+        phones = sorted(set(v.get('student_phone') for v in visits if v.get('student_phone')))
+        escalated = 0
+        for v in visits:
+            for col in ('requested_at', 'called_at', 'serving_started_at',
+                        'completed_at', 'skipped_at', 'feedback_submitted_at'):
+                if isinstance(v.get(col), datetime):
+                    v[col] = v[col].isoformat()
+            if isinstance(v.get('token_date'), (datetime, date)):
+                v['token_date'] = v['token_date'].isoformat()
+
+        if visits:
+            placeholders = ','.join(['%s'] * len(visits))
+            cursor.execute(f"""
+                SELECT COUNT(DISTINCT q.token_number) AS cnt FROM queue_logs q
+                WHERE q.action = 'escalated'
+                  AND q.token_number IN ({placeholders})
+            """, [v['token_number'] for v in visits])
+            erow = cursor.fetchone()
+            escalated = erow['cnt'] if erow else 0
+
+        cursor.execute("""
+            SELECT id, category, complaint_text, status, created_at
+            FROM general_complaints
+            WHERE contact = %s OR student_number = %s OR email = %s OR full_name LIKE %s
+            ORDER BY created_at DESC
+            LIMIT 50
+        """, (q, q, q, f'%{q}%'))
+        complaints = cursor.fetchall()
+        for c in complaints:
+            if isinstance(c.get('created_at'), datetime):
+                c['created_at'] = c['created_at'].isoformat()
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'query': q,
+            'profile': {
+                'names': names,
+                'phones': phones,
+                'total_visits': total,
+                'completed': completed,
+                'avg_rating': avg_rating,
+                'escalated_tokens': escalated,
+                'complaints': len(complaints)
+            },
+            'visits': visits,
+            'complaints': complaints
+        })
+    except Exception as e:
+        logger.error(f"Person history error: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        try: cursor.close()
+        except: pass
+        try: conn.close()
+        except: pass
+
+
 # ============================================
 # STUDENT FEEDBACK / RATING
 # ============================================
@@ -3403,6 +3545,13 @@ def officer_complete():
         except Exception as se:
             logger.warning(f"[SESSION] Failed to increment tokens_served: {se}")
 
+        cursor.execute("SELECT student_name FROM university_tokens WHERE token_number = %s", (token_number,))
+        _trow = cursor.fetchone()
+        cursor.execute("""
+            INSERT INTO queue_logs (token_number, officer_id, action, action_details, created_at)
+            VALUES (%s, %s, 'completed', CONCAT('Completed - Person: ', IFNULL(%s, '')), NOW())
+        """, (token_number, officer_id, (_trow or {}).get('student_name')))
+
         conn.commit()
         return jsonify({'success': True})
     except Exception as e:
@@ -3431,6 +3580,12 @@ def officer_skip():
             UPDATE officers SET status='available', current_token=NULL, last_activity=NOW() 
             WHERE id=%s
         """, (officer_id,))
+        cursor.execute("SELECT student_name FROM university_tokens WHERE token_number = %s", (token_number,))
+        _trow = cursor.fetchone()
+        cursor.execute("""
+            INSERT INTO queue_logs (token_number, officer_id, action, action_details, created_at)
+            VALUES (%s, %s, 'skipped', CONCAT('Skipped - Person: ', IFNULL(%s, '')), NOW())
+        """, (token_number, officer_id, (_trow or {}).get('student_name')))
         conn.commit()
         return jsonify({'success': True})
     except Exception as e:
@@ -3957,6 +4112,196 @@ def admin_daily_stats():
 
     except Exception as e:
         logger.error(f"Error in admin_daily_stats: {e}")
+        return jsonify({'success': False, 'message': str(e)})
+
+
+@app.route('/api/admin/sla-overview', methods=['GET'])
+def admin_sla_overview():
+    """Per-office SLA snapshot: target = service estimated minutes,
+    breach = queue wait (requested -> serving_started) exceeded target."""
+    try:
+        target_date = request.args.get('date')
+        if not target_date:
+            target_date = datetime.now().strftime('%Y-%m-%d')
+        start = f"{target_date} 00:00:00"
+        end = f"{target_date} 23:59:59"
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT
+                off.id,
+                off.office_code,
+                off.office_name,
+                COUNT(CASE WHEN t.serving_started_at BETWEEN %s AND %s THEN 1 END) AS served,
+                COUNT(CASE WHEN t.serving_started_at BETWEEN %s AND %s
+                            AND TIMESTAMPDIFF(MINUTE, t.requested_at, t.serving_started_at)
+                                > COALESCE(s.estimated_time_minutes, 15) THEN 1 END) AS breached,
+                ROUND(AVG(CASE WHEN t.serving_started_at BETWEEN %s AND %s
+                               THEN TIMESTAMPDIFF(MINUTE, t.requested_at, t.serving_started_at) END), 1) AS avg_wait_minutes,
+                ROUND(AVG(CASE WHEN t.serving_started_at BETWEEN %s AND %s
+                               THEN COALESCE(s.estimated_time_minutes, 15) END), 1) AS avg_target_minutes,
+                COUNT(CASE WHEN t.status = 'waiting' THEN 1 END) AS current_waiting,
+                COUNT(CASE WHEN t.status = 'waiting'
+                            AND TIMESTAMPDIFF(MINUTE, t.requested_at, NOW())
+                                > COALESCE(s.estimated_time_minutes, 15) THEN 1 END) AS waiting_breached
+            FROM offices off
+            LEFT JOIN university_tokens t ON off.id = t.office_id
+            LEFT JOIN services s ON t.service_id = s.id
+            WHERE off.is_active = 1
+            GROUP BY off.id
+            ORDER BY off.display_order
+        """, (start, end, start, end, start, end, start, end))
+
+        offices = cursor.fetchall()
+        total_served = 0
+        total_breached = 0
+        for row in offices:
+            served = row.get('served') or 0
+            breached = row.get('breached') or 0
+            row['breach_rate'] = round((breached / served) * 100, 1) if served > 0 else 0
+            total_served += served
+            total_breached += breached
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'date': target_date,
+            'total_served': total_served,
+            'total_breached': total_breached,
+            'overall_breach_rate': round((total_breached / total_served) * 100, 1) if total_served > 0 else 0,
+            'offices': offices
+        })
+
+    except Exception as e:
+        logger.error(f"Error in admin_sla_overview: {e}")
+        return jsonify({'success': False, 'message': str(e)})
+
+
+@app.route('/api/admin/sla-breaches', methods=['GET'])
+def admin_sla_breaches():
+    """Token-level breach list: served breaches + currently-waiting breaches."""
+    try:
+        target_date = request.args.get('date')
+        if not target_date:
+            target_date = datetime.now().strftime('%Y-%m-%d')
+        start = f"{target_date} 00:00:00"
+        end = f"{target_date} 23:59:59"
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT t.token_number, t.student_name, t.service_code,
+                   s.service_name, off.office_name, off.office_code,
+                   t.requested_at, t.serving_started_at,
+                   TIMESTAMPDIFF(MINUTE, t.requested_at,
+                       COALESCE(t.serving_started_at, NOW())) AS waited_minutes,
+                   COALESCE(s.estimated_time_minutes, 15) AS target_minutes,
+                   (TIMESTAMPDIFF(MINUTE, t.requested_at,
+                       COALESCE(t.serving_started_at, NOW()))
+                       - COALESCE(s.estimated_time_minutes, 15)) AS over_by_minutes,
+                   CASE WHEN t.status = 'waiting' THEN 1 ELSE 0 END AS still_waiting,
+                   EXISTS (SELECT 1 FROM queue_logs q
+                           WHERE q.token_number = t.token_number AND q.action = 'escalated'
+                             AND DATE(q.created_at) = CURDATE()) AS was_escalated
+            FROM university_tokens t
+            JOIN offices off ON off.id = t.office_id
+            LEFT JOIN services s ON t.service_id = s.id
+            WHERE (t.serving_started_at BETWEEN %s AND %s
+                    OR (t.status = 'waiting' AND DATE(t.requested_at) = %s))
+              AND TIMESTAMPDIFF(MINUTE, t.requested_at,
+                      COALESCE(t.serving_started_at, NOW()))
+                  > COALESCE(s.estimated_time_minutes, 15)
+            ORDER BY over_by_minutes DESC
+            LIMIT 200
+        """, (start, end, target_date))
+
+        rows = cursor.fetchall()
+        for r in rows:
+            for col in ('requested_at', 'serving_started_at'):
+                if isinstance(r.get(col), datetime):
+                    r[col] = r[col].isoformat()
+            r['was_escalated'] = bool(r.get('was_escalated'))
+
+        cursor.close()
+        conn.close()
+
+        return jsonify({'success': True, 'date': target_date, 'breaches': rows})
+
+    except Exception as e:
+        logger.error(f"Error in admin_sla_breaches: {e}")
+        return jsonify({'success': False, 'message': str(e)})
+
+
+@app.route('/api/admin/token-trace', methods=['GET'])
+def admin_token_trace():
+    """GitLab-style journey trace for one token: stage timestamps + log events.
+    Date-pinned to avoid cross-day token_number collisions."""
+    try:
+        token_number = (request.args.get('token_number') or '').strip()
+        if not token_number:
+            return jsonify({'success': False, 'message': 'token_number is required'}), 400
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT t.id, t.token_number, t.token_date, t.office_id, t.service_id,
+                   t.service_code, t.student_name, t.status,
+                   t.requested_at, t.called_at, t.serving_started_at,
+                   t.completed_at, t.skipped_at, t.estimated_wait_minutes,
+                   t.assigned_officer_number,
+                   s.service_name, off.office_name, off.office_code,
+                   o.officer_name
+            FROM university_tokens t
+            LEFT JOIN services s ON t.service_id = s.id
+            LEFT JOIN offices off ON off.id = t.office_id
+            LEFT JOIN officers o ON o.id = t.assigned_officer_id
+            WHERE t.token_number = %s
+            ORDER BY t.requested_at DESC
+            LIMIT 1
+        """, (token_number,))
+        token = cursor.fetchone()
+        if not token:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'message': 'Token not found'}), 404
+
+        token_day = token['token_date']
+        if isinstance(token_day, datetime):
+            token_day = token_day.date()
+        cursor.execute("""
+            SELECT action, action_details, created_at
+            FROM queue_logs
+            WHERE token_number = %s
+              AND action NOT IN ('queue_reset', 'availability_change')
+              AND DATE(created_at) = %s
+            ORDER BY created_at ASC
+            LIMIT 100
+        """, (token_number, token_day))
+        events = cursor.fetchall()
+
+        cursor.close()
+        conn.close()
+
+        for col in ('requested_at', 'called_at', 'serving_started_at',
+                    'completed_at', 'skipped_at'):
+            if isinstance(token.get(col), datetime):
+                token[col] = token[col].isoformat()
+        if isinstance(token.get('token_date'), (datetime, date)):
+            token['token_date'] = token['token_date'].isoformat()
+        for ev in events:
+            if isinstance(ev.get('created_at'), datetime):
+                ev['created_at'] = ev['created_at'].isoformat()
+
+        return jsonify({'success': True, 'token': token, 'events': events})
+
+    except Exception as e:
+        logger.error(f"Error in admin_token_trace: {e}")
         return jsonify({'success': False, 'message': str(e)})
 
 
@@ -4798,6 +5143,231 @@ def admin_attendance_summary():
 
 
 # ============================================
+# REPORTS (served per office per day/week/month)
+# ============================================
+@app.route('/api/admin/reports-office-served', methods=['GET'])
+def admin_reports_office_served():
+    """Served tokens per office per bucket. ?from=YYYY-MM-DD&to=YYYY-MM-DD&bucket=day|week|month&office_id="""
+    try:
+        bucket = (request.args.get('bucket') or 'day').lower()
+        if bucket not in ('day', 'week', 'month'):
+            bucket = 'day'
+        office_id = request.args.get('office_id', type=int)
+        to_dt = request.args.get('to')
+        from_dt = request.args.get('from')
+        today = datetime.now().date()
+        try:
+            to_d = datetime.strptime(to_dt, '%Y-%m-%d').date() if to_dt else today
+        except ValueError:
+            to_d = today
+        try:
+            from_d = datetime.strptime(from_dt, '%Y-%m-%d').date() if from_dt else to_d - timedelta(days=29)
+        except ValueError:
+            from_d = to_d - timedelta(days=29)
+        max_span = 182 if bucket == 'week' else (365 if bucket == 'month' else 93)
+        if (to_d - from_d).days > max_span:
+            from_d = to_d - timedelta(days=max_span)
+        if from_d > to_d:
+            from_d, to_d = to_d, from_d
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        if bucket == 'day':
+            bucket_expr = "DATE(t.completed_at)"
+        elif bucket == 'week':
+            bucket_expr = "DATE(DATE_SUB(t.completed_at, INTERVAL WEEKDAY(t.completed_at) DAY))"
+        else:
+            bucket_expr = "DATE_FORMAT(t.completed_at, '%Y-%m-01')"
+
+        off_filter = "AND off.id = %s" if office_id else ""
+        off_params = [office_id] if office_id else []
+        cursor.execute(f"""
+            SELECT off.id AS office_id, off.office_code, off.office_name,
+                   {bucket_expr} AS bucket,
+                   COUNT(*) AS served
+            FROM offices off
+            LEFT JOIN university_tokens t ON t.office_id = off.id
+              AND t.status = 'completed'
+              AND COALESCE(t.served_count_excluded, 0) = 0
+              AND t.completed_at >= %s AND t.completed_at < %s
+            WHERE off.is_active = 1 {off_filter}
+            GROUP BY off.id, bucket
+            ORDER BY bucket
+        """, tuple(off_params + [
+            datetime(from_d.year, from_d.month, from_d.day),
+            datetime(to_d.year, to_d.month, to_d.day) + timedelta(days=1)]))
+        rows = cursor.fetchall()
+
+        cursor.execute("""
+            SELECT id AS office_id, office_code, office_name FROM offices
+            WHERE is_active = 1
+        """ + (" AND id = %s" if office_id else "") + " ORDER BY display_order",
+            tuple(off_params))
+        offices = cursor.fetchall()
+
+        cursor.close()
+        conn.close()
+
+        buckets = []
+        if bucket == 'day':
+            d = from_d
+            while d <= to_d:
+                buckets.append(d.isoformat())
+                d += timedelta(days=1)
+        elif bucket == 'week':
+            start_mon = from_d - timedelta(days=from_d.weekday())
+            d = start_mon
+            while d <= to_d:
+                buckets.append(d.isoformat())
+                d += timedelta(days=7)
+        else:
+            y, m = from_d.year, from_d.month
+            while (y, m) <= (to_d.year, to_d.month):
+                buckets.append(f"{y:04d}-{m:02d}-01")
+                m += 1
+                if m > 12:
+                    m = 1
+                    y += 1
+
+        def norm_bucket(b):
+            if b is None:
+                return None
+            if hasattr(b, 'strftime'):
+                if bucket == 'day':
+                    return b.strftime('%Y-%m-%d')
+                if bucket == 'week':
+                    monday = b - timedelta(days=b.weekday()) if hasattr(b, 'weekday') else b
+                    return monday.strftime('%Y-%m-%d')
+                return b.strftime('%Y-%m-01')
+            return str(b)
+
+        by_off = {}
+        for r in rows:
+            b = norm_bucket(r['bucket'])
+            if b is None:
+                continue
+            by_off.setdefault(r['office_id'], {})[b] = int(r['served'] or 0)
+
+        series = []
+        for o in offices:
+            pts = [{'bucket': b, 'served': by_off.get(o['office_id'], {}).get(b, 0)} for b in buckets]
+            total = sum(p['served'] for p in pts)
+            peak = max(pts, key=lambda p: p['served']) if pts else None
+            series.append({'office_id': o['office_id'],
+                           'office_code': o['office_code'],
+                           'office_name': o['office_name'],
+                           'points': pts,
+                           'total_served': total,
+                           'peak': peak})
+        series.sort(key=lambda s: s['total_served'], reverse=True)
+
+        return jsonify({'success': True,
+                        'from': from_d.isoformat(), 'to': to_d.isoformat(),
+                        'bucket': bucket, 'buckets': buckets,
+                        'offices': offices, 'series': series})
+    except Exception as e:
+        logger.error(f"Error in reports_office_served: {e}")
+        return jsonify({'success': False, 'message': str(e)})
+
+
+# ============================================
+# BOTTLENECKS (wait x demand / staffing)
+# ============================================
+@app.route('/api/admin/bottlenecks', methods=['GET'])
+def admin_bottlenecks():
+    """Ranked bottleneck rows per office per day + peak flags. ?from=YYYY-MM-DD&to=YYYY-MM-DD"""
+    try:
+        to_dt = request.args.get('to')
+        from_dt = request.args.get('from')
+        today = datetime.now().date()
+        try:
+            to_d = datetime.strptime(to_dt, '%Y-%m-%d').date() if to_dt else today
+        except ValueError:
+            to_d = today
+        try:
+            from_d = datetime.strptime(from_dt, '%Y-%m-%d').date() if from_dt else to_d - timedelta(days=6)
+        except ValueError:
+            from_d = to_d - timedelta(days=6)
+        if (to_d - from_d).days > 93:
+            from_d = to_d - timedelta(days=93)
+        if from_d > to_d:
+            from_d, to_d = to_d, from_d
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        cursor.execute("""
+            SELECT off.id AS office_id, off.office_code, off.office_name,
+                   DATE(t.requested_at) AS day,
+                   COUNT(t.id) AS demand,
+                   ROUND(AVG(CASE WHEN t.serving_started_at IS NOT NULL
+                                 THEN TIMESTAMPDIFF(MINUTE, t.requested_at, t.serving_started_at) END), 1) AS avg_wait,
+                   SUM(CASE WHEN TIMESTAMPDIFF(MINUTE, t.requested_at,
+                                           COALESCE(t.serving_started_at, NOW()))
+                                 > COALESCE(s.estimated_time_minutes, 15) THEN 1 ELSE 0 END) AS breaches
+            FROM offices off
+            LEFT JOIN university_tokens t ON t.office_id = off.id
+                AND DATE(t.requested_at) BETWEEN %s AND %s
+            LEFT JOIN services s ON s.id = t.service_id
+            WHERE off.is_active = 1
+            GROUP BY off.id, day
+            HAVING demand > 0
+            ORDER BY day DESC
+        """, (from_d.isoformat(), to_d.isoformat()))
+        rows = cursor.fetchall()
+
+        cursor.execute("""
+            SELECT office_id, session_date AS day,
+                   COUNT(DISTINCT officer_id) AS officers
+            FROM officer_sessions
+            WHERE session_date BETWEEN %s AND %s
+            GROUP BY office_id, day
+        """, (from_d.isoformat(), to_d.isoformat()))
+        staffing = {(r['office_id'], str(r['day'])): r['officers'] for r in cursor.fetchall()}
+
+        cursor.close()
+        conn.close()
+
+        out = []
+        for r in rows:
+            day = r['day']
+            if hasattr(day, 'isoformat'):
+                day = day.isoformat()
+            officers = staffing.get((r['office_id'], str(day)), 0)
+            demand = r['demand'] or 0
+            avg_wait = float(r['avg_wait']) if r['avg_wait'] is not None else 0
+            pressure = round(avg_wait * demand / max(officers, 1), 1)
+            out.append({
+                'office_id': r['office_id'],
+                'office_code': r['office_code'],
+                'office_name': r['office_name'],
+                'day': str(day),
+                'demand': demand,
+                'avg_wait': r['avg_wait'],
+                'breaches': int(r['breaches'] or 0),
+                'officers': officers,
+                'pressure': pressure
+            })
+        out.sort(key=lambda x: x['pressure'], reverse=True)
+
+        peaks = {}
+        if out:
+            peaks['worst_pressure'] = out[0]
+            by_demand = max(out, key=lambda x: x['demand'])
+            by_wait = max([x for x in out if x['avg_wait'] is not None] or out, key=lambda x: x['avg_wait'] or 0)
+            peaks['peak_demand'] = by_demand
+            peaks['peak_wait'] = by_wait
+
+        return jsonify({'success': True,
+                        'from': from_d.isoformat(), 'to': to_d.isoformat(),
+                        'bottlenecks': out, 'peaks': peaks})
+    except Exception as e:
+        logger.error(f"Error in admin_bottlenecks: {e}")
+        return jsonify({'success': False, 'message': str(e)})
+
+
+# ============================================
 # HEAT MAP
 # ============================================
 @app.route('/api/admin/heatmap', methods=['GET'])
@@ -4928,6 +5498,143 @@ def admin_heatmap():
 # ============================================
 # ATTENDANCE TRENDS
 # ============================================
+@app.route('/api/admin/officer-activity-series', methods=['GET'])
+def admin_officer_activity_series():
+    """Per-officer tokens-served series for line graphs. ?officer_id=&from=YYYY-MM-DD&to=YYYY-MM-DD&bucket=day|hour"""
+    try:
+        officer_id = request.args.get('officer_id', type=int)
+        bucket = (request.args.get('bucket') or 'day').lower()
+        if bucket not in ('day', 'hour'):
+            bucket = 'day'
+        to_dt = request.args.get('to')
+        from_dt = request.args.get('from')
+        today = datetime.now().date()
+        try:
+            to_d = datetime.strptime(to_dt, '%Y-%m-%d').date() if to_dt else today
+        except ValueError:
+            to_d = today
+        try:
+            from_d = datetime.strptime(from_dt, '%Y-%m-%d').date() if from_dt else to_d - timedelta(days=6)
+        except ValueError:
+            from_d = to_d - timedelta(days=6)
+        max_span = 14 if bucket == 'hour' else 93
+        if (to_d - from_d).days > max_span:
+            from_d = to_d - timedelta(days=max_span)
+        if from_d > to_d:
+            from_d, to_d = to_d, from_d
+
+        start_ts = datetime(from_d.year, from_d.month, from_d.day)
+        end_ts = datetime(to_d.year, to_d.month, to_d.day) + timedelta(days=1)
+
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+
+        off_filter = "AND t.assigned_officer_id = %s" if officer_id else ""
+        off_params = [officer_id] if officer_id else []
+        bucket_expr = "DATE(t.completed_at)" if bucket == 'day' else "DATE_FORMAT(t.completed_at, '%Y-%m-%d %H:00')"
+        cursor.execute(f"""
+            SELECT t.assigned_officer_id AS officer_id,
+                   {bucket_expr} AS bucket,
+                   COUNT(*) AS served,
+                   ROUND(AVG(TIMESTAMPDIFF(MINUTE, t.requested_at, t.serving_started_at)), 1) AS avg_wait,
+                   SUM(CASE WHEN TIMESTAMPDIFF(MINUTE, t.requested_at, t.serving_started_at)
+                                 > COALESCE(s.estimated_time_minutes, 15) THEN 1 ELSE 0 END) AS breaches
+            FROM university_tokens t
+            LEFT JOIN services s ON s.id = t.service_id
+            WHERE t.status = 'completed'
+              AND COALESCE(t.served_count_excluded, 0) = 0
+              AND t.assigned_officer_id IS NOT NULL
+              AND t.completed_at >= %s AND t.completed_at < %s
+              {off_filter}
+            GROUP BY t.assigned_officer_id, bucket
+            ORDER BY bucket
+        """, tuple(off_params + [start_ts, end_ts]))
+        rows = cursor.fetchall()
+
+        cursor.execute("""
+            SELECT officer_id, login_time, logout_time FROM officer_sessions
+            WHERE login_time < %s AND (logout_time IS NULL OR logout_time >= %s)
+        """, (end_ts, start_ts))
+        sessions = cursor.fetchall()
+
+        cursor.execute("""
+            SELECT o.id AS officer_id, o.officer_name, off.office_name
+            FROM officers o LEFT JOIN offices off ON off.id = o.office_id
+        """ + ("WHERE o.id = %s" if officer_id else ""), tuple(off_params))
+        officers = cursor.fetchall()
+
+        cursor.close()
+        conn.close()
+
+        buckets = []
+        if bucket == 'day':
+            d = from_d
+            while d <= to_d:
+                buckets.append(d.isoformat())
+                d += timedelta(days=1)
+        else:
+            h = start_ts
+            while h < end_ts:
+                buckets.append(h.strftime('%Y-%m-%d %H:00'))
+                h += timedelta(hours=1)
+
+        now = datetime.now()
+        duty = {}
+        for s in sessions:
+            oid = s['officer_id']
+            login = s['login_time']
+            logout = s['logout_time'] or now
+            if isinstance(login, str):
+                login = datetime.fromisoformat(login)
+            if isinstance(logout, str):
+                logout = datetime.fromisoformat(logout)
+            for b in buckets:
+                if bucket == 'day':
+                    bs = datetime.fromisoformat(b)
+                    be = bs + timedelta(days=1)
+                else:
+                    bs = datetime.strptime(b, '%Y-%m-%d %H:00')
+                    be = bs + timedelta(hours=1)
+                overlap = (min(logout, be) - max(login, bs)).total_seconds() / 60
+                if overlap > 0:
+                    duty[(oid, b)] = duty.get((oid, b), 0) + overlap
+
+        by_off = {}
+        for r in rows:
+            b = r['bucket']
+            if hasattr(b, 'isoformat'):
+                b = b.isoformat() if bucket == 'day' else b.strftime('%Y-%m-%d %H:00')
+            by_off.setdefault(r['officer_id'], {})[str(b)] = r
+
+        series = []
+        for o in officers:
+            oid = o['officer_id']
+            pts = []
+            for b in buckets:
+                r = by_off.get(oid, {}).get(b)
+                pts.append({
+                    'bucket': b,
+                    'served': int(r['served']) if r else 0,
+                    'avg_wait': float(r['avg_wait']) if r and r['avg_wait'] is not None else None,
+                    'breaches': int(r['breaches']) if r else 0,
+                    'on_duty_min': round(duty.get((oid, b), 0))
+                })
+            series.append({'officer_id': oid,
+                           'officer_name': o['officer_name'],
+                           'office_name': o.get('office_name'),
+                           'points': pts,
+                           'total_served': sum(p['served'] for p in pts)})
+
+        series.sort(key=lambda s: s['total_served'], reverse=True)
+
+        return jsonify({'success': True,
+                        'from': from_d.isoformat(), 'to': to_d.isoformat(),
+                        'bucket': bucket, 'officers': officers, 'series': series})
+    except Exception as e:
+        logger.error(f"Error in officer_activity_series: {e}")
+        return jsonify({'success': False, 'message': str(e)})
+
+
 @app.route('/api/admin/attendance-trends', methods=['GET'])
 def admin_attendance_trends():
     """Weekly trend data. ?weeks=8"""
