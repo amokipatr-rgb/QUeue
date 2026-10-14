@@ -999,6 +999,7 @@
     <div class="voice-indicator" id="voiceIndicator">
         <div class="voice-dot"></div>
         <span class="voice-text" id="voiceText">Voice SMQSS Ready</span>
+        <span class="voice-text" id="freshText" style="opacity:0.55;font-size:10px;margin-left:6px"></span>
     </div>
 
     <script>
@@ -1035,6 +1036,7 @@
         let messageFetchInFlight = false;
         let consecutiveJsErrors = 0;
         let lastSuccessfulQueueFetch = Date.now();
+        let lastSecondaryOk = Date.now();
         let hardReloadCooldownUntil = 0;
         let isOffline = false;
 
@@ -1087,6 +1089,13 @@
         }
         updateDateTime();
         setInterval(updateDateTime, 1000);
+        // "Updated Xs ago" freshness hint — distinguishes stale-but-connected from dead
+        setInterval(function() {
+            const el = document.getElementById('freshText');
+            if (!el) return;
+            const s = Math.max(0, Math.round((Date.now() - lastSuccessfulQueueFetch) / 1000));
+            el.textContent = s < 8 ? '' : `updated ${s}s ago`;
+        }, 1000);
 
         // ── VOICE WITH STUDENT NAMES ──
         let voiceInflight = new Set();
@@ -1399,7 +1408,7 @@
 
                 const res = await fetch(messageUrl.toString());
                 const data = await res.json();
-                if (data.success) hideOfflineBanner();
+                if (data.success) { hideOfflineBanner(); lastSecondaryOk = Date.now(); }
                 const msgs = (data.success && data.messages?.length) ? data.messages : [];
                 const sig = JSON.stringify(msgs.map(m => m.id + m.message));
                 if (sig !== fetchAndDisplayMessages._lastSig) {
@@ -1423,6 +1432,7 @@
                 const data = await res.json();
                 if (data.success) {
                     hideOfflineBanner();
+                    lastSecondaryOk = Date.now();
                     if (data.recalls?.length) {
                         for (const recall of data.recalls) {
                             if (!announcedRecalls.has(recall.id)) {
@@ -1785,18 +1795,26 @@
         }
 
         // ── FETCH QUEUE DATA WITH TIMEOUT AND RECOVERY ──
+        function maybeShowOffline() {
+            // One slow endpoint is not "no internet": require the main poll to
+            // fail repeatedly AND (browser offline OR every other feed stale).
+            const secondaryStale = (Date.now() - lastSecondaryOk) > 20000;
+            if (failedFetches >= 4 && (navigator.onLine === false || secondaryStale)) {
+                showOfflineBanner();
+            }
+        }
         async function fetchQueueData() {
             if (queueFetchInFlight) return;
             queueFetchInFlight = true;
             try {
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000);
-                
+                const timeoutId = setTimeout(() => controller.abort(), 20000);
+
                 const res = await fetch(`${API_BASE_URL}/api/public/queues`, {
                     signal: controller.signal
                 });
                 clearTimeout(timeoutId);
-                
+
                 if (res.ok) {
                     failedFetches = 0;
                     hideOfflineBanner();
@@ -1807,12 +1825,12 @@
                     }
                 } else {
                     failedFetches++;
-                    if (failedFetches >= 3) showOfflineBanner();
+                    maybeShowOffline();
                     console.log(`Fetch failed with status ${res.status}`);
                 }
             } catch(e) {
                 failedFetches++;
-                if (failedFetches >= 3) showOfflineBanner();
+                maybeShowOffline();
                 console.log(`Fetch error:`, e.message);
             }
             finally {
@@ -1913,9 +1931,24 @@
                 fetchAndDisplayMessages();
                 fetchUpNext();
             });
+            // Spurious 'offline' events are common on TV browsers (DHCP renew,
+            // WiFi power-save). Verify with a real probe before latching.
             window.addEventListener('offline', () => {
-                showOfflineBanner();
+                verifyOfflineBeforeLatch();
             });
+            async function verifyOfflineBeforeLatch() {
+                try {
+                    const controller = new AbortController();
+                    const tid = setTimeout(function() { controller.abort(); }, 8000);
+                    const res = await fetch(`${API_BASE_URL}/api/health`, { signal: controller.signal, cache: 'no-store' });
+                    clearTimeout(tid);
+                    if (res.ok) return; // network is fine — ignore phantom event
+                } catch (e) { /* probe failed, fall through to checks */ }
+                if (navigator.onLine === false || (Date.now() - lastSecondaryOk) > 20000) {
+                    failedFetches++;
+                    if (failedFetches >= 4) showOfflineBanner();
+                }
+            }
             window.addEventListener('visibilitychange', () => {
                 if (document.visibilityState === 'visible') {
                     fetchQueueData();
@@ -1929,10 +1962,10 @@
             fetchRecentRecalls();
             startIdleMessageRotation();
             
-            // Poll queue data every 5 seconds (gentle on TV browser)
-            setInterval(fetchQueueData, 2000);
-            // Poll up next every 5 seconds
-            setInterval(fetchUpNext, 2000);
+            // Poll queue data every 4 seconds (gentle on TV browser + backend)
+            setInterval(fetchQueueData, 4000);
+            // Poll up next every 4 seconds
+            setInterval(fetchUpNext, 4000);
             // Poll recalls every 3 seconds
             setInterval(fetchRecentRecalls, 3000);
             // Poll messages only when idle
