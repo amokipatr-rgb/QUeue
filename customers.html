@@ -175,6 +175,7 @@
             <input id="custEmailInput" placeholder="Search by phone, ID, or name..." autocomplete="off">
             <button class="btn btn-primary" id="custSearchBtn" onclick="searchCustomer()">Search</button>
             <button class="btn" id="custHistoryBtn" onclick="viewHistory()" style="background:var(--white);border:1px solid var(--border);color:var(--green-dark)">View History</button>
+            <button class="btn" onclick="exportCustomerCSV()" style="background:var(--white);border:1px solid var(--border);color:var(--green-dark)">CSV</button>
         </div>
 
         <div id="custBody"><div class="empty-box" style="background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow-sm)">Enter a phone number, ID, or name above to pull a customer 360: profile, visits, journey traces, complaints.</div></div>
@@ -280,11 +281,11 @@ function renderCustomer(data) {
     const stars = p.avg_rating != null ? `★ ${p.avg_rating}` : '—';
     let html =
         `<div class="stat-row">` +
-        `<div class="stat-card"><div class="stat-num">${p.total_visits || 0}</div><div class="stat-lbl">Total visits</div></div>` +
-        `<div class="stat-card"><div class="stat-num">${p.completed || 0}</div><div class="stat-lbl">Completed</div></div>` +
-        `<div class="stat-card"><div class="stat-num">${stars}</div><div class="stat-lbl">Avg rating</div></div>` +
-        `<div class="stat-card"><div class="stat-num">${p.escalated_tokens || 0}</div><div class="stat-lbl">Escalated</div></div>` +
-        `<div class="stat-card"><div class="stat-num">${p.complaints || 0}</div><div class="stat-lbl">Complaints</div></div>` +
+        `<div class="stat-card" style="cursor:pointer" onclick="scrollCustHistory()" title="Click to view the visit list"><div class="stat-num">${p.total_visits || 0}</div><div class="stat-lbl">Total visits</div></div>` +
+        `<div class="stat-card" style="cursor:pointer" onclick="scrollCustHistory()" title="Click to view the visit list"><div class="stat-num">${p.completed || 0}</div><div class="stat-lbl">Completed</div></div>` +
+        `<div class="stat-card" style="cursor:pointer" onclick="scrollCustHistory()" title="Click to view rated visits"><div class="stat-num">${stars}</div><div class="stat-lbl">Avg rating</div></div>` +
+        `<div class="stat-card" style="cursor:pointer" onclick="scrollCustHistory()" title="Click to view the visit list"><div class="stat-num">${p.escalated_tokens || 0}</div><div class="stat-lbl">Escalated</div></div>` +
+        `<div class="stat-card" style="cursor:pointer" onclick="scrollCustComplaints()" title="Click to view linked complaints"><div class="stat-num">${p.complaints || 0}</div><div class="stat-lbl">Complaints</div></div>` +
         `</div>` +
         `<div class="section"><div class="section-header"><div class="section-title">Profile</div><span class="pill pill-blue mono">${escapeHtml(data.query || data.email || '')}</span><button class="btn-sm" style="margin-left:auto" onclick="scrollToHistory()">View History</button></div>` +
         `<div style="padding:16px 20px;font-size:13px;display:flex;gap:16px;flex-wrap:wrap">` +
@@ -310,7 +311,7 @@ function renderCustomer(data) {
     html += `</tbody></table></div></div>`;
 
     const complaints = data.complaints || [];
-    html += `<div class="section"><div class="section-header"><div class="section-title">Linked Complaints</div><span class="pill pill-grey">${complaints.length}</span></div>`;
+    html += `<div class="section" id="custComplaints"><div class="section-header"><div class="section-title">Linked Complaints</div><span class="pill pill-grey">${complaints.length}</span></div>`;
     if (!complaints.length) html += '<div class="empty-box">No complaints linked to this email.</div>';
     else html += complaints.map(c =>
         `<div class="complaint-card"><div class="complaint-meta"><span class="pill ${c.status === 'resolved' ? 'pill-green' : 'pill-amber'}">${escapeHtml(c.status || 'open')}</span><span style="color:var(--text-muted);font-size:11px">${escapeHtml(c.category || '')} · ${fmtDT(c.created_at)}</span></div><div>${escapeHtml(c.complaint_text || '')}</div></div>`
@@ -394,8 +395,8 @@ function renderAllVisits(visits) {
     const done = visits.filter(v => v.status === 'completed').length;
     body.innerHTML =
         `<div class="stat-row">` +
-        `<div class="stat-card"><div class="stat-num">${visits.length}</div><div class="stat-lbl">Recent visits</div></div>` +
-        `<div class="stat-card"><div class="stat-num">${done}</div><div class="stat-lbl">Completed</div></div>` +
+        `<div class="stat-card" style="cursor:pointer" onclick="scrollCustHistory()" title="Click to view the visit list"><div class="stat-num">${visits.length}</div><div class="stat-lbl">Recent visits</div></div>` +
+        `<div class="stat-card" style="cursor:pointer" onclick="scrollCustHistory()" title="Click to view the visit list"><div class="stat-num">${done}</div><div class="stat-lbl">Completed</div></div>` +
         `</div>` +
         `<div class="section"><div class="section-header"><div class="section-title">Profile</div><span class="pill pill-blue">All recent visitors</span><button class="btn-sm" style="margin-left:auto" onclick="scrollToHistory()">View History</button></div>` +
         `<div style="padding:16px 20px;font-size:13px">Showing the ${visits.length} most recent visits across all offices. Use the in-section filter to narrow by name.</div></div>` +
@@ -404,6 +405,36 @@ function renderAllVisits(visits) {
         `<div class="section"><div class="section-header"><div class="section-title">Journey Trace</div></div><div id="custTraceBody"><div class="empty-box">Press Trace on any visit to see its journey rail here.</div></div></div>`;
     window._custVisits = visits;
     filterVisits();
+}
+
+function scrollCustHistory() {
+    const el = document.getElementById('visitHistorySection');
+    if (!el) { showToast('Search for a customer first', 'error'); return; }
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function scrollCustComplaints() {
+    const el = document.getElementById('custComplaints');
+    if (!el) { showToast('Search for a customer first', 'error'); return; }
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function exportCustomerCSV() {
+    const visits = window._custVisits || [];
+    if (!visits.length) { showToast('Load a customer first', 'error'); return; }
+    const esc = v => { v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
+    const lines = [['Token', 'Name', 'Date', 'Office', 'Service', 'Status', 'Rating'].map(esc).join(',')];
+    visits.forEach(v => lines.push([v.token_number, v.student_name || '', v.requested_at || '',
+        v.office_name || '', v.service_name || v.service_code || '', v.status || '',
+        v.rating == null ? '' : v.rating].map(esc).join(',')));
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'customer-visits.csv';
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    showToast('CSV downloaded');
 }
 
 /* ── TRACE RAIL (shared pattern with SLA page) ── */

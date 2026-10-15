@@ -68,6 +68,16 @@
         .btn-outline:hover { border-color: var(--green-dark); }
         .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 20px; }
         .stat-card { background: var(--white); border-radius: var(--radius); padding: 16px 18px; box-shadow: var(--shadow-sm); animation: rise 0.35s ease backwards; }
+        .stat-card.kpi { cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; }
+        .stat-card.kpi:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+        .btn-sm { font-size: 11px; font-weight: 700; padding: 7px 12px; border-radius: 7px; border: 1px solid var(--border); background: var(--white); cursor: pointer; font-family: inherit; min-height: 36px; white-space: nowrap; }
+        .btn-sm:active { transform: scale(0.97); }
+        .kpi-modal-overlay { position: fixed; inset: 0; background: rgba(10,15,24,0.5); z-index: 9000; display: flex; align-items: center; justify-content: center; padding: 16px; animation: fadein 0.2s ease; }
+        .kpi-modal { background: var(--white); border-radius: var(--radius); max-width: 640px; width: 100%; max-height: 82vh; display: flex; flex-direction: column; box-shadow: 0 12px 48px rgba(0,0,0,0.25); }
+        .kpi-modal-head { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+        .kpi-modal-title { font-size: 15px; font-weight: 800; flex: 1; }
+        .kpi-modal-body { padding: 8px 20px 20px; overflow-y: auto; font-size: 13px; }
+        .kpi-modal-body tr[data-oid] { cursor: pointer; }
         .stat-card:nth-child(2) { animation-delay: 0.06s; }
         .stat-card:nth-child(3) { animation-delay: 0.12s; }
         .stat-card:nth-child(4) { animation-delay: 0.18s; }
@@ -477,10 +487,10 @@ function renderCards() {
     let best = null;
     series.forEach(s => { if (!best || s.total_served > best.total_served) best = s; });
     document.getElementById('rpCards').innerHTML =
-        `<div class="stat-card"><div class="stat-num">${total}</div><div class="stat-lbl">Total served</div>${delta}</div>` +
-        `<div class="stat-card"><div class="stat-num">${avg}</div><div class="stat-lbl">Avg per ${_rpBucket}</div></div>` +
-        `<div class="stat-card"><div class="stat-num" style="font-size:18px">${best ? escapeHtml(best.office_name) : '—'}</div><div class="stat-lbl">Busiest office${best ? ` (${best.total_served} served)` : ''}</div></div>` +
-        `<div class="stat-card"><div class="stat-num">${series.length}</div><div class="stat-lbl">Offices reporting</div></div>`;
+        `<div class="stat-card kpi" onclick="openRpTotalTrace()" title="Click to see per-office breakdown"><div class="stat-num">${total}</div><div class="stat-lbl">Total served</div>${delta}</div>` +
+        `<div class="stat-card kpi" onclick="openRpAvgTrace()" title="Click to see how the average is computed"><div class="stat-num">${avg}</div><div class="stat-lbl">Avg per ${_rpBucket}</div></div>` +
+        `<div class="stat-card kpi" onclick="openRpBestTrace()" title="Click to isolate the busiest office"><div class="stat-num" style="font-size:18px">${best ? escapeHtml(best.office_name) : '—'}</div><div class="stat-lbl">Busiest office${best ? ` (${best.total_served} served)` : ''}</div></div>` +
+        `<div class="stat-card kpi" onclick="scrollRpTable()" title="Click to see the office table"><div class="stat-num">${series.length}</div><div class="stat-lbl">Offices reporting</div></div>`;
 }
 
 function renderMain() {
@@ -841,6 +851,70 @@ function onRpMiniHover(ev) {
 }
 function hideRpMiniTips() {
     document.querySelectorAll('.rp-mini-tip').forEach(function(t) { t.style.opacity = '0'; });
+}
+
+/* ── KPI TRACE MODALS ── */
+function openKpiModal(title, bodyHtml) {
+    closeKpiModal();
+    const ov = document.createElement('div');
+    ov.className = 'kpi-modal-overlay';
+    ov.id = 'kpiModalOv';
+    ov.innerHTML = `<div class="kpi-modal" role="dialog" aria-label="${escapeHtml(title)}">` +
+        `<div class="kpi-modal-head"><div class="kpi-modal-title">${escapeHtml(title)}</div>` +
+        `<button class="btn-sm" onclick="closeKpiModal()">Close</button></div>` +
+        `<div class="kpi-modal-body">${bodyHtml}</div></div>`;
+    ov.addEventListener('click', function(e) { if (e.target === ov) closeKpiModal(); });
+    document.body.appendChild(ov);
+    document.addEventListener('keydown', escKpiModal);
+}
+function escKpiModal(e) { if (e.key === 'Escape') closeKpiModal(); }
+function closeKpiModal() {
+    const ov = document.getElementById('kpiModalOv');
+    if (ov) ov.remove();
+    document.removeEventListener('keydown', escKpiModal);
+}
+function rpColor(oid) {
+    const all = (_rpData && _rpData.series) || [];
+    let idx = all.findIndex(s => String(s.office_id) === String(oid));
+    if (idx < 0) idx = 0;
+    return LINE_COLORS[idx % LINE_COLORS.length];
+}
+function openRpTotalTrace() {
+    const series = visibleSeries().slice().sort((a, b) => (b.total_served || 0) - (a.total_served || 0));
+    const total = series.reduce((t, s) => t + (s.total_served || 0), 0);
+    openKpiModal('Total served — by office', series.length
+        ? `<div class="table-wrap"><table class="data-table"><thead><tr><th>Office</th><th>Served</th><th>Share</th></tr></thead><tbody>` +
+          series.map(s => `<tr data-oid="${s.office_id}" onclick="closeKpiModal();toggleOffice('${s.office_id}')" title="Click to hide/show this office"><td><span class="legend-dot" style="background:${rpColor(s.office_id)}"></span> ${escapeHtml(s.office_name)}</td><td><strong>${s.total_served || 0}</strong></td><td>${total ? Math.round((s.total_served || 0) / total * 100) : 0}%</td></tr>`).join('') +
+          `</tbody></table></div><div style="margin-top:10px;color:var(--text-muted);font-size:12px">Total ${total}. Click a row to hide/show that office.</div>`
+        : '<div class="empty-box">No offices in range.</div>');
+}
+function openRpAvgTrace() {
+    const series = visibleSeries();
+    const n = ((_rpData && _rpData.buckets) || []).length || 1;
+    const total = series.reduce((t, s) => t + (s.total_served || 0), 0);
+    openKpiModal('Average — how it is computed',
+        `<div style="padding:4px 2px 12px;color:var(--text-secondary)">Avg per ${_rpBucket} = total served ÷ ${_rpBucket} buckets = <strong>${total} ÷ ${n} = ${(total / n).toFixed(1)}</strong>.</div>` +
+        (series.length ? `<div class="table-wrap"><table class="data-table"><thead><tr><th>Office</th><th>Total</th><th>Avg / ${_rpBucket}</th><th>Peak</th></tr></thead><tbody>` +
+          series.map(s => `<tr><td><strong>${escapeHtml(s.office_name)}</strong></td><td>${s.total_served || 0}</td><td>${((s.total_served || 0) / n).toFixed(1)}</td><td>${s.peak && s.peak.served > 0 ? `${escapeHtml(s.peak.bucket)} (${s.peak.served})` : '—'}</td></tr>`).join('') +
+          `</tbody></table></div>` : '<div class="empty-box">No offices in range.</div>'));
+}
+function openRpBestTrace() {
+    const series = visibleSeries();
+    let best = null;
+    series.forEach(s => { if (!best || (s.total_served || 0) > (best.total_served || 0)) best = s; });
+    if (!best) { showToast('No offices in range', 'error'); return; }
+    const ids = ((_rpData && _rpData.series) || []).map(s => String(s.office_id));
+    const isolated = _rpHidden.size === ids.length - 1 && !_rpHidden.has(String(best.office_id));
+    _rpHidden = isolated ? new Set() : new Set(ids.filter(x => x !== String(best.office_id)));
+    renderMain();
+    renderCards();
+    renderTable();
+    renderTraffic();
+    showToast(isolated ? 'Restored all offices' : `Isolated ${best.office_name} — click its card again to restore`);
+}
+function scrollRpTable() {
+    const el = document.getElementById('rpRows');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 function csvEscape(v) {

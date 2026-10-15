@@ -102,6 +102,17 @@
         .legend-chip.legend-on { outline: 2px solid var(--green-dark); outline-offset: 1px; }
         .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
         .graph-tip { position: absolute; pointer-events: none; background: var(--green-dark); color: #fff; font-size: 11.5px; font-weight: 600; padding: 8px 12px; border-radius: 8px; white-space: nowrap; z-index: 5; opacity: 0; transition: opacity 0.15s; box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
+        .stat-card.kpi { cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; }
+        .stat-card.kpi:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+        .btn-sm { font-size: 11px; font-weight: 700; padding: 7px 12px; border-radius: 7px; border: 1px solid var(--border); background: var(--white); cursor: pointer; font-family: inherit; min-height: 36px; white-space: nowrap; }
+        .btn-sm:active { transform: scale(0.97); }
+        .kpi-modal-overlay { position: fixed; inset: 0; background: rgba(10,15,24,0.5); z-index: 9000; display: flex; align-items: center; justify-content: center; padding: 16px; animation: fadein 0.2s ease; }
+        .kpi-modal { background: var(--white); border-radius: var(--radius); max-width: 640px; width: 100%; max-height: 82vh; display: flex; flex-direction: column; box-shadow: 0 12px 48px rgba(0,0,0,0.25); }
+        .kpi-modal-head { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+        .kpi-modal-title { font-size: 15px; font-weight: 800; flex: 1; }
+        .kpi-modal-body { padding: 8px 20px 20px; overflow-y: auto; font-size: 13px; }
+        .kpi-modal-body tr[data-oid] { cursor: pointer; }
+        .kpi-modal-body tr[data-oid]:hover td { background: var(--green-light, #e8f5e9); }
         .graph-svg text { font-family: 'Plus Jakarta Sans', sans-serif; }
         .graph-line { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; animation: draw 0.9s ease backwards; }
         @keyframes draw { from { stroke-dasharray: 1200; stroke-dashoffset: 1200; } to { stroke-dasharray: 1200; stroke-dashoffset: 0; } }
@@ -221,6 +232,15 @@ let _bmBucket = 'day';
 let _bmSortKey = 'served';
 let _bmSortDir = -1;
 let _bmAI = null;
+let _bmTarget = 15;
+
+async function loadSlaTarget() {
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/admin/sla-target`);
+        const data = await res.json();
+        if (data.success && data.target_minutes != null) _bmTarget = data.target_minutes;
+    } catch (e) {}
+}
 
 function checkLogin() {
     const loggedIn = sessionStorage.getItem('loggedInUser');
@@ -285,7 +305,7 @@ async function loadBenchmarks() {
     setLoading(btn, true);
     document.getElementById('bmGraphEmpty').innerHTML = '<div class="skel" style="height:280px"></div>';
     try {
-        const data = await fetchSeries(from, to, _bmBucket, officerId);
+        const [data] = await Promise.all([fetchSeries(from, to, _bmBucket, officerId), loadSlaTarget()]);
         if (!data.success) { showToast(data.message || 'Load failed', 'error'); return; }
         _bmData = data;
         _bmHidden = new Set();
@@ -304,7 +324,7 @@ async function loadBenchmarks() {
         renderRankings();
         renderSummary();
         loadAIInsights();
-        document.getElementById('bmRangeLbl').textContent = `${from} → ${to} · ${_bmBucket}`;
+        document.getElementById('bmRangeLbl').textContent = `${from} → ${to} · ${_bmBucket} · target ${_bmTarget}m`;
     } catch (e) {
         showToast('Network error', 'error');
     } finally {
@@ -389,10 +409,10 @@ function renderSummary() {
     const compTxt = comp == null ? '—' : comp + '%';
     const waitTxt = ov.weighted_avg_wait != null ? ov.weighted_avg_wait + ' min' : '—';
     el.innerHTML =
-        `<div class="stat-card" style="cursor:pointer" onclick="sortByKey('served')" title="Sort rankings by served"><div class="stat-num">${ov.total_served || 0}</div><div class="stat-lbl">Tokens served</div></div>` +
-        `<div class="stat-card" style="cursor:pointer" onclick="sortByKey('wait')" title="Sort rankings by avg wait"><div class="stat-num">${waitTxt}</div><div class="stat-lbl">Average wait (weighted)</div></div>` +
-        `<div class="stat-card" style="cursor:pointer" onclick="toggleBreachedOnly();this.style.outline=_bmBreachedOnly?'2px solid var(--red)':''" title="Show only officers with breaches"><div class="stat-num">${ov.total_breaches || 0}</div><div class="stat-lbl">Recorded breaches${_bmBreachedOnly ? ' (filtered)' : ''}</div></div>` +
-        `<div class="stat-card" style="cursor:pointer" onclick="sortByKey('compliance')" title="Sort rankings by compliance"><div class="stat-num">${compTxt}</div><div class="stat-lbl">Target compliance</div></div>`;
+        `<div class="stat-card kpi" onclick="sortByKey('served');openBmServedTrace()" title="Sort rankings + see officer breakdown"><div class="stat-num">${ov.total_served || 0}</div><div class="stat-lbl">Tokens served</div></div>` +
+        `<div class="stat-card kpi" onclick="sortByKey('wait');openBmWaitTrace()" title="Sort rankings + see per-officer waits"><div class="stat-num">${waitTxt}</div><div class="stat-lbl">Average wait (weighted)</div></div>` +
+        `<div class="stat-card kpi" onclick="toggleBreachedOnly();this.style.outline=_bmBreachedOnly?'2px solid var(--red)':'';openBmBreachTrace()" title="Filter + see breached officers"><div class="stat-num">${ov.total_breaches || 0}</div><div class="stat-lbl">Recorded breaches${_bmBreachedOnly ? ' (filtered)' : ''}</div></div>` +
+        `<div class="stat-card kpi" onclick="sortByKey('compliance');openBmComplianceTrace()" title="Sort rankings + see per-officer compliance"><div class="stat-num">${compTxt}</div><div class="stat-lbl">Target compliance</div></div>`;
 }
 
 function renderRankings() {
@@ -423,7 +443,7 @@ function renderRankings() {
             : `<span class="pill ${a.compliance >= 90 ? 'pill-green' : (a.compliance >= 70 ? 'pill-amber' : 'pill-red')}">${a.compliance}%</span>`;
         const hrs = (a.dutyMin / 60).toFixed(1);
         const waitCell = a.avg_wait == null ? '—'
-            : `<span class="pill ${a.avg_wait <= 15 ? 'pill-green' : (a.avg_wait <= 22.5 ? 'pill-amber' : 'pill-red')}">${a.avg_wait} min</span>`;
+            : `<span class="pill ${a.avg_wait <= _bmTarget ? 'pill-green' : (a.avg_wait <= _bmTarget * 1.5 ? 'pill-amber' : 'pill-red')}">${a.avg_wait} min</span>`;
         return `<tr data-oid="${s.officer_id}" onclick="isolateOfficer('${s.officer_id}')" style="cursor:pointer;${offDuty ? 'opacity:0.55;' : ''}"><td><strong>${i + 1}</strong></td>` +
             `<td>${escapeHtml(s.officer_name || ('#' + s.officer_id))}${flagIdle ? ' <span class="pill pill-amber">needs review</span>' : ''}${offDuty ? ' <span class="pill pill-grey">off duty</span>' : ''}</td>` +
             `<td>${escapeHtml(s.office_name || '—')}</td>` +
@@ -458,7 +478,7 @@ function renderWaitChart() {
     if (!buckets.length) { svg.style.display = 'none'; empty.style.display = ''; return; }
     empty.style.display = 'none';
     svg.style.display = 'block';
-    const TARGET = 15;
+    const TARGET = _bmTarget || 15;
     const W = 920, H = 280, padL = 44, padR = 16, padT = 16, padB = 40;
     let yMax = TARGET * 1.5;
     const bAvg = buckets.map(b => {
@@ -537,7 +557,7 @@ function onWaitHover(ev) {
     const wrapEl = document.getElementById('bmWaitWrap');
     const wr = wrapEl ? wrapEl.getBoundingClientRect() : { left: 0, top: 0, width: 800 };
     tip.innerHTML = `<strong>${escapeHtml(b)}</strong><br>Avg wait: <strong>${d.v.toFixed(1)} min</strong> (over ${d.n} valid waits)` +
-        (d.bad ? `<br><span style="color:#ff8a80">Above 15m target — BREACH</span>` : `<br><span style="color:#a5d6a7">Within target</span>`);
+        (d.bad ? `<br><span style="color:#ff8a80">Above ${_bmTarget}m target — BREACH</span>` : `<br><span style="color:#a5d6a7">Within target</span>`);
     tip.style.opacity = '1';
     let lx = ev.clientX - wr.left + 14, ly = ev.clientY - wr.top - 10;
     if (lx + 220 > wr.width) lx -= 230;
@@ -602,6 +622,67 @@ async function loadAIInsights() {
     } finally {
         setLoading(btn, false);
     }
+}
+
+/* ── KPI TRACE MODALS ── */
+function openKpiModal(title, bodyHtml) {
+    closeKpiModal();
+    const ov = document.createElement('div');
+    ov.className = 'kpi-modal-overlay';
+    ov.id = 'kpiModalOv';
+    ov.innerHTML = `<div class="kpi-modal" role="dialog" aria-label="${escapeHtml(title)}">` +
+        `<div class="kpi-modal-head"><div class="kpi-modal-title">${escapeHtml(title)}</div>` +
+        `<button class="btn-sm" onclick="closeKpiModal()">Close</button></div>` +
+        `<div class="kpi-modal-body">${bodyHtml}</div></div>`;
+    ov.addEventListener('click', function(e) { if (e.target === ov) closeKpiModal(); });
+    document.body.appendChild(ov);
+    document.addEventListener('keydown', escKpiModal);
+}
+function escKpiModal(e) { if (e.key === 'Escape') closeKpiModal(); }
+function closeKpiModal() {
+    const ov = document.getElementById('kpiModalOv');
+    if (ov) ov.remove();
+    document.removeEventListener('keydown', escKpiModal);
+}
+function traceIsolate(id) { closeKpiModal(); isolateOfficer(id); }
+function bmAggRows() {
+    return visibleSeries().map(s => ({ s, a: officerAgg(s) }));
+}
+function openBmServedTrace() {
+    const rows = bmAggRows().sort((x, y) => y.a.served - x.a.served);
+    const total = rows.reduce((t, r) => t + r.a.served, 0);
+    openKpiModal('Tokens served — by officer', rows.length
+        ? `<div class="table-wrap"><table class="data-table"><thead><tr><th>Officer</th><th>Office</th><th>Served</th><th>Share</th></tr></thead><tbody>` +
+          rows.map(r => `<tr data-oid="${r.s.officer_id}" onclick="traceIsolate('${r.s.officer_id}')" title="Click to isolate this officer"><td><span class="legend-dot" style="background:${colorFor(r.s.officer_id)}"></span> ${escapeHtml(r.s.officer_name || ('#' + r.s.officer_id))}</td><td>${escapeHtml(r.s.office_name || '—')}</td><td><strong>${r.a.served}</strong></td><td>${total ? Math.round(r.a.served / total * 100) : 0}%</td></tr>`).join('') +
+          `</tbody></table></div><div style="margin-top:10px;color:var(--text-muted);font-size:12px">Total ${total}. Click a row to isolate that officer in the charts.</div>`
+        : '<div class="empty-box">No officers in range.</div>');
+}
+function openBmWaitTrace() {
+    const rows = bmAggRows().filter(r => r.a.avg_wait != null).sort((x, y) => y.a.avg_wait - x.a.avg_wait);
+    openKpiModal('Average wait — by officer', rows.length
+        ? `<div style="padding:4px 2px 12px;color:var(--text-secondary)">Weighted by valid waits against the ${_bmTarget}m target. Click a row to isolate that officer.</div>` +
+          `<div class="table-wrap"><table class="data-table"><thead><tr><th>Officer</th><th>Avg Wait</th><th>Valid Waits</th></tr></thead><tbody>` +
+          rows.map(r => `<tr data-oid="${r.s.officer_id}" onclick="traceIsolate('${r.s.officer_id}')"><td><span class="legend-dot" style="background:${colorFor(r.s.officer_id)}"></span> ${escapeHtml(r.s.officer_name || ('#' + r.s.officer_id))}</td><td><span class="pill ${r.a.avg_wait <= _bmTarget ? 'pill-green' : (r.a.avg_wait <= _bmTarget * 1.5 ? 'pill-amber' : 'pill-red')}">${r.a.avg_wait} min</span></td><td>${r.a.valid}</td></tr>`).join('') +
+          `</tbody></table></div>`
+        : '<div class="empty-box">No wait data in range.</div>');
+}
+function openBmBreachTrace() {
+    const rows = bmAggRows().filter(r => r.a.breaches > 0).sort((x, y) => y.a.breaches - x.a.breaches);
+    openKpiModal('Recorded breaches — by officer', rows.length
+        ? `<div style="padding:4px 2px 12px;color:var(--text-secondary)">Wait exceeded the ${_bmTarget}m target${_bmBreachedOnly ? ' — rankings are currently filtered to these officers' : ''}. Click a row to isolate that officer.</div>` +
+          `<div class="table-wrap"><table class="data-table"><thead><tr><th>Officer</th><th>Breaches</th><th>Served</th></tr></thead><tbody>` +
+          rows.map(r => `<tr data-oid="${r.s.officer_id}" onclick="traceIsolate('${r.s.officer_id}')"><td><span class="legend-dot" style="background:${colorFor(r.s.officer_id)}"></span> ${escapeHtml(r.s.officer_name || ('#' + r.s.officer_id))}</td><td><span class="pill pill-red">${r.a.breaches}</span></td><td>${r.a.served}</td></tr>`).join('') +
+          `</tbody></table></div>`
+        : '<div class="empty-box">No breaches — every service met its target.</div>');
+}
+function openBmComplianceTrace() {
+    const rows = bmAggRows().filter(r => r.a.compliance != null).sort((x, y) => x.a.compliance - y.a.compliance);
+    openKpiModal('Target compliance — by officer', rows.length
+        ? `<div style="padding:4px 2px 12px;color:var(--text-secondary)">Compliance = (valid waits − breaches) ÷ valid waits × 100 against the ${_bmTarget}m target. Click a row to isolate that officer.</div>` +
+          `<div class="table-wrap"><table class="data-table"><thead><tr><th>Officer</th><th>Compliance</th></tr></thead><tbody>` +
+          rows.map(r => `<tr data-oid="${r.s.officer_id}" onclick="traceIsolate('${r.s.officer_id}')"><td><span class="legend-dot" style="background:${colorFor(r.s.officer_id)}"></span> ${escapeHtml(r.s.officer_name || ('#' + r.s.officer_id))}</td><td><span class="pill ${r.a.compliance >= 90 ? 'pill-green' : (r.a.compliance >= 70 ? 'pill-amber' : 'pill-red')}">${r.a.compliance}%</span></td></tr>`).join('') +
+          `</tbody></table></div>`
+        : '<div class="empty-box">No compliance data in range.</div>');
 }
 
 function exportBenchmarkCSV() {

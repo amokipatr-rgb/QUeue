@@ -93,6 +93,13 @@
         .btn-sm:hover { border-color: var(--green-dark); }
         .btn-sm:disabled { opacity: 0.5; cursor: not-allowed; }
         .empty-box { padding: 36px 20px; text-align: center; color: var(--text-muted); font-size: 13px; }
+        .stat-card.kpi { cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; }
+        .stat-card.kpi:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+        .kpi-modal-overlay { position: fixed; inset: 0; background: rgba(10,15,24,0.5); z-index: 9000; display: flex; align-items: center; justify-content: center; padding: 16px; animation: fadein 0.2s ease; }
+        .kpi-modal { background: var(--white); border-radius: var(--radius); max-width: 640px; width: 100%; max-height: 82vh; display: flex; flex-direction: column; box-shadow: 0 12px 48px rgba(0,0,0,0.25); }
+        .kpi-modal-head { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+        .kpi-modal-title { font-size: 15px; font-weight: 800; flex: 1; }
+        .kpi-modal-body { padding: 8px 20px 20px; overflow-y: auto; font-size: 13px; }
         .mono { font-family: ui-monospace, monospace; }
         .skel { border-radius: 8px; background: linear-gradient(90deg, #eef1f4 25%, #e2e7ec 50%, #eef1f4 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; }
         @keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
@@ -151,6 +158,7 @@
             <label style="font-size:12px;font-weight:700;color:var(--text-muted)">To</label>
             <input type="date" class="date-input" id="bnTo">
             <button class="btn btn-primary" id="bnLoadBtn" onclick="loadBottlenecks()">Apply</button>
+            <button class="btn btn-outline" id="bnCsvBtn" onclick="exportBottlenecksCSV()">CSV</button>
         </div>
 
         <div class="stat-row" id="bnPeaks" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;margin-bottom:20px"></div>
@@ -251,23 +259,24 @@ async function loadBottlenecks() {
         setLoading(btn, false);
     }
 }
-function peakCard(top, main, sub) {
-    return `<div class="stat-card" style="background:var(--white);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow-sm);animation:rise 0.35s ease backwards"><div class="stat-top">${top}</div><div class="stat-main" style="font-size:17px;font-weight:800">${main}</div><div class="stat-sub" style="font-size:12px;color:var(--text-muted);margin-top:4px">${sub}</div></div>`;
+function peakCard(top, main, sub, onclick) {
+    return `<div class="stat-card${onclick ? ' kpi' : ''}"${onclick ? ` onclick="${onclick}" title="Click to see what makes up this number"` : ''} style="background:var(--white);border-radius:var(--radius);padding:16px 18px;box-shadow:var(--shadow-sm);animation:rise 0.35s ease backwards"><div class="stat-top">${top}</div><div class="stat-main" style="font-size:17px;font-weight:800">${main}</div><div class="stat-sub" style="font-size:12px;color:var(--text-muted);margin-top:4px">${sub}</div></div>`;
 }
 function renderPeaks(peaks) {
     const el = document.getElementById('bnPeaks');
+    window._bnPeaks = peaks || {};
     const cards = [];
     if (peaks.worst_pressure) {
         const w = peaks.worst_pressure;
-        cards.push(peakCard('Worst pressure', `${escapeHtml(w.office_name)} · ${escapeHtml(w.day)}`, `Pressure ${w.pressure} — ${w.demand} tokens, ${w.avg_wait || '—'} min avg wait, ${w.officers} officer(s)`));
+        cards.push(peakCard('Worst pressure', `${escapeHtml(w.office_name)} · ${escapeHtml(w.day)}`, `Pressure ${w.pressure} — ${w.demand} tokens, ${w.avg_wait || '—'} min avg wait, ${w.officers} officer(s)`, 'openBnPeakTrace(\'worst_pressure\')'));
     }
     if (peaks.peak_demand) {
         const p = peaks.peak_demand;
-        cards.push(peakCard('Peak demand', `${escapeHtml(p.office_name)} · ${escapeHtml(p.day)}`, `${p.demand} tokens in a day`));
+        cards.push(peakCard('Peak demand', `${escapeHtml(p.office_name)} · ${escapeHtml(p.day)}`, `${p.demand} tokens in a day`, 'openBnPeakTrace(\'peak_demand\')'));
     }
     if (peaks.peak_wait) {
         const p = peaks.peak_wait;
-        cards.push(peakCard('Longest wait', `${escapeHtml(p.office_name)} · ${escapeHtml(p.day)}`, `${p.avg_wait || '—'} min average wait`));
+        cards.push(peakCard('Longest wait', `${escapeHtml(p.office_name)} · ${escapeHtml(p.day)}`, `${p.avg_wait || '—'} min average wait`, 'openBnPeakTrace(\'peak_wait\')'));
     }
     el.innerHTML = cards.length ? cards.join('') : '<div class="empty-box">No data in range.</div>';
     const st = document.createElement('style');
@@ -276,6 +285,7 @@ function renderPeaks(peaks) {
 }
 function renderRows(rows) {
     const tb = document.getElementById('bnRows');
+    window._bnRows = rows || [];
     document.getElementById('bnCount').textContent = rows.length + ' rows';
     if (!rows.length) { tb.innerHTML = '<tr><td colspan="9"><div class="empty-box">No demand in range — no bottlenecks. Quiet period.</div></td></tr>'; return; }
     tb.innerHTML = rows.map((r, i) =>
@@ -290,6 +300,61 @@ function renderRows(rows) {
         `<td><button class="btn-sm" onclick="goToSLADate('${escapeHtml(r.day)}')">SLA</button></td></tr>`
     ).join('');
 }
+/* ── KPI TRACE MODALS + CSV ── */
+function openKpiModal(title, bodyHtml) {
+    closeKpiModal();
+    const ov = document.createElement('div');
+    ov.className = 'kpi-modal-overlay';
+    ov.id = 'kpiModalOv';
+    ov.innerHTML = `<div class="kpi-modal" role="dialog" aria-label="${escapeHtml(title)}">` +
+        `<div class="kpi-modal-head"><div class="kpi-modal-title">${escapeHtml(title)}</div>` +
+        `<button class="btn-sm" onclick="closeKpiModal()">Close</button></div>` +
+        `<div class="kpi-modal-body">${bodyHtml}</div></div>`;
+    ov.addEventListener('click', function(e) { if (e.target === ov) closeKpiModal(); });
+    document.body.appendChild(ov);
+    document.addEventListener('keydown', escKpiModal);
+}
+function escKpiModal(e) { if (e.key === 'Escape') closeKpiModal(); }
+function closeKpiModal() {
+    const ov = document.getElementById('kpiModalOv');
+    if (ov) ov.remove();
+    document.removeEventListener('keydown', escKpiModal);
+}
+function csvEscape(v) {
+    v = v == null ? '' : String(v);
+    return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+}
+function openBnPeakTrace(kind) {
+    const p = (window._bnPeaks || {})[kind];
+    if (!p) return;
+    const titles = { worst_pressure: 'Worst pressure — breakdown', peak_demand: 'Peak demand — breakdown', peak_wait: 'Longest wait — breakdown' };
+    openKpiModal(titles[kind] || 'Peak — breakdown',
+        `<div style="padding:4px 2px 12px;color:var(--text-secondary)"><strong>${escapeHtml(p.office_name)}</strong> · ${escapeHtml(p.day)}<br>` +
+        (kind === 'worst_pressure'
+            ? `Pressure = avg wait × demand ÷ officers = <strong>${p.avg_wait || '—'} × ${p.demand} ÷ ${Math.max(p.officers || 0, 1)} = ${p.pressure}</strong>. High wait with high demand and thin staffing ranks first.`
+            : (kind === 'peak_demand'
+                ? `<strong>${p.demand} tokens</strong> requested in a single day — the highest daily demand in range.`
+                : `<strong>${p.avg_wait || '—'} min</strong> average wait — the longest in range over ${p.demand} tokens with ${p.officers} officer(s) on duty.`)) +
+        `</div><div><button class="btn-sm" onclick="closeKpiModal();goToSLADate('${escapeHtml(p.day)}')">Open SLA day ${escapeHtml(p.day)}</button></div>`);
+}
+function exportBottlenecksCSV() {
+    const rows = window._bnRows || [];
+    if (!rows.length) { showToast('Load data first', 'error'); return; }
+    const lines = [['Rank', 'Office', 'Code', 'Day', 'Demand', 'Avg wait (min)', 'Officers', 'Breaches', 'Pressure'].map(csvEscape).join(',')];
+    rows.forEach((r, i) => lines.push([i + 1, r.office_name, r.office_code, r.day, r.demand,
+        r.avg_wait == null ? '' : r.avg_wait, r.officers, r.breaches || 0, r.pressure].map(csvEscape).join(',')));
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `bottlenecks-${document.getElementById('bnFrom').value}-to-${document.getElementById('bnTo').value}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    showToast('CSV downloaded');
+}
+
 let currentAdmin = checkLogin();
 if (currentAdmin) {
     const t = new Date();

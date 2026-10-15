@@ -111,6 +111,14 @@
         .btn-sm:disabled { opacity: 0.5; cursor: not-allowed; }
         .empty-box { padding: 36px 20px; text-align: center; color: var(--text-muted); font-size: 13px; }
         .mono { font-family: ui-monospace, monospace; }
+        .stat-card.kpi { cursor: pointer; transition: transform 0.15s, box-shadow 0.15s; }
+        .stat-card.kpi:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+        .stat-card.kpi:active { transform: scale(0.98); }
+        .kpi-modal-overlay { position: fixed; inset: 0; background: rgba(10,15,24,0.5); z-index: 9000; display: flex; align-items: center; justify-content: center; padding: 16px; animation: fadein 0.2s ease; }
+        .kpi-modal { background: var(--white); border-radius: var(--radius); max-width: 640px; width: 100%; max-height: 82vh; display: flex; flex-direction: column; box-shadow: 0 12px 48px rgba(0,0,0,0.25); animation: rise 0.25s ease; }
+        .kpi-modal-head { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 10px; }
+        .kpi-modal-title { font-size: 15px; font-weight: 800; flex: 1; }
+        .kpi-modal-body { padding: 8px 20px 20px; overflow-y: auto; font-size: 13px; }
 
         /* ── SKELETON ── */
         .skel { border-radius: 8px; background: linear-gradient(90deg, #eef1f4 25%, #e2e7ec 50%, #eef1f4 75%); background-size: 200% 100%; animation: shimmer 1.2s infinite; }
@@ -210,7 +218,7 @@
         </div>
 
         <div class="section">
-            <div class="section-header"><div class="section-title">Offices vs Target</div></div>
+            <div class="section-header"><div class="section-title">Offices vs Target</div><span class="pill pill-grey" id="slaOffCount"></span><button class="btn-sm" style="margin-left:auto" onclick="exportSLAOfficesCSV()">CSV</button></div>
             <div class="table-wrap"><table class="data-table">
                 <thead><tr><th>Office</th><th>Served</th><th>Avg Wait</th><th>Target</th><th>Breached</th><th>Breach Rate</th><th>Waiting Now</th></tr></thead>
                 <tbody id="slaOfficeRows"><tr><td colspan="7"><div class="skel" style="height:40px"></div></td></tr></tbody>
@@ -218,7 +226,7 @@
         </div>
 
         <div class="section">
-            <div class="section-header"><div class="section-title">Breach List</div><span class="pill pill-grey" id="breachCount"></span></div>
+            <div class="section-header"><div class="section-title">Breach List</div><span class="pill pill-grey" id="breachCount"></span><button class="btn-sm" style="margin-left:auto" onclick="exportSLABreachesCSV()">CSV</button></div>
             <div class="table-wrap"><table class="data-table">
                 <thead><tr><th>Token</th><th>Person</th><th>Service</th><th>Office</th><th>Waited</th><th>Target</th><th>Over By</th><th>Status</th><th></th></tr></thead>
                 <tbody id="slaBreachRows"><tr><td colspan="9"><div class="skel" style="height:40px"></div></td></tr></tbody>
@@ -308,12 +316,17 @@ async function loadSLA(btn) {
     setLoading(btn, true);
     const date = document.getElementById('slaDate').value || todayStr();
     try {
-        const [ovRes, brRes] = await Promise.all([
+        const [ovRes, brRes, tgRes] = await Promise.all([
             fetch(`${API_BASE_URL}/api/admin/sla-overview?date=${encodeURIComponent(date)}`),
-            fetch(`${API_BASE_URL}/api/admin/sla-breaches?date=${encodeURIComponent(date)}`)
+            fetch(`${API_BASE_URL}/api/admin/sla-breaches?date=${encodeURIComponent(date)}`),
+            fetch(`${API_BASE_URL}/api/admin/sla-target`).catch(() => null)
         ]);
         const ov = await ovRes.json();
         const br = await brRes.json();
+        try {
+            const tg = tgRes ? await tgRes.json() : null;
+            if (tg && tg.success && tg.target_minutes != null) window._slaTargetMin = tg.target_minutes;
+        } catch (e) {}
         if (ov.success) renderSLACards(ov);
         if (br.success) renderBreaches(br.breaches || []);
         if (ov.success) renderOffices(ov.offices || []);
@@ -328,10 +341,11 @@ async function loadSLA(btn) {
 function renderSLACards(ov) {
     const rate = ov.overall_breach_rate || 0;
     const rateCls = rate === 0 ? 'icon-green' : (rate < 10 ? 'icon-amber' : 'icon-red');
+    window._slaOv = ov;
     document.getElementById('slaCards').innerHTML =
-        `<div class="stat-card"><div class="stat-icon icon-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="stat-num">${ov.total_served || 0}</div><div class="stat-lbl">Served (${escapeHtml(ov.date || '')})</div></div></div>` +
-        `<div class="stat-card"><div class="stat-icon icon-red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div><div class="stat-num">${ov.total_breached || 0}</div><div class="stat-lbl">Breached target</div></div></div>` +
-        `<div class="stat-card"><div class="stat-icon ${rateCls}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg></div><div><div class="stat-num">${rate}%</div><div class="stat-lbl">Breach rate</div></div></div>`;
+        `<div class="stat-card kpi" onclick="openSlaServedTrace()" title="Click to see what makes up this number"><div class="stat-icon icon-green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div><div><div class="stat-num">${ov.total_served || 0}</div><div class="stat-lbl">Served (${escapeHtml(ov.date || '')})</div></div></div>` +
+        `<div class="stat-card kpi" onclick="openSlaBreachedTrace()" title="Click to see what makes up this number"><div class="stat-icon icon-red"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div><div class="stat-num">${ov.total_breached || 0}</div><div class="stat-lbl">Breached target</div></div></div>` +
+        `<div class="stat-card kpi" onclick="openSlaRateTrace()" title="Click to see what makes up this number"><div class="stat-icon ${rateCls}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg></div><div><div class="stat-num">${rate}%</div><div class="stat-lbl">Breach rate</div></div></div>`;
 }
 
 function ratePill(rate) {
@@ -342,6 +356,8 @@ function ratePill(rate) {
 
 function renderOffices(offices) {
     const tb = document.getElementById('slaOfficeRows');
+    window._slaOffices = offices || [];
+    document.getElementById('slaOffCount').textContent = (offices || []).length + ' offices';
     if (!offices.length) { tb.innerHTML = '<tr><td colspan="7"><div class="empty-box">No offices found.</div></td></tr>'; return; }
     tb.innerHTML = offices.map(o =>
         `<tr><td><strong>${escapeHtml(o.office_name)}</strong><br><span style="color:var(--text-muted);font-size:11px">${escapeHtml(o.office_code)}</span></td>` +
@@ -356,6 +372,7 @@ function renderOffices(offices) {
 
 function renderBreaches(breaches) {
     document.getElementById('breachCount').textContent = breaches.length + ' breaches';
+    window._slaBreaches = breaches || [];
     const tb = document.getElementById('slaBreachRows');
     if (!breaches.length) { tb.innerHTML = '<tr><td colspan="9"><div class="empty-box">No breaches — every service met its target. Clean day.</div></td></tr>'; return; }
     tb.innerHTML = breaches.map(b =>
@@ -369,6 +386,90 @@ function renderBreaches(breaches) {
         `<td>${b.still_waiting ? '<span class="pill pill-amber">Waiting</span>' : '<span class="pill pill-green">Served</span>'}${b.was_escalated ? ' <span class="pill pill-blue">Escalated</span>' : ''}</td>` +
         `<td><button class="btn-sm" onclick="openTrace('${escapeHtml(b.token_number)}', this)">Trace</button></td></tr>`
     ).join('');
+}
+
+/* ── KPI TRACE MODALS + CSV ── */
+function csvEscape(v) {
+    v = v == null ? '' : String(v);
+    return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+}
+function downloadCSV(filename, lines) {
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    showToast('CSV downloaded');
+}
+function openKpiModal(title, bodyHtml) {
+    closeKpiModal();
+    const ov = document.createElement('div');
+    ov.className = 'kpi-modal-overlay';
+    ov.id = 'kpiModalOv';
+    ov.innerHTML = `<div class="kpi-modal" role="dialog" aria-label="${escapeHtml(title)}">` +
+        `<div class="kpi-modal-head"><div class="kpi-modal-title">${escapeHtml(title)}</div>` +
+        `<button class="btn-sm" onclick="closeKpiModal()">Close</button></div>` +
+        `<div class="kpi-modal-body">${bodyHtml}</div></div>`;
+    ov.addEventListener('click', function(e) { if (e.target === ov) closeKpiModal(); });
+    document.body.appendChild(ov);
+    document.addEventListener('keydown', escKpiModal);
+}
+function escKpiModal(e) { if (e.key === 'Escape') closeKpiModal(); }
+function closeKpiModal() {
+    const ov = document.getElementById('kpiModalOv');
+    if (ov) ov.remove();
+    document.removeEventListener('keydown', escKpiModal);
+}
+function openSlaServedTrace() {
+    const rows = (window._slaOffices || []).filter(o => (o.served || 0) > 0)
+        .sort((a, b) => (b.served || 0) - (a.served || 0));
+    const total = rows.reduce((a, o) => a + (o.served || 0), 0);
+    openKpiModal('Served — by office', rows.length
+        ? `<div class="table-wrap"><table class="data-table"><thead><tr><th>Office</th><th>Served</th><th>Share</th></tr></thead><tbody>` +
+          rows.map(o => `<tr><td><strong>${escapeHtml(o.office_name)}</strong></td><td><strong>${o.served}</strong></td><td>${total ? Math.round(o.served / total * 100) : 0}%</td></tr>`).join('') +
+          `</tbody></table></div><div style="margin-top:10px;color:var(--text-muted);font-size:12px">Total ${total} tokens served on ${escapeHtml((window._slaOv || {}).date || '')}.</div>`
+        : '<div class="empty-box">No served tokens in this range.</div>');
+}
+function openSlaBreachedTrace() {
+    const rows = (window._slaBreaches || []).slice(0, 100);
+    openKpiModal('Breached target — tokens', rows.length
+        ? `<div class="table-wrap"><table class="data-table"><thead><tr><th>Token</th><th>Person</th><th>Office</th><th>Over By</th><th></th></tr></thead><tbody>` +
+          rows.map(b => `<tr><td class="mono"><strong>${escapeHtml(b.token_number)}</strong></td><td>${escapeHtml(b.student_name || '—')}</td><td>${escapeHtml(b.office_name || '')}</td><td><span class="pill pill-red">+${b.over_by_minutes} min</span></td><td><button class="btn-sm" onclick="closeKpiModal();openTrace('${escapeHtml(b.token_number)}', this)">Trace</button></td></tr>`).join('') +
+          `</tbody></table></div><div style="margin-top:10px;color:var(--text-muted);font-size:12px">Showing ${rows.length} of ${(window._slaBreaches || []).length} breached tokens. Full list with targets is in the Breach List section below.</div>`
+        : '<div class="empty-box">No breaches — every service met its target.</div>');
+}
+function openSlaRateTrace() {
+    const ov = window._slaOv || {};
+    const rows = (window._slaOffices || []).filter(o => (o.served || 0) > 0)
+        .sort((a, b) => (b.breach_rate || 0) - (a.breach_rate || 0));
+    openKpiModal('Breach rate — how it is computed',
+        `<div style="padding:4px 2px 12px;color:var(--text-secondary)">Breach rate = breached ÷ served × 100 = <strong>${ov.total_breached || 0} ÷ ${ov.total_served || 0} × 100 = ${ov.overall_breach_rate || 0}%</strong>.<br>A token breaches when its queue wait exceeds its service target (global default ${window._slaTargetMin != null ? window._slaTargetMin + ' min' : '15 min'}).</div>` +
+        (rows.length ? `<div class="table-wrap"><table class="data-table"><thead><tr><th>Office</th><th>Served</th><th>Breached</th><th>Rate</th></tr></thead><tbody>` +
+          rows.map(o => `<tr><td><strong>${escapeHtml(o.office_name)}</strong></td><td>${o.served}</td><td>${o.breached || 0}</td><td>${ratePill(o.breach_rate)}</td></tr>`).join('') +
+          `</tbody></table></div>` : '<div class="empty-box">No office data.</div>'));
+}
+function exportSLAOfficesCSV() {
+    const rows = window._slaOffices || [];
+    if (!rows.length) { showToast('Load SLA data first', 'error'); return; }
+    const lines = [['Office', 'Code', 'Served', 'Avg wait (min)', 'Target (min)', 'Breached', 'Breach rate %', 'Waiting now'].map(csvEscape).join(',')];
+    rows.forEach(o => lines.push([o.office_name, o.office_code, o.served || 0,
+        o.avg_wait_minutes == null ? '' : o.avg_wait_minutes,
+        o.avg_target_minutes == null ? '' : o.avg_target_minutes,
+        o.breached || 0, o.breach_rate || 0, o.current_waiting || 0].map(csvEscape).join(',')));
+    downloadCSV(`sla-offices-${(window._slaOv || {}).date || 'report'}.csv`, lines);
+}
+function exportSLABreachesCSV() {
+    const rows = window._slaBreaches || [];
+    if (!rows.length) { showToast('No breaches to export', 'error'); return; }
+    const lines = [['Token', 'Person', 'Service', 'Office', 'Waited (min)', 'Target (min)', 'Over by (min)', 'Status'].map(csvEscape).join(',')];
+    rows.forEach(b => lines.push([b.token_number, b.student_name || '', b.service_name || b.service_code || '',
+        b.office_name || '', b.waited_minutes, b.target_minutes, b.over_by_minutes,
+        b.still_waiting ? 'Waiting' : 'Served'].map(csvEscape).join(',')));
+    downloadCSV(`sla-breaches-${(window._slaOv || {}).date || 'report'}.csv`, lines);
 }
 
 /* ── GITLAB-STYLE TRACE RAIL ── */
