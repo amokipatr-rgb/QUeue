@@ -679,6 +679,10 @@ def admin_bottlenecks_token():
 def admin_reports_token():
     return jsonify({'success': True, 'url': '/admin/' + ADMIN_TOKEN + '/reports'})
 
+@app.route('/api/admin/analyst-token')
+def admin_analyst_token():
+    return jsonify({'success': True, 'url': '/admin/' + ADMIN_TOKEN + '/analyst'})
+
 @app.route('/api/admin/officer-token')
 def admin_officer_token():
     return jsonify({'success': True, 'token': OFFICER_TOKEN, 'url': '/officer/' + OFFICER_TOKEN})
@@ -742,6 +746,10 @@ def admin_bottlenecks_page(token):
 @app.route('/admin/<token>/reports')
 def admin_reports_page(token):
     return _serve_accountability_page(token, 'reports.html')
+
+@app.route('/admin/<token>/analyst')
+def admin_analyst_page(token):
+    return _serve_accountability_page(token, 'ai-analyst.html')
 
 @app.route('/officer')
 def officer_decoy():
@@ -5930,6 +5938,199 @@ def admin_ai_performance_insights():
     return jsonify({'success': True, 'insights': text, 'provider': provider,
                     'generated_at': datetime.now().isoformat(),
                     'figures_used': {'officers': len(officers), 'overall': overall}})
+
+
+@app.route('/api/admin/ai-chat', methods=['POST'])
+def admin_ai_chat():
+    """ChatGPT-style analyst chat grounded ONLY in a live system snapshot.
+    Request JSON: {message, from (YYYY-MM-DD), to (YYYY-MM-DD),
+                   history: [{role: 'user'|'assistant', content}...]}.
+    The model answers from the snapshot figures; it never invents numbers."""
+    data = request.get_json(silent=True) or {}
+    message = (data.get('message') or '').strip()
+    if not message:
+        return jsonify({'success': False, 'message': 'Ask a question first'}), 400
+    if len(message) > 2000:
+        return jsonify({'success': False, 'message': 'Question too long (max 2000 characters)'}), 400
+    history = data.get('history') or []
+    if not isinstance(history, list):
+        history = []
+    history = [h for h in history
+               if isinstance(h, dict) and h.get('role') in ('user', 'assistant')
+               and isinstance(h.get('content'), str)][:6]
+
+    today = datetime.now().date()
+    try:
+        to_d = datetime.strptime(data.get('to'), '%Y-%m-%d').date() if data.get('to') else today
+    except ValueError:
+        to_d = today
+    try:
+        from_d = datetime.strptime(data.get('from'), '%Y-%m-%d').date() if data.get('from') else to_d - timedelta(days=29)
+    except ValueError:
+        from_d = to_d - timedelta(days=29)
+    if (to_d - from_d).days > 93:
+        from_d = to_d - timedelta(days=93)
+    if from_d > to_d:
+        from_d, to_d = to_d, from_d
+    start_ts = datetime(from_d.year, from_d.month, from_d.day)
+    end_ts = datetime(to_d.year, to_d.month, to_d.day) + timedelta(days=1)
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        sla_target = _get_sla_target(cursor)
+        L = []
+
+        # Officers: served / avg wait / breaches / duty (top 15)
+        cursor.execute("""
+            SELECT t.assigned_officer_id AS oid, o.officer_name, off.office_name,
+                   COUNT(*) AS served,
+                   ROUND(AVG(TIMESTAMPDIFF(MINUTE, t.requested_at, t.serving_started_at)), 1) AS avg_wait,
+                   SUM(CASE WHEN TIMESTAMPDIFF(MINUTE, t.requested_at, t.serving_started_at)
+                                 > COALESCE(s.estimated_time_minutes, %s) THEN 1 ELSE 0 END) AS breaches
+            FROM university_tokens t
+            JOIN officers o ON o.id = t.assigned_officer_id
+            LEFT JOIN offices off ON off.id = o.office_id
+            LEFT JOIN services s ON s.id = t.service_id
+            WHERE t.status = 'completed'
+              AND COALESCE(t.served_count_excluded, 0) = 0
+              AND t.assigned_officer_id IS NOT NULL
+              AND t.completed_at >= %s AND t.completed_at < %s
+            GROUP BY oid ORDER BY served DESC LIMIT 15
+        """, (sla_target, start_ts, end_ts))
+        officers = cursor.fetchall()
+        oids = [o['oid'] for o in officers]
+        duty = {}
+        if oids:
+            ph = ','.join(['%s'] * len(oids))
+            cursor.execute(f"""
+                SELECT officer_id, ROUND(SUM(TIMESTAMPDIFF(MINUTE, login_time,
+                    COALESCE(logout_time, NOW())))) AS mins
+                FROM officer_sessions
+                WHERE officer_id IN ({ph}) AND login_time >= %s AND login_time < %s
+                GROUP BY officer_id
+            """, tuple(oids + [start_ts, end_ts]))
+            for r in cursor.fetchall():
+                duty[r['officer_id']] = int(r['mins'] or 0)
+        tot_served = sum(int(o['served'] or 0) for o in officers)
+        L.append(f"OFFICERS (served / avg_wait_min / breaches / duty_min), target {sla_target}m:")
+        for o in officers:
+            L.append(f"- {o['officer_name']} ({o['office_name'] or '?'}): "
+                     f"{o['served']} / {o['avg_wait']} / {o['breaches']} / {duty.get(o['oid'], 0)}")
+
+        # Offices
+        cursor.execute("""
+            SELECT off.office_name, COUNT(*) AS served
+            FROM university_tokens t JOIN offices off ON off.id = t.office_id
+            WHERE t.status = 'completed' AND COALESCE(t.served_count_excluded, 0) = 0
+              AND t.completed_at >= %s AND t.completed_at < %s
+            GROUP BY off.id ORDER BY served DESC LIMIT 8
+        """, (start_ts, end_ts))
+        L.append("OFFICES (served): " + "; ".join(
+            f"{r['office_name']} {r['served']}" for r in cursor.fetchall()))
+
+        # Services
+        cursor.execute("""
+            SELECT COALESCE(s.service_name, t.service_code, 'Unknown') AS svc, COUNT(*) AS served,
+                   ROUND(AVG(TIMESTAMPDIFF(MINUTE, t.requested_at, t.serving_started_at)), 1) AS avg_wait
+            FROM university_tokens t LEFT JOIN services s ON s.id = t.service_id
+            WHERE t.status = 'completed' AND COALESCE(t.served_count_excluded, 0) = 0
+              AND t.completed_at >= %s AND t.completed_at < %s
+            GROUP BY svc ORDER BY served DESC LIMIT 10
+        """, (start_ts, end_ts))
+        L.append("SERVICES (served / avg_wait_min): " + "; ".join(
+            f"{r['svc']} {r['served']}/{r['avg_wait']}" for r in cursor.fetchall()))
+
+        # Status mix + queue now
+        cursor.execute("""
+            SELECT status, COUNT(*) AS n FROM university_tokens
+            WHERE requested_at >= %s AND requested_at < %s GROUP BY status
+        """, (start_ts, end_ts))
+        L.append("TOKENS BY STATUS: " + "; ".join(
+            f"{r['status']} {r['n']}" for r in cursor.fetchall()))
+
+        # Feedback
+        cursor.execute("""
+            SELECT COUNT(rating) AS n, ROUND(AVG(rating), 1) AS avg_r
+            FROM university_tokens
+            WHERE status = 'completed' AND rating IS NOT NULL
+              AND completed_at >= %s AND completed_at < %s
+        """, (start_ts, end_ts))
+        fr = cursor.fetchone()
+        L.append(f"FEEDBACK: {fr['n'] or 0} ratings, average {fr['avg_r'] or 'n/a'} stars.")
+
+        # Escalations
+        cursor.execute("""
+            SELECT COUNT(*) AS n FROM queue_logs
+            WHERE action = 'escalated' AND created_at >= %s AND created_at < %s
+        """, (start_ts, end_ts))
+        L.append(f"ESCALATIONS: {int(cursor.fetchone()['n'] or 0)} tokens auto-forwarded between offices.")
+
+        # Complaints
+        cursor.execute("SELECT COUNT(*) AS n FROM general_complaints")
+        L.append(f"COMPLAINTS (all time): {int(cursor.fetchone()['n'] or 0)} total.")
+        cursor.execute("""
+            SELECT category, status, created_at FROM general_complaints
+            ORDER BY created_at DESC LIMIT 5
+        """)
+        for c in cursor.fetchall():
+            ts = c['created_at'].isoformat() if isinstance(c.get('created_at'), datetime) else c.get('created_at')
+            L.append(f"- complaint [{c.get('category')}/{c.get('status')}] at {ts}.")
+
+        # Peak day + hour
+        cursor.execute("""
+            SELECT DATE(completed_at) AS d, COUNT(*) AS n FROM university_tokens
+            WHERE status = 'completed' AND completed_at >= %s AND completed_at < %s
+            GROUP BY d ORDER BY n DESC LIMIT 3
+        """, (start_ts, end_ts))
+        L.append("PEAK DAYS: " + "; ".join(
+            f"{r['d']} ({r['n']})" for r in cursor.fetchall()))
+        cursor.execute("""
+            SELECT HOUR(completed_at) AS h, COUNT(*) AS n FROM university_tokens
+            WHERE status = 'completed' AND completed_at >= %s AND completed_at < %s
+            GROUP BY h ORDER BY n DESC LIMIT 3
+        """, (start_ts, end_ts))
+        L.append("PEAK HOURS: " + "; ".join(
+            f"{r['h']}:00 ({r['n']})" for r in cursor.fetchall()))
+
+        cursor.close()
+        conn.close()
+
+        hist_txt = ""
+        for h in history[-6:]:
+            who = 'Manager' if h['role'] == 'user' else 'Analyst'
+            hist_txt += f"{who}: {h['content'][:800]}\n"
+        prompt = (
+            "You are the SMQSS service-operations analyst chatting with a manager. "
+            "Answer ONLY from the VERIFIED SYSTEM SNAPSHOT below. Every number you quote "
+            "must appear in the snapshot; never invent targets, causes, names, or numbers. "
+            "If the question cannot be answered from the snapshot, say exactly which "
+            "report or record the manager should open instead. Never judge staff character "
+            "or effort, describe records only. Keep answers short and scannable: a direct "
+            "answer first, then 2-5 bullets with cited numbers. Plain professional prose, "
+            "no jargon, no decoration. "
+            "Punctuation rule: never use em dashes or en dashes anywhere. "
+            "Use commas, colons, or plain periods instead. This rule has no exceptions.\n\n"
+            f"SNAPSHOT PERIOD: {from_d.isoformat()} to {to_d.isoformat()} "
+            f"(total served in top-15 officers: {tot_served}).\n"
+            "VERIFIED SYSTEM SNAPSHOT:\n" + "\n".join(L) + "\n\n"
+            + (f"EARLIER IN THIS CHAT:\n{hist_txt}\n" if hist_txt else "") +
+            f"MANAGER ASKS: {message}"
+        )
+        text, err, provider = call_ai_insights(prompt, max_tokens=600, temperature=0.3)
+        if err:
+            return jsonify({'success': False, 'message': err}), 502
+        text = text.replace('\u2014', ', ').replace('\u2013', '-')
+        text = text.replace(' ,', ',')
+        while '  ' in text:
+            text = text.replace('  ', ' ')
+        return jsonify({'success': True, 'reply': text, 'provider': provider,
+                        'generated_at': datetime.now().isoformat(),
+                        'period': {'from': from_d.isoformat(), 'to': to_d.isoformat()},
+                        'figures_used': {'officers': len(officers), 'served': tot_served}})
+    except Exception as e:
+        logger.error(f"AI chat error: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
 
 
 @app.route('/api/admin/attendance-trends', methods=['GET'])
