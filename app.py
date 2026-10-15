@@ -6013,6 +6013,27 @@ def admin_ai_chat():
             for r in cursor.fetchall():
                 duty[r['officer_id']] = int(r['mins'] or 0)
         tot_served = sum(int(o['served'] or 0) for o in officers)
+        # Deterministic best-employee verdict: highest served x compliance / avg_wait.
+        # compliance = (served - breaches) / served x 100. The model reports this
+        # verbatim instead of inventing its own ranking.
+        ranked = []
+        for o in officers:
+            sv = int(o['served'] or 0)
+            aw = float(o['avg_wait']) if o['avg_wait'] is not None else None
+            br = int(o['breaches'] or 0)
+            if sv > 0 and aw and aw > 0:
+                comp = max(0.0, (sv - br) / sv * 100)
+                ranked.append((sv * comp / aw, o['officer_name'],
+                               o['office_name'] or '?', sv, round(comp, 1), aw))
+        ranked.sort(key=lambda r: r[0], reverse=True)
+        if ranked:
+            w = ranked[0]
+            L.append(f"BEST EMPLOYEE (rule: highest served x compliance% / avg_wait_min): "
+                     f"{w[1]} ({w[2]}): {w[3]} served x {w[4]}% compliance / {w[5]} min "
+                     f"= score {round(w[0], 1)}.")
+            for sc, nm, off, sv, comp, aw in ranked[1:4]:
+                L.append(f"Runner-up: {nm} ({off}): {sv} served x {comp}% / {aw} min "
+                         f"= score {round(sc, 1)}.")
         L.append(f"OFFICERS (served / avg_wait_min / breaches / duty_min), target {sla_target}m:")
         for o in officers:
             L.append(f"- {o['officer_name']} ({o['office_name'] or '?'}): "
@@ -6106,7 +6127,10 @@ def admin_ai_chat():
             "must appear in the snapshot; never invent targets, causes, names, or numbers. "
             "If the question cannot be answered from the snapshot, say exactly which "
             "report or record the manager should open instead. Never judge staff character "
-            "or effort, describe records only. Keep answers short and scannable: a direct "
+            "or effort, describe records only. If the manager asks who is best, busiest, "
+            "or worst, report the VERDICT lines verbatim with the stated rule and formula. "
+            "Never substitute your own ranking or declare a different winner. "
+            "Keep answers short and scannable: a direct "
             "answer first, then 2-5 bullets with cited numbers. Plain professional prose, "
             "no jargon, no decoration. "
             "Punctuation rule: never use em dashes or en dashes anywhere. "
