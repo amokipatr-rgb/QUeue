@@ -751,6 +751,7 @@ function areaChartSVG(buckets, values, color, W, H, padL, padR, padT, padB, dela
     const cfg = extra || {};
     const idpfx = cfg.idpfx || '';
     const maxLbl = cfg.maxLbl || 6;
+    const titles = cfg.titles || null;
     const n = buckets.length;
     const yMax = niceCeil(Math.max(1, ...values));
     const x = i => n === 1 ? padL + (W - padL - padR) / 2 : padL + (W - padL - padR) * (i / (n - 1));
@@ -763,12 +764,18 @@ function areaChartSVG(buckets, values, color, W, H, padL, padR, padT, padB, dela
     }
     // Auto date interval (~maxLbl labels, always first + last, horizontal).
     // Edge labels anchor inward so they can never clip at the card boundary.
+    // Axis titles name what each axis measures.
+    if (titles) {
+        const midY = padT + (H - padT - padB) / 2;
+        html += `<text transform="rotate(-90 13 ${midY})" x="13" y="${midY}" font-size="11" font-weight="700" fill="#4a5a6e" text-anchor="middle">${escapeHtml(titles.y)}</text>`;
+        html += `<text x="${((padL + W - padR) / 2).toFixed(1)}" y="${H - 8}" font-size="11" font-weight="700" fill="#4a5a6e" text-anchor="middle">${escapeHtml(titles.x)}</text>`;
+    }
     const skip = Math.max(1, Math.ceil(n / maxLbl));
     buckets.forEach((b, i) => {
         if (i % skip !== 0 && i !== n - 1) return;
         const anchor = i === 0 ? 'start' : (i === n - 1 ? 'end' : 'middle');
         const xx = i === 0 ? padL : (i === n - 1 ? (W - padR) : x(i));
-        html += `<text x="${xx.toFixed(1)}" y="${H - 10}" font-size="10" fill="#4a5a6e" text-anchor="${anchor}">${escapeHtml(fmtDayLbl(b))}</text>`;
+        html += `<text x="${xx.toFixed(1)}" y="${H - 28}" font-size="10" fill="#4a5a6e" text-anchor="${anchor}">${escapeHtml(fmtDayLbl(b))}</text>`;
     });
     const pts = values.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
     const base = H - padB;
@@ -804,14 +811,13 @@ function renderOverall() {
     empty.style.display = 'none';
     svg.style.display = 'block';
     const totals = buckets.map(b => series.reduce((a, s) => { const p = s.points.find(q => q.bucket === b); return a + (p ? p.served : 0); }, 0));
-    const W = 920, H = 260, padL = 44, padR = 16, padT = 16, padB = 40;
-    const r = areaChartSVG(buckets, totals, '#1565c0', W, H, padL, padR, padT, padB, 0);
+    const W = 920, H = 260, padL = 46, padR = 16, padT = 16, padB = 58;
+    const r = areaChartSVG(buckets, totals, '#1565c0', W, H, padL, padR, padT, padB, 0, { titles: { x: 'Date', y: 'Tokens served' } });
     const sum = totals.reduce((a, v) => a + v, 0);
     const avg = (sum / Math.max(totals.length, 1)).toFixed(1);
     const mx = Math.max.apply(null, totals);
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
-    svg.innerHTML = r.html +
-        `<g font-size="11" font-weight="700" fill="#4a5a6e"><text x="${padL}" y="${H - 28}">Total ${sum} · Avg ${avg} · Max ${mx}</text></g>`;
+    svg.innerHTML = r.html;
     document.getElementById('rpOverallLbl').textContent = `Total ${sum} · Avg ${avg} · Max ${mx}`;
 }
 
@@ -860,8 +866,8 @@ function renderOfficers() {
         const color = colors[si % colors.length];
         const buckets = s.points.map(p => p.bucket);
         const values = s.points.map(p => p.served);
-        const W = 320, H = 170, padL = 38, padR = 12, padT = 12, padB = 32;
-        const r = areaChartSVG(buckets, values, color, W, H, padL, padR, padT, padB, si * 0.05, { idpfx: 'm' + si, maxLbl: 4 });
+        const W = 320, H = 170, padL = 40, padR = 12, padT = 12, padB = 44;
+        const r = areaChartSVG(buckets, values, color, W, H, padL, padR, padT, padB, si * 0.05, { idpfx: 'm' + si, maxLbl: 4, titles: { x: 'Date', y: 'Served' } });
         const avg = (s.total_served / Math.max(values.length, 1)).toFixed(1);
         const mx = values.length ? Math.max.apply(null, values) : 0;
         window._rpMini['m' + si] = { buckets, values, name: s.officer_name || ('#' + s.officer_id) };

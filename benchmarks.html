@@ -479,7 +479,7 @@ function renderWaitChart() {
     empty.style.display = 'none';
     svg.style.display = 'block';
     const TARGET = _bmTarget || 15;
-    const W = 920, H = 280, padL = 44, padR = 16, padT = 16, padB = 40;
+    const W = 920, H = 280, padL = 46, padR = 16, padT = 16, padB = 58;
     let yMax = TARGET * 1.5;
     const bAvg = buckets.map(b => {
         let tw = 0, wN = 0;
@@ -501,10 +501,15 @@ function renderWaitChart() {
     const yT = y(Math.min(TARGET, yMax));
     html += `<line x1="${padL}" y1="${yT}" x2="${W - padR}" y2="${yT}" stroke="#00a84f" stroke-width="2" stroke-dasharray="7 5"/>` +
             `<text x="${W - padR}" y="${yT - 6}" font-size="10" font-weight="700" fill="#00a84f" text-anchor="end">target ${TARGET}m</text>`;
+    const midY = padT + (H - padT - padB) / 2;
+    html += `<text transform="rotate(-90 13 ${midY})" x="13" y="${midY}" font-size="11" font-weight="700" fill="#4a5a6e" text-anchor="middle">Minutes</text>`;
+    html += `<text x="${((padL + W - padR) / 2).toFixed(1)}" y="${H - 8}" font-size="11" font-weight="700" fill="#4a5a6e" text-anchor="middle">Date</text>`;
     const skip = Math.max(1, Math.ceil(buckets.length / 8));
     buckets.forEach((b, i) => {
         if (i % skip !== 0 && i !== buckets.length - 1) return;
-        html += `<text x="${x(i)}" y="${H - 12}" font-size="10" fill="#4a5a6e" text-anchor="middle">${escapeHtml(fmtDateLbl(b))}</text>`;
+        const anchor = i === 0 ? 'start' : (i === buckets.length - 1 ? 'end' : 'middle');
+        const xx = i === 0 ? padL : (i === buckets.length - 1 ? (W - padR) : x(i));
+        html += `<text x="${xx.toFixed(1)}" y="${H - 28}" font-size="10" fill="#4a5a6e" text-anchor="${anchor}">${escapeHtml(fmtDateLbl(b))}</text>`;
     });
     const pts = bAvg.map((o, i) => o == null ? null : [x(i), y(o.v)]);
     const defined = pts.map((p, i) => p ? `${p[0].toFixed(1)},${p[1].toFixed(1)}` : null);
@@ -740,9 +745,9 @@ function niceCeil(v) {
 }
 function areaChartSVG(opts) {
     // Generic single-series area+line chart. Returns svg inner HTML.
-    // opts: {buckets, values, color, W, H, idpfx, breachIdx:Set, xLabels:boolean}
-    const { buckets, values, color, W, H, idpfx, breachIdx } = opts;
-    const padL = 40, padR = 14, padT = 14, padB = 34;
+    // opts: {buckets, values, color, W, H, idpfx, breachIdx:Set, titles:{x,y}}
+    const { buckets, values, color, W, H, idpfx, breachIdx, titles } = opts;
+    const padL = 46, padR = 14, padT = 14, padB = 48;
     const yMax = niceCeil(Math.max(1, ...values));
     const n = buckets.length;
     const x = i => n === 1 ? padL + (W - padL - padR) / 2 : padL + (W - padL - padR) * (i / (n - 1));
@@ -754,14 +759,23 @@ function areaChartSVG(opts) {
         html += `<line x1="${padL}" y1="${yy}" x2="${W - padR}" y2="${yy}" stroke="#e4e8ee" stroke-width="1"/>` +
                 `<text x="${padL - 8}" y="${yy + 4}" font-size="10" fill="#4a5a6e" text-anchor="end">${v}</text>`;
     }
-    // auto date interval: target ~5 labels, always first + last, horizontal
+    // Axis titles: what each axis measures.
+    if (titles) {
+        const midY = padT + (H - padT - padB) / 2;
+        html += `<text transform="rotate(-90 13 ${midY})" x="13" y="${midY}" font-size="11" font-weight="700" fill="#4a5a6e" text-anchor="middle">${escapeHtml(titles.y)}</text>`;
+        html += `<text x="${((padL + W - padR) / 2).toFixed(1)}" y="${H - 8}" font-size="11" font-weight="700" fill="#4a5a6e" text-anchor="middle">${escapeHtml(titles.x)}</text>`;
+    }
+    // auto date interval: target ~5 labels, always first + last, horizontal,
+    // edge labels anchored inward so they never clip.
     const maxLbl = 5;
     const skip = Math.max(1, Math.ceil(n / maxLbl));
     const shown = new Set();
     buckets.forEach((b, i) => {
         if (i % skip !== 0 && i !== n - 1) return;
         shown.add(i);
-        html += `<text x="${x(i)}" y="${H - 10}" font-size="10" fill="#4a5a6e" text-anchor="middle">${escapeHtml(fmtDateLbl(b))}</text>`;
+        const anchor = i === 0 ? 'start' : (i === n - 1 ? 'end' : 'middle');
+        const xx = i === 0 ? padL : (i === n - 1 ? (W - padR) : x(i));
+        html += `<text x="${xx.toFixed(1)}" y="${H - 28}" font-size="10" fill="#4a5a6e" text-anchor="${anchor}">${escapeHtml(fmtDateLbl(b))}</text>`;
     });
     const pts = values.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
     const base = H - padB;
@@ -823,7 +837,7 @@ function renderGraph() {
     const sum = totals.reduce((a, v) => a + v, 0);
     const avg = totals.length ? (sum / totals.length) : 0;
     const mx = totals.length ? Math.max(...totals) : 0;
-    const r = areaChartSVG({ buckets, values: totals, color: '#00a84f', W: 920, H: 300, idpfx: 'all', breachIdx: new Set() });
+    const r = areaChartSVG({ buckets, values: totals, color: '#00a84f', W: 920, H: 300, idpfx: 'all', breachIdx: new Set(), titles: { x: 'Date', y: 'Tokens served' } });
     svg.setAttribute('viewBox', '0 0 920 300');
     svg.style.width = '100%';
     svg.style.height = 'auto';
@@ -889,7 +903,7 @@ function renderMinis() {
         const avg = vals.length ? total / vals.length : 0;
         const mx = vals.length ? Math.max(...vals) : 0;
         const W = 300, H = 150;
-        const r = areaChartSVG({ buckets, values: vals, color, W, H, idpfx: 'm' + oid, breachIdx: new Set() });
+        const r = areaChartSVG({ buckets, values: vals, color, W, H, idpfx: 'm' + oid, breachIdx: new Set(), titles: { x: 'Date', y: 'Served' } });
         window._miniReg[oid] = { buckets, vals, s, avg, mx, total };
         return `<div class="mini-card">` +
             `<div class="mini-name">${escapeHtml(s.officer_name || ('#' + s.officer_id))}</div>` +
