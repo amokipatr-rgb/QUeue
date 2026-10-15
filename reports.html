@@ -489,9 +489,19 @@ function renderMain() {
     renderLegend();
 }
 
+function normBucket(b) {
+    // Canonical bucket key shared by union, lookup, and tooltip so a format
+    // skew can never silently zero a series again. Mismatches log loudly.
+    if (b == null) return '';
+    return String(b).trim();
+}
+
 function graphBuckets() {
     const set = [];
-    visibleSeries().forEach(s => s.points.forEach(p => { if (!set.includes(p.bucket)) set.push(p.bucket); }));
+    visibleSeries().forEach(s => s.points.forEach(p => {
+        const k = normBucket(p.bucket);
+        if (!set.includes(k)) set.push(k);
+    }));
     set.sort();
     return set;
 }
@@ -505,6 +515,8 @@ function renderGraph() {
     if (!buckets.length) { svg.style.display = 'none'; empty.style.display = ''; return; }
     empty.style.display = 'none';
     svg.style.display = 'block';
+    window._rpDots = {};
+    window._rpGeom = null;
     const W = 920, H = 320, padL = 44, padR = 16, padT = 16, padB = 40;
     let yMax = 5;
     series.forEach(s => s.points.forEach(p => { if (p.served > yMax) yMax = p.served; }));
@@ -525,36 +537,59 @@ function renderGraph() {
     });
     series.forEach((s, si) => {
         const color = LINE_COLORS[si % LINE_COLORS.length];
-        const vals = buckets.map(b => { const p = s.points.find(q => q.bucket === b); return p ? p.served : 0; });
+        const vals = buckets.map(b => { const p = s.points.find(q => normBucket(q.bucket) === b); return p ? p.served : 0; });
+        const mappedSum = vals.reduce((a, v) => a + v, 0);
+        if (mappedSum !== (s.total_served || 0)) {
+            console.warn(`[reports] plot mismatch for ${s.office_name}: mapped ${mappedSum} vs server ${s.total_served}`);
+        }
         html += `<polyline class="graph-line" points="${vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')}" stroke="${color}" style="animation-delay:${si * 0.1}s"/>`;
         if (s.peak && s.peak.served > 0) {
-            const pi = buckets.indexOf(s.peak.bucket);
+            const pi = buckets.indexOf(normBucket(s.peak.bucket));
             if (pi >= 0) html += `<circle class="peak-dot" cx="${x(pi)}" cy="${y(s.peak.served)}" r="6" fill="${color}" stroke="#fff" stroke-width="2.5" style="animation-delay:${si * 0.1 + 0.4}s"><title>Peak: ${s.peak.served} on ${s.peak.bucket}</title></circle>`;
         }
         vals.forEach((v, i) => {
-            html += `<rect x="${(x(i) - (W / Math.max(buckets.length, 1)) / 2).toFixed(1)}" y="${padT}" width="${(W / Math.max(buckets.length, 1)).toFixed(1)}" height="${H - padT - padB}" fill="transparent" data-si="${si}" data-bi="${i}"/>`;
+            (window._rpDots[i] = window._rpDots[i] || []).push({ si, y: y(v) });
         });
     });
+    // one hover target per bucket — identity resolved by nearest dot, never by paint order
+    buckets.forEach((b, i) => {
+        html += `<rect x="${(x(i) - (W / Math.max(buckets.length, 1)) / 2).toFixed(1)}" y="${padT}" width="${(W / Math.max(buckets.length, 1)).toFixed(1)}" height="${H - padT - padB}" fill="transparent" data-bi="${i}"/>`;
+    });
+    window._rpGeom = { buckets, H };
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
     svg.innerHTML = html;
-    svg.querySelectorAll('rect[data-si]').forEach(r => {
+    svg.querySelectorAll('rect[data-bi]').forEach(r => {
         r.addEventListener('mousemove', onGraphHover);
         r.addEventListener('mouseleave', hideTip);
     });
 }
 
 function onGraphHover(ev) {
-    const si = parseInt(ev.target.dataset.si), bi = parseInt(ev.target.dataset.bi);
+    const bi = parseInt(ev.target.dataset.bi);
     const series = visibleSeries();
-    const s = series[si];
-    if (!s) return;
-    const buckets = graphBuckets();
+    const buckets = (window._rpGeom && window._rpGeom.buckets) || graphBuckets();
     const b = buckets[bi];
-    const p = s.points.find(q => q.bucket === b);
+    if (b == null || !series.length) return;
+    // nearest plotted dot by vertical distance — identity follows the visual point
+    const svg = document.getElementById('rpGraph');
+    const rect = svg.getBoundingClientRect();
+    const scaleY = 320 / Math.max(rect.height, 1);
+    const mouseY = (ev.clientY - rect.top) * scaleY;
+    const dots = (window._rpDots && window._rpDots[bi]) || [];
+    let best = null, bestDist = Infinity;
+    dots.forEach(d => {
+        const s = series[d.si];
+        if (!s) return;
+        const dist = Math.abs(d.y - mouseY);
+        if (dist < bestDist) { bestDist = dist; best = { s, d }; }
+    });
+    if (!best) return;
+    const s = best.s;
+    const p = s.points.find(q => normBucket(q.bucket) === b);
     const v = p ? p.served : 0;
     const tip = document.getElementById('rpTip');
     const wrap = document.getElementById('rpGraphWrap').getBoundingClientRect();
-    tip.innerHTML = `<strong>${escapeHtml(s.office_name)}</strong><br>${escapeHtml(b)}<br>Served: <strong>${v}</strong>`;
+    tip.innerHTML = `<strong>${escapeHtml(s.office_name)}</strong><br>${escapeHtml(b)}<br>Served: <strong>${v}</strong> (of ${s.total_served || 0} total)`;
     tip.style.opacity = '1';
     let lx = ev.clientX - wrap.left + 14, ly = ev.clientY - wrap.top - 10;
     if (lx + 190 > wrap.width) lx -= 200;

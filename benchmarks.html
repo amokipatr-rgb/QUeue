@@ -564,7 +564,9 @@ function renderRankings() {
     const tb = document.getElementById('bmRankRows');
     const series = visibleSeries();
     const prev = prevTotals();
-    document.getElementById('bmRankLbl').textContent = series.length + ' officers';
+    const partial = (window._bmGeom && window._bmGeom.partial) || [];
+    document.getElementById('bmRankLbl').textContent = series.length + ' officers' +
+        (partial.length ? ` · plot partial (${partial.join(', ')})` : '');
     if (!series.length) { tb.innerHTML = '<tr><td colspan="8"><div class="empty-box">No officers in range.</div></td></tr>'; return; }
     tb.innerHTML = series.map((s, i) => {
         let totWait = 0, totB = 0, dutyMin = 0, wN = 0;
@@ -595,17 +597,31 @@ function renderRankings() {
     }).join('');
 }
 
+function normBucket(b) {
+    // Canonical bucket key shared by union, lookup, and tooltip so a format
+    // skew can never silently zero a series again. Mismatches log loudly.
+    if (b == null) return '';
+    return String(b).trim();
+}
+
 function renderGraph() {
     const svg = document.getElementById('bmGraph');
     const empty = document.getElementById('bmGraphEmpty');
     const series = visibleSeries();
     if (!series.length || !_bmData) { svg.style.display = 'none'; empty.style.display = ''; empty.textContent = 'No officers in range.'; renderLegend(); return; }
     const buckets = [];
-    series.forEach(s => s.points.forEach(p => { if (!buckets.includes(p.bucket)) buckets.push(p.bucket); }));
+    series.forEach(s => s.points.forEach(p => {
+        const k = normBucket(p.bucket);
+        if (!buckets.includes(k)) buckets.push(k);
+    }));
     buckets.sort();
     if (!buckets.length) { svg.style.display = 'none'; empty.style.display = ''; return; }
     empty.style.display = 'none';
     svg.style.display = 'block';
+    // Reconcile: mapped plot values must sum to server legend totals.
+    // Any divergence is logged loudly instead of failing silent.
+    window._bmDots = {};
+    window._bmGeom = null;
 
     const W = 920, H = 320, padL = 44, padR = 16, padT = 16, padB = 40;
     let yMax = 5;
@@ -630,48 +646,78 @@ function renderGraph() {
         const lbl = _bmBucket === 'hour' ? b.slice(11) : b.slice(5);
         html += `<text x="${x(i)}" y="${H - 12}" font-size="10" fill="#4a5a6e" text-anchor="middle">${escapeHtml(lbl)}</text>`;
     });
-    // lines
+    // lines (+ mismatch check: mapped plot sum must equal server legend total)
+    let mappedTotal = 0, serverTotal = 0, partialNames = [];
     series.forEach((s, si) => {
         const color = LINE_COLORS[si % LINE_COLORS.length];
         const pts = buckets.map(b => {
-            const p = s.points.find(q => q.bucket === b) || { served: 0 };
+            const p = s.points.find(q => normBucket(q.bucket) === b) || { served: 0 };
             return p;
         });
+        const mappedSum = pts.reduce((a, p) => a + (p.served || 0), 0);
+        mappedTotal += mappedSum;
+        serverTotal += (s.total_served || 0);
+        if (mappedSum !== (s.total_served || 0)) {
+            partialNames.push(s.officer_name || ('#' + s.officer_id));
+            console.warn(`[benchmarks] plot mismatch for ${s.officer_name}: mapped ${mappedSum} vs server ${s.total_served}`);
+        }
         html += `<polyline class="graph-line" points="${pts.map((p, i) => `${x(i).toFixed(1)},${y(p.served).toFixed(1)}`).join(' ')}" stroke="${color}" style="animation-delay:${si * 0.1}s"/>`;
         pts.forEach((p, i) => {
             if ((p.breaches || 0) > 0) {
                 html += `<circle class="graph-dot-breach" cx="${x(i)}" cy="${y(p.served)}" r="5" fill="#e53935" stroke="#fff" stroke-width="2" style="animation-delay:${si * 0.1 + 0.4}s"><title>${p.breaches} breach(es)</title></circle>`;
             }
         });
-        // hover targets
+        // record plotted dots for nearest-dot hover (no stacked per-series rects)
         pts.forEach((p, i) => {
-            html += `<rect x="${(x(i) - (W / Math.max(buckets.length, 1)) / 2).toFixed(1)}" y="${padT}" width="${(W / Math.max(buckets.length, 1)).toFixed(1)}" height="${H - padT - padB}" fill="transparent" data-si="${si}" data-bi="${i}"/>`;
+            (window._bmDots[i] = window._bmDots[i] || []).push({ si, y: y(p.served) });
         });
     });
+    if (mappedTotal !== serverTotal) {
+        console.warn(`[benchmarks] chart total ${mappedTotal} != headline ${serverTotal} (partial: ${partialNames.join(', ') || 'none'})`);
+    }
+    // one hover target per bucket — identity resolved by nearest dot, never by paint order
+    buckets.forEach((b, i) => {
+        html += `<rect x="${(x(i) - (W / Math.max(buckets.length, 1)) / 2).toFixed(1)}" y="${padT}" width="${(W / Math.max(buckets.length, 1)).toFixed(1)}" height="${H - padT - padB}" fill="transparent" data-bi="${i}"/>`;
+    });
+    window._bmGeom = { buckets, H, padT, padB, mappedTotal, serverTotal,
+        partial: mappedTotal !== serverTotal ? partialNames : [] };
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
     svg.style.width = '100%';
     svg.style.height = 'auto';
     svg.innerHTML = html;
-    svg.querySelectorAll('rect[data-si]').forEach(r => {
+    svg.querySelectorAll('rect[data-bi]').forEach(r => {
         r.addEventListener('mousemove', onGraphHover);
         r.addEventListener('mouseleave', hideTip);
     });
+    const _rankEl = document.getElementById('bmRankLbl');
     renderLegend();
 }
 
 function onGraphHover(ev) {
-    const si = parseInt(ev.target.dataset.si), bi = parseInt(ev.target.dataset.bi);
+    const bi = parseInt(ev.target.dataset.bi);
     const series = visibleSeries();
-    const s = series[si];
-    if (!s) return;
-    const buckets = [];
-    series.forEach(x => x.points.forEach(p => { if (!buckets.includes(p.bucket)) buckets.push(p.bucket); }));
-    buckets.sort();
+    const buckets = (window._bmGeom && window._bmGeom.buckets) || [];
     const b = buckets[bi];
-    const p = s.points.find(q => q.bucket === b) || { served: 0 };
+    if (b == null || !series.length) return;
+    // nearest plotted dot by vertical distance — identity follows the visual point
+    const svg = document.getElementById('bmGraph');
+    const rect = svg.getBoundingClientRect();
+    const scaleY = 320 / Math.max(rect.height, 1);
+    const mouseY = (ev.clientY - rect.top) * scaleY;
+    const dots = (window._bmDots && window._bmDots[bi]) || [];
+    let best = null, bestDist = Infinity;
+    dots.forEach(d => {
+        const s = series[d.si];
+        if (!s) return;
+        const dist = Math.abs(d.y - mouseY);
+        if (dist < bestDist) { bestDist = dist; best = { s, d }; }
+    });
+    if (!best) return;
+    const s = best.s;
+    const p = s.points.find(q => normBucket(q.bucket) === b) || { served: 0 };
     const tip = document.getElementById('bmTip');
     const wrap = document.getElementById('bmGraphWrap').getBoundingClientRect();
-    tip.innerHTML = `<strong>${escapeHtml(s.officer_name || ('#' + s.officer_id))}</strong><br>${escapeHtml(b)}<br>Served: <strong>${p.served}</strong>` +
+    tip.innerHTML = `<strong>${escapeHtml(s.officer_name || ('#' + s.officer_id))}</strong><br>${escapeHtml(b)}<br>Served: <strong>${p.served}</strong> (of ${s.total_served || 0} total)` +
         (p.avg_wait != null ? `<br>Avg wait: ${p.avg_wait} min` : '') +
         (p.breaches ? `<br>Breaches: ${p.breaches}` : '') +
         `<br>On duty: ${Math.round(p.on_duty_min || 0)} min`;
