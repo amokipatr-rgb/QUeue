@@ -240,8 +240,8 @@
         </div>
             <div class="section-header"><div class="section-title">Per-Office Breakdown</div><span class="pill pill-grey" id="rpRowCount"></span></div>
             <div class="table-wrap"><table class="data-table">
-                <thead><tr><th>Office</th><th>Total Served</th><th>Avg / <span id="rpAvgUnit">Day</span></th><th>Peak Period</th><th>Peak Served</th><th>vs Prev</th></tr></thead>
-                <tbody id="rpRows"><tr><td colspan="6"><div class="empty-box">No data yet — apply a period above.</div></td></tr></tbody>
+                <thead><tr><th>Office</th><th>Total Served</th><th>Share</th><th>Avg / <span id="rpAvgUnit">Day</span></th><th>Peak Period</th><th>Peak Served</th><th>vs Prev</th></tr></thead>
+                <tbody id="rpRows"><tr><td colspan="7"><div class="empty-box">No data yet — apply a period above.</div></td></tr></tbody>
             </table></div>
         </div>
     </div>
@@ -697,7 +697,8 @@ function renderTable() {
     if (_rpPrev && _rpPrev.series) _rpPrev.series.forEach(s => { prev[String(s.office_id)] = s.total_served || 0; });
     const n = ((_rpData && _rpData.buckets) || []).length || 1;
     document.getElementById('rpRowCount').textContent = series.length + ' offices';
-    if (!series.length) { tb.innerHTML = '<tr><td colspan="6"><div class="empty-box">No offices in range.</div></td></tr>'; return; }
+    if (!series.length) { tb.innerHTML = '<tr><td colspan="7"><div class="empty-box">No offices in range.</div></td></tr>'; return; }
+    const grand = series.reduce((t, s) => t + (s.total_served || 0), 0);
     tb.innerHTML = series.map(s => {
         const avg = (s.total_served / n).toFixed(1);
         const pTot = prev[String(s.office_id)];
@@ -710,8 +711,12 @@ function renderTable() {
             }
         }
         const peak = s.peak && s.peak.served > 0 ? `${escapeHtml(s.peak.bucket)} (${s.peak.served})` : '—';
+        const share = grand ? Math.round((s.total_served || 0) / grand * 100) : 0;
+        const shareColor = rpColor(s.office_id);
         return `<tr><td><strong>${escapeHtml(s.office_name)}</strong><br><span style="color:var(--text-muted);font-size:11px">${escapeHtml(s.office_code)}</span></td>` +
-            `<td><strong>${s.total_served}</strong></td><td>${avg}</td><td>${peak}</td><td>${s.peak ? s.peak.served : 0}</td><td>${delta}</td></tr>`;
+            `<td><strong>${s.total_served}</strong></td>` +
+            `<td><div style="display:flex;align-items:center;gap:8px"><div style="flex:1;min-width:56px;height:6px;background:#eef1f4;border-radius:3px;overflow:hidden"><div style="height:100%;width:${share}%;background:${shareColor};border-radius:3px"></div></div><strong>${share}%</strong></div></td>` +
+            `<td>${avg}</td><td>${peak}</td><td>${s.peak ? s.peak.served : 0}</td><td>${delta}</td></tr>`;
     }).join('');
 }
 
@@ -981,7 +986,8 @@ function exportCSV() {
     if (!_rpData) { showToast('Load a report first', 'error'); return; }
     const buckets = graphBuckets();
     const series = visibleSeries();
-    const lines = [['Office', 'Code'].concat(buckets).concat(['Total']).map(csvEscape).join(',')];
+    const grand = series.reduce((t, s) => t + (s.total_served || 0), 0);
+    const lines = [['Office', 'Code'].concat(buckets).concat(['Total', 'Share %']).map(csvEscape).join(',')];
     series.forEach(s => {
         const row = [s.office_name, s.office_code];
         buckets.forEach(b => {
@@ -989,6 +995,7 @@ function exportCSV() {
             row.push(p ? p.served : 0);
         });
         row.push(s.total_served);
+        row.push(grand ? Math.round((s.total_served || 0) / grand * 100) + '%' : '0%');
         lines.push(row.map(csvEscape).join(','));
     });
     const from = document.getElementById('rpFrom').value, to = document.getElementById('rpTo').value;
