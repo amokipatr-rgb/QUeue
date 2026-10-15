@@ -290,19 +290,21 @@ function renderCustomer(data) {
         `<span><strong>Names:</strong> ${escapeHtml((p.names || []).join(', ') || '—')}</span>` +
         `<span><strong>Phones:</strong> ${escapeHtml((p.phones || []).join(', ') || '—')}</span>` +
         `</div></div>` +
-        `<div class="section"><div class="section-header"><div class="section-title">Visit History</div><span class="pill pill-grey">${(data.visits || []).length} visits</span></div>` +
-        `<div class="table-wrap"><table class="data-table"><thead><tr><th>Token</th><th>Date</th><th>Office</th><th>Service</th><th>Status</th><th>Rating</th><th></th></tr></thead><tbody>`;
+        `<div class="section"><div class="section-header"><div class="section-title">Visit History</div><span class="pill pill-grey" id="visitCountPill">${(data.visits || []).length} visits</span><input id="visitFilterInput" placeholder="Filter by name..." autocomplete="off" oninput="filterVisits()" style="margin-left:auto;max-width:240px;padding:8px 12px;border:1px solid var(--border);border-radius:7px;font-size:12px;font-family:inherit;min-height:38px"></div>` +
+        `<div class="table-wrap"><table class="data-table"><thead><tr><th>Token</th><th>Name</th><th>Date</th><th>Office</th><th>Service</th><th>Status</th><th>Rating</th><th></th></tr></thead><tbody id="visitRows">`;
 
-    const visits = data.visits || [];
-    if (!visits.length) html += '<tr><td colspan="7"><div class="empty-box">No visits on record.</div></td></tr>';
-    html += visits.map(v =>
+    window._custVisits = data.visits || [];
+    const visits = window._custVisits;
+    if (!visits.length) html += '<tr><td colspan="8"><div class="empty-box">No visits on record.</div></td></tr>';
+    html += visits.map((v, idx) =>
         `<tr><td class="mono"><strong>${escapeHtml(v.token_number)}</strong></td>` +
+        `<td>${escapeHtml(v.student_name || '—')}</td>` +
         `<td>${fmtDT(v.requested_at)}</td>` +
         `<td>${escapeHtml(v.office_name || '')}</td>` +
         `<td>${escapeHtml(v.service_name || v.service_code || '—')}</td>` +
         `<td>${statusPill(v.status)}</td>` +
         `<td>${v.rating != null ? '★'.repeat(v.rating) : '—'}</td>` +
-        `<td><button class="btn-sm" onclick="openVisitTrace('${escapeHtml(v.token_number)}', this)">Trace</button></td></tr>`
+        `<td style="white-space:nowrap"><button class="btn-sm" onclick="filterByName(${idx})">History</button> <button class="btn-sm" onclick="openVisitTrace('${escapeHtml(v.token_number)}', this)">Trace</button></td></tr>`
     ).join('');
     html += `</tbody></table></div></div>`;
 
@@ -315,6 +317,46 @@ function renderCustomer(data) {
     html += `</div><div class="section"><div class="section-header"><div class="section-title">Journey Trace</div></div><div id="custTraceBody"><div class="empty-box">Press Trace on any visit to see its GitLab-style journey rail here.</div></div></div>`;
 
     body.innerHTML = html;
+}
+
+/* ── VISIT HISTORY: per-row History button + in-section name search ── */
+function filterByName(idx) {
+    const v = (window._custVisits || [])[idx];
+    if (!v) return;
+    const input = document.getElementById('visitFilterInput');
+    if (!input) return;
+    input.value = v.student_name || '';
+    filterVisits();
+    input.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+function filterVisits() {
+    const input = document.getElementById('visitFilterInput');
+    const tb = document.getElementById('visitRows');
+    const pill = document.getElementById('visitCountPill');
+    if (!tb) return;
+    const q = ((input && input.value) || '').trim().toLowerCase();
+    const all = window._custVisits || [];
+    const rows = !q ? all : all.filter(v =>
+        [v.student_name, v.token_number, v.office_name, v.service_name, v.service_code]
+            .some(x => (x || '').toLowerCase().includes(q)));
+    if (pill) pill.textContent = q ? `${rows.length} of ${all.length} visits` : `${all.length} visits`;
+    if (!rows.length) { tb.innerHTML = '<tr><td colspan="8"><div class="empty-box">No visits match this name. <button class="btn-sm" onclick="clearVisitFilter()">Clear</button></div></td></tr>'; return; }
+    tb.innerHTML = rows.map(v => {
+        const idx = all.indexOf(v);
+        return `<tr><td class="mono"><strong>${escapeHtml(v.token_number)}</strong></td>` +
+        `<td>${escapeHtml(v.student_name || '—')}</td>` +
+        `<td>${fmtDT(v.requested_at)}</td>` +
+        `<td>${escapeHtml(v.office_name || '')}</td>` +
+        `<td>${escapeHtml(v.service_name || v.service_code || '—')}</td>` +
+        `<td>${statusPill(v.status)}</td>` +
+        `<td>${v.rating != null ? '★'.repeat(v.rating) : '—'}</td>` +
+        `<td style="white-space:nowrap"><button class="btn-sm" onclick="filterByName(${idx})">History</button> <button class="btn-sm" onclick="openVisitTrace('${escapeHtml(v.token_number)}', this)">Trace</button></td></tr>`;
+    }).join('');
+}
+function clearVisitFilter() {
+    const input = document.getElementById('visitFilterInput');
+    if (input) input.value = '';
+    filterVisits();
 }
 
 /* ── TRACE RAIL (shared pattern with SLA page) ── */

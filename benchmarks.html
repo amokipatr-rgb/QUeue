@@ -88,6 +88,14 @@
         /* line graph */
         .graph-wrap { padding: 18px 20px 8px; overflow-x: auto; }
         .graph-legend { display: flex; gap: 8px; flex-wrap: wrap; padding: 0 20px 16px; }
+        .minis-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; padding: 4px 20px 18px; }
+        .mini-card { background: var(--white); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 14px 10px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; animation: fadein 0.3s ease backwards; }
+        .mini-name { font-size: 14px; font-weight: 800; color: var(--text-primary); }
+        .mini-sub { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
+        .mini-chart-wrap { position: relative; margin-top: 8px; }
+        .mini-chart-wrap svg { width: 100%; height: auto; display: block; }
+        .mini-legend { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-top: 10px; }
+        .mini-tip { position: absolute; pointer-events: none; background: var(--green-dark); color: #fff; font-size: 11.5px; font-weight: 600; padding: 8px 12px; border-radius: 8px; white-space: nowrap; z-index: 5; opacity: 0; transition: opacity 0.15s; box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
         .legend-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 7px 12px; border-radius: 20px; border: 1px solid var(--border); background: var(--white); cursor: pointer; min-height: 36px; transition: all 0.15s; }
         .legend-chip:active { transform: scale(0.97); }
         .legend-chip.off { opacity: 0.4; }
@@ -168,6 +176,7 @@
                 <div class="graph-tip" id="bmTip"></div>
             </div>
             <div class="graph-legend" id="bmLegend"></div>
+            <div class="minis-grid" id="bmMinis"></div>
         </div>
 
         <div class="section">
@@ -475,7 +484,7 @@ function renderWaitChart() {
     const skip = Math.max(1, Math.ceil(buckets.length / 8));
     buckets.forEach((b, i) => {
         if (i % skip !== 0 && i !== buckets.length - 1) return;
-        html += `<text x="${x(i)}" y="${H - 12}" font-size="10" fill="#4a5a6e" text-anchor="middle">${escapeHtml(String(b).slice(5))}</text>`;
+        html += `<text x="${x(i)}" y="${H - 12}" font-size="10" fill="#4a5a6e" text-anchor="middle">${escapeHtml(fmtDateLbl(b))}</text>`;
     });
     const pts = bAvg.map((o, i) => o == null ? null : [x(i), y(o.v)]);
     const defined = pts.map((p, i) => p ? `${p[0].toFixed(1)},${p[1].toFixed(1)}` : null);
@@ -617,43 +626,6 @@ function exportBenchmarkCSV() {
     showToast('CSV downloaded');
 }
 
-function renderRankings() {
-    const tb = document.getElementById('bmRankRows');
-    const series = visibleSeries();
-    const prev = prevTotals();
-    const partial = (window._bmGeom && window._bmGeom.partial) || [];
-    document.getElementById('bmRankLbl').textContent = series.length + ' officers' +
-        (partial.length ? ` · plot partial (${partial.join(', ')})` : '');
-    if (!series.length) { tb.innerHTML = '<tr><td colspan="8"><div class="empty-box">No officers in range.</div></td></tr>'; return; }
-    tb.innerHTML = series.map((s, i) => {
-        let totWait = 0, totB = 0, dutyMin = 0, wN = 0;
-        s.points.forEach(p => {
-            if (p.avg_wait != null) { totWait += p.avg_wait; wN++; }
-            totB += p.breaches || 0;
-            dutyMin += p.on_duty_min || 0;
-        });
-        const avgW = wN ? (totWait / wN).toFixed(1) : null;
-        const pTot = prev[String(s.officer_id)];
-        let delta = '<span class="pill pill-grey">—</span>';
-        if (pTot != null) {
-            if (pTot === 0 && s.total_served > 0) delta = '<span class="pill pill-green">new</span>';
-            else if (pTot === 0) delta = '<span class="pill pill-grey">—</span>';
-            else {
-                const pc = Math.round(((s.total_served - pTot) / pTot) * 100);
-                delta = pc >= 0 ? `<span class="pill pill-green">+${pc}%</span>` : `<span class="pill pill-red">${pc}%</span>`;
-            }
-        }
-        const hrs = (dutyMin / 60).toFixed(1);
-        return `<tr><td><strong>${i + 1}</strong></td>` +
-            `<td>${escapeHtml(s.officer_name || ('#' + s.officer_id))}</td>` +
-            `<td>${escapeHtml(s.office_name || '—')}</td>` +
-            `<td><strong>${s.total_served}</strong></td>` +
-            `<td>${avgW != null ? avgW + ' min' : '—'}</td>` +
-            `<td>${totB > 0 ? `<span class="pill pill-red">${totB}</span>` : '<span class="pill pill-green">0</span>'}</td>` +
-            `<td>${hrs}h</td><td>${delta}</td></tr>`;
-    }).join('');
-}
-
 function normBucket(b) {
     // Canonical bucket key shared by union, lookup, and tooltip so a format
     // skew can never silently zero a series again. Mismatches log loudly.
@@ -661,136 +633,223 @@ function normBucket(b) {
     return String(b).trim();
 }
 
+const MONTHS_SHORT = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function colorFor(officerId) {
+    // Stable per-officer color from the FULL series list, so toggling
+    // officers never recolors the survivors (Mathias stays green).
+    const all = (_bmData && _bmData.series) || [];
+    let idx = all.findIndex(s => String(s.officer_id) === String(officerId));
+    if (idx < 0) idx = 0;
+    return LINE_COLORS[idx % LINE_COLORS.length];
+}
+function fmtDateLbl(b) {
+    // "2026-10-12" -> "12 Oct"; "2026-10-12 14:00" -> "12 Oct 14:00"
+    const s = String(b || '').trim();
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}))?/);
+    if (!m) return s;
+    const lbl = `${parseInt(m[3], 10)} ${MONTHS_SHORT[parseInt(m[2], 10) - 1] || ''}`;
+    return m[4] ? `${lbl} ${m[4]}:${m[5]}` : lbl;
+}
+function niceCeil(v) {
+    if (v <= 5) return 5;
+    const pow = Math.pow(10, Math.floor(Math.log10(v)));
+    const n = v / pow;
+    const step = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10;
+    return step * pow;
+}
+function areaChartSVG(opts) {
+    // Generic single-series area+line chart. Returns svg inner HTML.
+    // opts: {buckets, values, color, W, H, idpfx, breachIdx:Set, xLabels:boolean}
+    const { buckets, values, color, W, H, idpfx, breachIdx } = opts;
+    const padL = 40, padR = 14, padT = 14, padB = 34;
+    const yMax = niceCeil(Math.max(1, ...values));
+    const n = buckets.length;
+    const x = i => n === 1 ? padL + (W - padL - padR) / 2 : padL + (W - padL - padR) * (i / (n - 1));
+    const y = v => padT + (H - padT - padB) * (1 - v / yMax);
+    let html = '';
+    const steps = 4;
+    for (let g = 0; g <= steps; g++) {
+        const v = Math.round(yMax * g / steps), yy = y(v);
+        html += `<line x1="${padL}" y1="${yy}" x2="${W - padR}" y2="${yy}" stroke="#e4e8ee" stroke-width="1"/>` +
+                `<text x="${padL - 8}" y="${yy + 4}" font-size="10" fill="#4a5a6e" text-anchor="end">${v}</text>`;
+    }
+    // auto date interval: target ~5 labels, always first + last, horizontal
+    const maxLbl = 5;
+    const skip = Math.max(1, Math.ceil(n / maxLbl));
+    const shown = new Set();
+    buckets.forEach((b, i) => {
+        if (i % skip !== 0 && i !== n - 1) return;
+        shown.add(i);
+        html += `<text x="${x(i)}" y="${H - 10}" font-size="10" fill="#4a5a6e" text-anchor="middle">${escapeHtml(fmtDateLbl(b))}</text>`;
+    });
+    const pts = values.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
+    const base = H - padB;
+    html += `<polygon points="${padL},${base} ${pts} ${x(n - 1).toFixed(1)},${base}" fill="${color}" opacity="0.14"/>` +
+            `<polyline class="graph-line" points="${pts}" stroke="${color}" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>`;
+    values.forEach((v, i) => {
+        const bad = breachIdx && breachIdx.has(i);
+        html += `<circle cx="${x(i)}" cy="${y(v)}" r="${bad ? 5 : 3.5}" fill="${bad ? '#e53935' : color}" stroke="#fff" stroke-width="2"><title>${escapeHtml(fmtDateLbl(buckets[i]))}: ${v} served${bad ? ' — BREACH' : ''}</title></circle>`;
+    });
+    buckets.forEach((b, i) => {
+        const w = n ? (W - padL - padR) / n : (W - padL - padR);
+        html += `<rect x="${(x(i) - w / 2).toFixed(1)}" y="${padT}" width="${w.toFixed(1)}" height="${H - padT - padB}" fill="transparent" data-abase="${idpfx}" data-bi="${i}"/>`;
+    });
+    return { html, W, H };
+}
+
 function renderGraph() {
     const svg = document.getElementById('bmGraph');
     const empty = document.getElementById('bmGraphEmpty');
     const series = visibleSeries();
-    if (!series.length || !_bmData) { svg.style.display = 'none'; empty.style.display = ''; empty.textContent = 'No officers in range.'; renderLegend(); return; }
+    if (!series.length || !_bmData) { svg.style.display = 'none'; empty.style.display = ''; empty.textContent = 'No officers in range.'; renderLegend(); renderMinis(); return; }
     const buckets = [];
     series.forEach(s => s.points.forEach(p => {
         const k = normBucket(p.bucket);
         if (!buckets.includes(k)) buckets.push(k);
     }));
     buckets.sort();
-    if (!buckets.length) { svg.style.display = 'none'; empty.style.display = ''; return; }
+    if (!buckets.length) { svg.style.display = 'none'; empty.style.display = ''; renderMinis(); return; }
     empty.style.display = 'none';
     svg.style.display = 'block';
     // Reconcile: mapped plot values must sum to server legend totals.
-    // Any divergence is logged loudly instead of failing silent.
-    window._bmDots = {};
-    window._bmGeom = null;
-
-    const W = 920, H = 320, padL = 44, padR = 16, padT = 16, padB = 40;
-    let yMax = 5;
-    series.forEach(s => s.points.forEach(p => { if (p.served > yMax) yMax = p.served; }));
-    yMax = Math.ceil(yMax * 1.15);
-    const x = i => buckets.length === 1 ? padL + (W - padL - padR) / 2 : padL + (W - padL - padR) * (i / (buckets.length - 1));
-    const y = v => padT + (H - padT - padB) * (1 - v / yMax);
-
-    let html = '';
-    // gridlines + y labels
-    const steps = 4;
-    for (let g = 0; g <= steps; g++) {
-        const v = Math.round(yMax * g / steps);
-        const yy = y(v);
-        html += `<line x1="${padL}" y1="${yy}" x2="${W - padR}" y2="${yy}" stroke="#e4e8ee" stroke-width="1"/>` +
-                `<text x="${padL - 8}" y="${yy + 4}" font-size="10" fill="#4a5a6e" text-anchor="end">${v}</text>`;
-    }
-    // x labels (max ~8)
-    const skip = Math.max(1, Math.ceil(buckets.length / 8));
-    buckets.forEach((b, i) => {
-        if (i % skip !== 0 && i !== buckets.length - 1) return;
-        const lbl = _bmBucket === 'hour' ? b.slice(11) : b.slice(5);
-        html += `<text x="${x(i)}" y="${H - 12}" font-size="10" fill="#4a5a6e" text-anchor="middle">${escapeHtml(lbl)}</text>`;
-    });
-    // lines (+ mismatch check: mapped plot sum must equal server legend total)
-    let mappedTotal = 0, serverTotal = 0, partialNames = [];
-    series.forEach((s, si) => {
-        const color = LINE_COLORS[si % LINE_COLORS.length];
-        const pts = buckets.map(b => {
-            const p = s.points.find(q => normBucket(q.bucket) === b) || { served: 0 };
-            return p;
+    let mappedTotal = 0, serverTotal = 0;
+    const partialNames = [];
+    const totals = buckets.map(b => {
+        let t = 0;
+        series.forEach(s => {
+            const p = s.points.find(q => normBucket(q.bucket) === b);
+            t += (p ? p.served : 0) || 0;
         });
-        const mappedSum = pts.reduce((a, p) => a + (p.served || 0), 0);
+        return t;
+    });
+    series.forEach(s => {
+        const mappedSum = buckets.reduce((a, b) => {
+            const p = s.points.find(q => normBucket(q.bucket) === b);
+            return a + ((p ? p.served : 0) || 0);
+        }, 0);
         mappedTotal += mappedSum;
         serverTotal += (s.total_served || 0);
         if (mappedSum !== (s.total_served || 0)) {
             partialNames.push(s.officer_name || ('#' + s.officer_id));
             console.warn(`[benchmarks] plot mismatch for ${s.officer_name}: mapped ${mappedSum} vs server ${s.total_served}`);
         }
-        html += `<polyline class="graph-line" points="${pts.map((p, i) => `${x(i).toFixed(1)},${y(p.served).toFixed(1)}`).join(' ')}" stroke="${color}" style="animation-delay:${si * 0.1}s"/>`;
-        pts.forEach((p, i) => {
-            if ((p.breaches || 0) > 0) {
-                html += `<circle class="graph-dot-breach" cx="${x(i)}" cy="${y(p.served)}" r="5" fill="#e53935" stroke="#fff" stroke-width="2" style="animation-delay:${si * 0.1 + 0.4}s"><title>${p.breaches} breach(es)</title></circle>`;
-            }
-        });
-        // record plotted dots for nearest-dot hover (no stacked per-series rects)
-        pts.forEach((p, i) => {
-            (window._bmDots[i] = window._bmDots[i] || []).push({ si, y: y(p.served) });
-        });
     });
     if (mappedTotal !== serverTotal) {
         console.warn(`[benchmarks] chart total ${mappedTotal} != headline ${serverTotal} (partial: ${partialNames.join(', ') || 'none'})`);
     }
-    // one hover target per bucket — identity resolved by nearest dot, never by paint order
-    buckets.forEach((b, i) => {
-        html += `<rect x="${(x(i) - (W / Math.max(buckets.length, 1)) / 2).toFixed(1)}" y="${padT}" width="${(W / Math.max(buckets.length, 1)).toFixed(1)}" height="${H - padT - padB}" fill="transparent" data-bi="${i}"/>`;
-    });
-    window._bmGeom = { buckets, H, padT, padB, mappedTotal, serverTotal,
+    window._bmGeom = { buckets, mappedTotal, serverTotal,
         partial: mappedTotal !== serverTotal ? partialNames : [] };
-    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    const sum = totals.reduce((a, v) => a + v, 0);
+    const avg = totals.length ? (sum / totals.length) : 0;
+    const mx = totals.length ? Math.max(...totals) : 0;
+    const r = areaChartSVG({ buckets, values: totals, color: '#00a84f', W: 920, H: 300, idpfx: 'all', breachIdx: new Set() });
+    svg.setAttribute('viewBox', '0 0 920 300');
     svg.style.width = '100%';
     svg.style.height = 'auto';
-    svg.innerHTML = html;
-    svg.querySelectorAll('rect[data-bi]').forEach(r => {
-        r.addEventListener('mousemove', onGraphHover);
-        r.addEventListener('mouseleave', hideTip);
-        r.addEventListener('click', onGraphHover);
+    svg.innerHTML = r.html;
+    svg.querySelectorAll('rect[data-abase]').forEach(el => {
+        el.addEventListener('mousemove', onOverallHover);
+        el.addEventListener('mouseleave', hideTip);
+        el.addEventListener('click', onOverallHover);
     });
+    window._bmOverall = { buckets, totals, avg, mx, sum };
     renderLegend();
+    renderMinis();
 }
 
-function onGraphHover(ev) {
+function onOverallHover(ev) {
     const bi = parseInt(ev.target.dataset.bi);
+    const g = window._bmGeom;
+    if (!g || !g.buckets) return;
+    const b = g.buckets[bi];
+    if (b == null) return;
     const series = visibleSeries();
-    const buckets = (window._bmGeom && window._bmGeom.buckets) || [];
-    const b = buckets[bi];
-    if (b == null || !series.length) return;
-    // nearest plotted dot by vertical distance — identity follows the visual point
-    const svg = document.getElementById('bmGraph');
-    const rect = svg.getBoundingClientRect();
-    const scaleY = 320 / Math.max(rect.height, 1);
-    const mouseY = (ev.clientY - rect.top) * scaleY;
-    const dots = (window._bmDots && window._bmDots[bi]) || [];
-    let best = null, bestDist = Infinity;
-    dots.forEach(d => {
-        const s = series[d.si];
-        if (!s) return;
-        const dist = Math.abs(d.y - mouseY);
-        if (dist < bestDist) { bestDist = dist; best = { s, d }; }
+    let tot = 0;
+    const parts = [];
+    series.forEach(s => {
+        const p = s.points.find(q => normBucket(q.bucket) === b);
+        const v = (p ? p.served : 0) || 0;
+        tot += v;
+        if (v > 0) parts.push({ name: s.officer_name || ('#' + s.officer_id), v });
     });
-    if (!best) return;
-    const s = best.s;
-    const p = s.points.find(q => normBucket(q.bucket) === b) || { served: 0 };
-    // active series: dim the rest, light its legend chip — display follows data
-    const activeId = String(s.officer_id);
-    svg.querySelectorAll('.graph-line').forEach((pl, i) => {
-        pl.style.opacity = (series[i] && String(series[i].officer_id) === activeId) ? '1' : '0.2';
-    });
-    document.querySelectorAll('#bmLegend .legend-chip').forEach(ch => {
-        ch.classList.toggle('legend-on', ch.dataset.oid === activeId);
-    });
+    parts.sort((a, b2) => b2.v - a.v);
     const tip = document.getElementById('bmTip');
     const wrap = document.getElementById('bmGraphWrap').getBoundingClientRect();
-    tip.innerHTML = `<strong>${escapeHtml(s.officer_name || ('#' + s.officer_id))}</strong><br>${escapeHtml(b)}<br>Served: <strong>${p.served}</strong> (of ${s.total_served || 0} total)` +
-        (p.avg_wait != null ? `<br>Avg wait: ${p.avg_wait} min` : '') +
-        (p.breaches ? `<br>Breaches: ${p.breaches}` : '') +
-        `<br>On duty: ${Math.round(p.on_duty_min || 0)} min`;
+    tip.innerHTML = `<strong>${escapeHtml(fmtDateLbl(b))}</strong><br>Served: <strong>${tot}</strong>` +
+        parts.slice(0, 4).map(p => `<br>${escapeHtml(p.name)}: ${p.v}`).join('') +
+        (parts.length > 4 ? `<br>…+${parts.length - 4} more` : '');
     tip.style.opacity = '1';
     let lx = ev.clientX - wrap.left + 14, ly = ev.clientY - wrap.top - 10;
     if (lx + 190 > wrap.width) lx -= 200;
     tip.style.left = lx + 'px';
     tip.style.top = Math.max(ly, 4) + 'px';
+}
+
+function renderMinis() {
+    const box = document.getElementById('bmMinis');
+    if (!box) return;
+    const series = visibleSeries();
+    if (!series.length) { box.innerHTML = ''; return; }
+    window._miniReg = {};
+    box.innerHTML = series.map(s => {
+        const oid = String(s.officer_id);
+        const color = colorFor(s.officer_id);
+        const buckets = [];
+        (s.points || []).forEach(p => {
+            const k = normBucket(p.bucket);
+            if (!buckets.includes(k)) buckets.push(k);
+        });
+        buckets.sort();
+        const vals = buckets.map(b => {
+            const p = (s.points || []).find(q => normBucket(q.bucket) === b);
+            return (p ? p.served : 0) || 0;
+        });
+        const total = vals.reduce((a, v) => a + v, 0);
+        const avg = vals.length ? total / vals.length : 0;
+        const mx = vals.length ? Math.max(...vals) : 0;
+        const W = 300, H = 150;
+        const r = areaChartSVG({ buckets, values: vals, color, W, H, idpfx: 'm' + oid, breachIdx: new Set() });
+        window._miniReg[oid] = { buckets, vals, s, avg, mx, total };
+        return `<div class="mini-card">` +
+            `<div class="mini-name">${escapeHtml(s.officer_name || ('#' + s.officer_id))}</div>` +
+            `<div class="mini-sub">${escapeHtml(s.office_name || '')}</div>` +
+            `<div class="mini-chart-wrap"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Activity for ${escapeHtml(s.officer_name || '')}">${r.html}</svg>` +
+            `<div class="mini-tip" id="minitip-${oid}"></div></div>` +
+            `<div class="mini-legend"><span class="legend-dot" style="background:${color}"></span>Served&nbsp;&nbsp;Avg ${avg.toFixed(1)}&nbsp;&nbsp;Max ${mx}</div>` +
+            `</div>`;
+    }).join('');
+    box.querySelectorAll('rect[data-abase]').forEach(el => {
+        el.addEventListener('mousemove', onMiniHover);
+        el.addEventListener('mouseleave', hideMiniTips);
+        el.addEventListener('click', onMiniHover);
+    });
+}
+function onMiniHover(ev) {
+    const abase = ev.target.dataset.abase || '';
+    const oid = abase.startsWith('m') ? abase.slice(1) : null;
+    const bi = parseInt(ev.target.dataset.bi);
+    const reg = (window._miniReg || {})[oid];
+    if (!reg) return;
+    const b = reg.buckets[bi];
+    const v = (reg.vals || [])[bi];
+    if (b == null || v == null) return;
+    const tip = document.getElementById('minitip-' + oid);
+    if (!tip) return;
+    const wrap = tip.parentElement.getBoundingClientRect();
+    tip.innerHTML = `<strong>${escapeHtml(fmtDateLbl(b))}</strong><br>Served: <strong>${v}</strong>`;
+    tip.style.opacity = '1';
+    let lx = ev.clientX - wrap.left + 14, ly = ev.clientY - wrap.top - 10;
+    if (lx + 170 > wrap.width) lx -= 180;
+    tip.style.left = lx + 'px';
+    tip.style.top = Math.max(ly, 4) + 'px';
+}
+function hideMiniTips() {
+    document.querySelectorAll('#bmMinis .mini-tip').forEach(t => { t.style.opacity = '0'; });
+}
+
+function onGraphHover(ev) {
+    // Legacy single-chart hover kept for compatibility; main chart now uses onOverallHover.
+    hideTip();
 }
 function hideTip() {
     document.getElementById('bmTip').style.opacity = '0';
@@ -829,7 +888,7 @@ function renderLegend() {
     const lg = document.getElementById('bmLegend');
     if (!_bmData || !_bmData.series) { lg.innerHTML = ''; return; }
     lg.innerHTML = _bmData.series.map((s, si) => {
-        const color = LINE_COLORS[si % LINE_COLORS.length];
+        const color = colorFor(s.officer_id);
         const off = _bmHidden.has(String(s.officer_id));
         return `<button class="legend-chip${off ? ' off' : ''}" data-oid="${s.officer_id}" onclick="toggleOfficer('${s.officer_id}')"><span class="legend-dot" style="background:${color}"></span>${escapeHtml(s.officer_name || ('#' + s.officer_id))} (${s.total_served})</button>`;
     }).join('');

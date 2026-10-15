@@ -3214,7 +3214,8 @@ def officer_call_next():
     cursor = conn.cursor(dictionary=True)
     try:
         cursor.execute("SELECT office_id FROM officers WHERE id=%s", (officer_id,))
-        officer = cursor.fetchone()
+        _orows = cursor.fetchall()
+        officer = _orows[0] if _orows else None
         if not officer:
             return jsonify({'success': False, 'message': 'Officer not found'})
 
@@ -3222,7 +3223,8 @@ def officer_call_next():
             SELECT token_number FROM university_tokens
             WHERE office_id = %s AND status = 'serving'
         """, (officer['office_id'],))
-        current_serving = cursor.fetchone()
+        _csrows = cursor.fetchall()
+        current_serving = _csrows[0] if _csrows else None
         
         if current_serving:
             cursor.execute("""
@@ -3241,7 +3243,8 @@ def officer_call_next():
             ORDER BY is_priority DESC, escalated_at DESC, requested_at ASC LIMIT 1
         """, (officer['office_id'],))
         
-        token = cursor.fetchone()
+        _trows = cursor.fetchall()
+        token = _trows[0] if _trows else None
         if not token:
             return jsonify({'success': False, 'message': 'No students waiting'})
 
@@ -3298,7 +3301,8 @@ def officer_call_batch():
     cursor = conn.cursor(dictionary=True)
     try:
         cursor.execute("SELECT office_id FROM officers WHERE id=%s", (officer_id,))
-        officer = cursor.fetchone()
+        _orows = cursor.fetchall()
+        officer = _orows[0] if _orows else None
         if not officer:
             return jsonify({'success': False, 'message': 'Officer not found'})
 
@@ -3306,7 +3310,8 @@ def officer_call_batch():
             SELECT token_number FROM university_tokens
             WHERE office_id = %s AND status = 'serving'
         """, (officer['office_id'],))
-        current_serving = cursor.fetchone()
+        _csrows = cursor.fetchall()
+        current_serving = _csrows[0] if _csrows else None
 
         if current_serving:
             cursor.execute("""
@@ -3387,7 +3392,8 @@ def officer_call_specific():
             SELECT student_name FROM university_tokens
             WHERE token_number=%s AND status='waiting'
         """, (token_number,))
-        token = cursor.fetchone()
+        _trows = cursor.fetchall()
+        token = _trows[0] if _trows else None
 
         cursor.execute("""
             UPDATE university_tokens
@@ -3438,7 +3444,8 @@ def officer_serve():
             JOIN officers o ON o.id = %s
             WHERE t.token_number = %s AND t.office_id = o.office_id AND t.status = 'called'
         """, (officer_id, token_number))
-        token_info = cursor.fetchone()
+        _tirows = cursor.fetchall()
+        token_info = _tirows[0] if _tirows else None
         
         if not token_info:
             return jsonify({'success': False, 'message': 'Token not found'}), 404
@@ -3488,7 +3495,8 @@ def officer_serve_batch():
     cursor = conn.cursor(dictionary=True)
     try:
         cursor.execute("SELECT office_id FROM officers WHERE id=%s", (officer_id,))
-        officer = cursor.fetchone()
+        _orows = cursor.fetchall()
+        officer = _orows[0] if _orows else None
         if not officer:
             return jsonify({'success': False, 'message': 'Officer not found'})
 
@@ -3547,7 +3555,8 @@ def officer_complete_batch():
     cursor = conn.cursor(dictionary=True)
     try:
         cursor.execute("SELECT office_id FROM officers WHERE id=%s", (officer_id,))
-        officer = cursor.fetchone()
+        _orows = cursor.fetchall()
+        officer = _orows[0] if _orows else None
         if not officer:
             return jsonify({'success': False, 'message': 'Officer not found'})
 
@@ -3639,7 +3648,8 @@ def officer_complete():
             logger.warning(f"[SESSION] Failed to increment tokens_served: {se}")
 
         cursor.execute("SELECT student_name FROM university_tokens WHERE token_number = %s", (token_number,))
-        _trow = cursor.fetchone()
+        _trows = cursor.fetchall()
+        _trow = _trows[0] if _trows else None
         cursor.execute("""
             INSERT INTO queue_logs (token_number, officer_id, action, action_details, created_at)
             VALUES (%s, %s, 'completed', CONCAT('Completed - Person: ', IFNULL(%s, '')), NOW())
@@ -3674,7 +3684,8 @@ def officer_skip():
             WHERE id=%s
         """, (officer_id,))
         cursor.execute("SELECT student_name FROM university_tokens WHERE token_number = %s", (token_number,))
-        _trow = cursor.fetchone()
+        _trows = cursor.fetchall()
+        _trow = _trows[0] if _trows else None
         cursor.execute("""
             INSERT INTO queue_logs (token_number, officer_id, action, action_details, created_at)
             VALUES (%s, %s, 'skipped', CONCAT('Skipped - Person: ', IFNULL(%s, '')), NOW())
@@ -3701,7 +3712,8 @@ def officer_recall():
         cursor.execute("""
             SELECT student_name FROM university_tokens WHERE token_number=%s AND status='called'
         """, (token_number,))
-        token = cursor.fetchone()
+        _rrows = cursor.fetchall()
+        token = _rrows[0] if _rrows else None
         
         cursor.execute("""
             INSERT INTO queue_logs (token_number, officer_id, action, action_details, created_at)
