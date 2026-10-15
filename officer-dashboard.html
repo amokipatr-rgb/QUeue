@@ -656,6 +656,14 @@
     </div>
   </div>
 
+  <div class="card" id="serviceTimesCard" style="margin-top:16px;">
+      <div class="card-header">
+        <div class="card-title"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> Service Times</div>
+        <button class="btn-sm btn-blue" onclick="loadServiceTimes()"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.51"/></svg> Refresh</button>
+      </div>
+      <div class="card-body"><div id="serviceTimesList"><div class="empty"><div class="empty-text">Loading services…</div></div></div></div>
+  </div>
+
   <div class="card">
     <div class="card-header">
       <div class="card-title"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> Activity Log</div>
@@ -1318,6 +1326,56 @@
     return false;
   }
 
+  async function loadServiceTimes() {
+    if (!currentOfficer) return;
+    const box = document.getElementById('serviceTimesList');
+    if (!box) return;
+    try {
+      const data = await apiCall(`/api/offices/${currentOfficer.office_id}/services`);
+      if (!data.success) { box.innerHTML = '<div class="empty"><div class="empty-text">Failed to load services</div></div>'; return; }
+      const list = data.services || [];
+      if (!list.length) { box.innerHTML = '<div class="empty"><div class="empty-text">No services in this office</div></div>'; return; }
+      box.innerHTML = list.map(s =>
+        `<div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;margin-bottom:8px">` +
+        `<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600">${escapeHtml(s.service_name)}</div>` +
+        `<div style="font-size:11px;color:var(--text-muted)">${escapeHtml(s.service_code)}</div></div>` +
+        `<input type="number" min="1" max="480" value="${s.estimated_time_minutes || 15}" id="svcTime-${s.id}" style="width:76px;padding:10px 8px;border:1.5px solid var(--border-mid);border-radius:8px;font-size:13px;font-family:var(--font);min-height:44px" title="Minutes per person">` +
+        `<span style="font-size:11px;color:var(--text-muted)">min</span>` +
+        `<button class="btn-sm btn-blue" onclick="saveServiceTime(${s.id}, this)" style="min-height:44px;padding:10px 14px">Save</button>` +
+        `</div>`
+      ).join('');
+    } catch (e) {
+      box.innerHTML = '<div class="empty"><div class="empty-text">Failed to load services</div></div>';
+    }
+  }
+
+  async function saveServiceTime(serviceId, btn) {
+    const input = document.getElementById('svcTime-' + serviceId);
+    const minutes = parseInt(input.value);
+    if (!minutes || minutes < 1 || minutes > 480) {
+      showToast('Enter minutes between 1 and 480', 'warning');
+      input.focus();
+      return;
+    }
+    setLoading(btn, true);
+    try {
+      const result = await apiCall(`/api/officer/service/${serviceId}/time`, 'PUT', {
+        estimated_time_minutes: minutes,
+        officer_id: currentOfficer.id
+      });
+      if (result.success) {
+        showToast(result.message || 'Service time updated', 'success');
+        addLog(`Service time set to ${minutes} min`, 'success');
+      } else {
+        showToast(result.message || 'Failed to update service time', 'error');
+      }
+    } catch (e) {
+      showToast('Network error', 'error');
+    } finally {
+      setLoading(btn, false);
+    }
+  }
+
   async function loadQueue() {
     const result = await apiCall(`/api/officer/queue/${currentOfficer.id}`);
     if (!result.success) return;
@@ -1711,17 +1769,21 @@
 
   document.querySelectorAll('.overlay').forEach(el => { el.addEventListener('click', e => { if (e.target === el && el.id !== 'ratingOverlay') el.classList.remove('open'); }); });
 
-  async function loadOfficeStatus() {
+  async function loadOfficeStatus(silent) {
     if (!currentOfficer || !currentOfficer.office_id) return;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(function() { controller.abort(); }, 12000);
     try {
-      const response = await fetch(`${API_BASE_URL}/api/offices`, { cache: 'no-store' });
+      const response = await fetch(`${API_BASE_URL}/api/offices`, { cache: 'no-store', signal: controller.signal });
+      clearTimeout(timeoutId);
       const result = await response.json();
-      if (!result.success || !result.offices) { showToast('Failed to load office status', 'error'); return; }
+      if (!result.success || !result.offices) { if (!silent) showToast('Failed to load office status', 'error'); return; }
       const office = result.offices.find(o => o.id === currentOfficer.office_id);
-      if (!office) { showToast('Office not found — please re-login', 'error'); return; }
+      if (!office) { if (!silent) showToast('Office not found — please re-login', 'error'); return; }
       updateOfficeAvailabilityUI(office.availability_status, office.unavailability_notice);
     } catch (e) {
-      showToast('Failed to load office status', 'error');
+      clearTimeout(timeoutId);
+      if (!silent) showToast('Failed to load office status', 'error');
     }
   }
 
@@ -1900,15 +1962,17 @@
       if (updateResult.success) {
         showToast(`Office marked as ${newStatus}`, newStatus === 'available' ? 'success' : 'warning');
         addLog(`Office availability changed to ${newStatus}${reason ? ': ' + reason : ''}`, newStatus === 'available' ? 'success' : 'warning');
-        // Optimistic repaint: toggle corrects instantly even if the re-fetch fails
+        // Paint locally like the desk toggle: no re-fetch, 30s poll confirms later
         try { updateOfficeAvailabilityUI(newStatus, notice); } catch (e) {}
-        try { await loadOfficeStatus(); } catch (e) {}
         syncDrawer();
         if (newStatus === 'unavailable') {
           startOfficeLogoutCountdown();
         } else {
           cancelOfficeLogoutCountdown();
         }
+        setLoading(btn, false);
+        closeAvailReasonModal();
+        return;
       } else {
         showToast(updateResult.message || 'Failed to update office status', 'error');
       }
@@ -2278,7 +2342,8 @@
     await Promise.all([
       generateWelcomeVoice(currentOfficer.officer_name, currentOfficer.office_name),
       loadOfficeStatus(),
-      loadQueue()
+      loadQueue(),
+      loadServiceTimes()
     ]);
     refreshInterval = setInterval(loadQueue, 2000);
     setInterval(loadOfficeStatus, 30000);
