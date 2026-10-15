@@ -765,8 +765,16 @@ function areaChartSVG(buckets, values, color, W, H, padL, padR, padT, padB, dela
     });
     const pts = values.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
     const base = H - padB;
+    const allZero = n > 0 && values.every(v => !v);
     html += `<polygon points="${padL},${base} ${pts} ${x(n - 1).toFixed(1)},${base}" fill="${color}" opacity="0.15" style="animation:fadein 0.6s ease backwards;animation-delay:${delayBase}s"/>` +
-            `<polyline class="graph-line" points="${pts}" stroke="${color}" style="animation-delay:${delayBase}s"/>`;
+            `<polyline class="graph-line" points="${pts}" stroke="${color}"${allZero ? ' stroke-dasharray="6 4"' : ''} style="animation-delay:${delayBase}s"/>`;
+    if (allZero) {
+        // A flat zero line sits exactly on the axis and would be invisible —
+        // mark every bucket with a dot so a 0-series is clearly seen.
+        values.forEach((v, i) => {
+            html += `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3.5" fill="${color}" stroke="#fff" stroke-width="2"><title>0 served on ${escapeHtml(fmtDayLbl(buckets[i]))}</title></circle>`;
+        });
+    }
     values.forEach((v, i) => {
         html += `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3.5" fill="${color}" stroke="#fff" stroke-width="2"><title>${escapeHtml(fmtDayLbl(buckets[i]))}: ${v} served</title></circle>`;
     });
@@ -807,7 +815,7 @@ function bucketToDay(b) {
 function officerDayPoints() {
     // aggregate officer daily points into current report buckets
     if (!_rpOfficers || !_rpOfficers.series) return [];
-    return _rpOfficers.series.map(function(s) {
+    const mapped = _rpOfficers.series.map(function(s) {
         const groups = {};
         (s.points || []).forEach(function(p) {
             const d = (p.bucket || '').slice(0, 10);
@@ -824,8 +832,14 @@ function officerDayPoints() {
         });
         const pts = Object.keys(groups).sort().map(k => ({ bucket: k, served: groups[k] }));
         const total = pts.reduce((a, p) => a + p.served, 0);
-        return { officer_id: s.officer_id, officer_name: s.officer_name, office_name: s.office_name, points: pts, total_served: total };
-    }).filter(s => s.total_served > 0).sort((a, b) => b.total_served - a.total_served).slice(0, 12);
+        const duty = (s.points || []).reduce((a, p) => a + (p.on_duty_min || 0), 0);
+        return { officer_id: s.officer_id, officer_name: s.officer_name, office_name: s.office_name, points: pts, total_served: total, duty_min: Math.round(duty) };
+    });
+    // Active officers first (top 12); then zero-service officers (top 12 by duty time)
+    // so idle offices like Records stay visible instead of silently vanishing.
+    const active = mapped.filter(s => s.total_served > 0).sort((a, b) => b.total_served - a.total_served).slice(0, 12);
+    const idle = mapped.filter(s => s.total_served === 0).sort((a, b) => b.duty_min - a.duty_min).slice(0, 12);
+    return active.concat(idle);
 }
 
 function renderOfficers() {
@@ -844,9 +858,11 @@ function renderOfficers() {
         const avg = (s.total_served / Math.max(values.length, 1)).toFixed(1);
         const mx = values.length ? Math.max.apply(null, values) : 0;
         window._rpMini['m' + si] = { buckets, values, name: s.officer_name || ('#' + s.officer_id) };
+        const isZero = !(s.total_served > 0);
+        const dutyNote = isZero ? (s.duty_min > 0 ? ` · on duty ${(s.duty_min / 60).toFixed(1)}h` : ' · no duty logged') : '';
         return `<div class="rp-mini-card">` +
-            `<div class="rp-mini-name">${escapeHtml(s.officer_name || ('#' + s.officer_id))}</div>` +
-            `<div class="rp-mini-sub">${escapeHtml(s.office_name || '')}</div>` +
+            `<div class="rp-mini-name">${escapeHtml(s.officer_name || ('#' + s.officer_id))}${isZero ? ' <span class="pill pill-grey">0 served</span>' : ''}</div>` +
+            `<div class="rp-mini-sub">${escapeHtml(s.office_name || '')}${escapeHtml(dutyNote)}</div>` +
             `<div class="rp-mini-wrap"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Activity for ${escapeHtml(s.officer_name || '')}">${r.html}</svg>` +
             `<div class="rp-mini-tip" id="rptip-m${si}"></div></div>` +
             `<div class="rp-mini-legend"><span style="display:inline-block;width:18px;height:3px;background:${color};border-radius:2px"></span>Services Served&nbsp;&nbsp;|&nbsp;&nbsp;Average: ${avg}&nbsp;&nbsp;|&nbsp;&nbsp;Maximum: ${mx}</div>` +
