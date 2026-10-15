@@ -316,7 +316,7 @@ function renderCustomer(data) {
     else html += complaints.map(c =>
         `<div class="complaint-card"><div class="complaint-meta"><span class="pill ${c.status === 'resolved' ? 'pill-green' : 'pill-amber'}">${escapeHtml(c.status || 'open')}</span><span style="color:var(--text-muted);font-size:11px">${escapeHtml(c.category || '')} · ${fmtDT(c.created_at)}</span></div><div>${escapeHtml(c.complaint_text || '')}</div></div>`
     ).join('');
-    html += `</div><div class="section"><div class="section-header"><div class="section-title">Journey Trace</div></div><div id="custTraceBody"><div class="empty-box">Press Trace on any visit to see its GitLab-style journey rail here.</div></div></div>`;
+    html += `</div><div class="section"><div class="section-header"><div class="section-title">Journey Trace</div></div><div id="custTraceBody"><div class="empty-box">Select Trace on any visit above to follow its full journey — arrival, call, service and completion — step by step.</div></div></div>`;
 
     body.innerHTML = html;
 }
@@ -402,7 +402,7 @@ function renderAllVisits(visits) {
         `<div style="padding:16px 20px;font-size:13px">Showing the ${visits.length} most recent visits across all offices. Use the in-section filter to narrow by name.</div></div>` +
         `<div class="section" id="visitHistorySection"><div class="section-header"><div class="section-title">Visit History</div><span class="pill pill-grey" id="visitCountPill"></span><input id="visitFilterInput" placeholder="Filter by name..." autocomplete="off" oninput="filterVisits()" style="margin-left:auto;max-width:240px;padding:8px 12px;border:1px solid var(--border);border-radius:7px;font-size:12px;font-family:inherit;min-height:38px"></div>` +
         `<div class="table-wrap"><table class="data-table"><thead><tr><th>Token</th><th>Name</th><th>Date</th><th>Office</th><th>Service</th><th>Status</th><th>Rating</th><th></th></tr></thead><tbody id="visitRows"></tbody></table></div></div>` +
-        `<div class="section"><div class="section-header"><div class="section-title">Journey Trace</div></div><div id="custTraceBody"><div class="empty-box">Press Trace on any visit to see its journey rail here.</div></div></div>`;
+        `<div class="section"><div class="section-header"><div class="section-title">Journey Trace</div></div><div id="custTraceBody"><div class="empty-box">Select Trace on any visit above to follow its full journey — arrival, call, service and completion — step by step.</div></div></div>`;
     window._custVisits = visits;
     filterVisits();
 }
