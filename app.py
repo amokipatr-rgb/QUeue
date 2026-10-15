@@ -1916,6 +1916,44 @@ def get_office_services(office_id):
         return jsonify({'success': False, 'message': str(e)})
 
 
+@app.route('/api/officer/service/<int:service_id>/time', methods=['PUT'])
+def officer_set_service_time(service_id):
+    """Officer-scoped: update only the estimated minutes for a service
+    in the officer's own office."""
+    data = request.get_json() or {}
+    try:
+        minutes = int(data.get('estimated_time_minutes', 0))
+    except (TypeError, ValueError):
+        return jsonify({'success': False, 'message': 'Minutes must be a number'}), 400
+    if minutes < 1 or minutes > 480:
+        return jsonify({'success': False, 'message': 'Minutes must be between 1 and 480'}), 400
+    officer_id = data.get('officer_id')
+    if not officer_id:
+        return jsonify({'success': False, 'message': 'Officer ID required'}), 400
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("SELECT office_id FROM officers WHERE id = %s", (officer_id,))
+        officer = cursor.fetchone()
+        if not officer:
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'message': 'Officer not found'}), 404
+        cursor.execute("SELECT id FROM services WHERE id = %s AND office_id = %s", (service_id, officer['office_id'],))
+        if not cursor.fetchone():
+            cursor.close()
+            conn.close()
+            return jsonify({'success': False, 'message': 'Service not found in your office'}), 404
+        cursor.execute("UPDATE services SET estimated_time_minutes = %s WHERE id = %s", (minutes, service_id,))
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'message': f'Service time set to {minutes} min'})
+    except Exception as e:
+        logger.error(f"Officer set service time error: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+
+
 # ============================================
 # STUDENT TOKEN GENERATION
 # ============================================
@@ -5747,6 +5785,8 @@ def admin_ai_performance_insights():
 
     prompt = (
         "You are a service-operations analyst writing for non-technical managers. "
+        "Write in clean, plain, professional prose in the style of a Google status update: "
+        "short paragraphs, simple words, scannable bullets, no jargon, no decoration. "
         "Using ONLY the verified figures below, write a concise executive summary with "
         "exactly these sections: 1) Management summary (2-3 sentences: what happened). "
         "2) Key findings (bullets: who/what deserves attention, citing numbers). "
@@ -5755,12 +5795,19 @@ def admin_ai_performance_insights():
         "5) Recommended follow-ups (concrete checks a manager can do, e.g. verify target, "
         "review specific records, investigate staffing). "
         "Rules: never invent targets, causes, or numbers not listed. Never judge staff "
-        "character or effort — describe records only. If data is thin, say so plainly.\n\n"
+        "character or effort — describe records only. If data is thin, say so plainly. "
+        "Punctuation rule: never use em dashes or en dashes anywhere in the output. "
+        "Use commas, colons, or plain periods instead. This rule has no exceptions.\n\n"
         "VERIFIED FIGURES:\n" + "\n".join(lines)
     )
     text, err, provider = call_ai_insights(prompt, max_tokens=700, temperature=0.3)
     if err:
         return jsonify({'success': False, 'message': err}), 502
+    # Belt-and-braces: strip any em/en dashes the model emits anyway.
+    text = text.replace('\u2014', ', ').replace('\u2013', '-')
+    text = text.replace(' ,', ',')
+    while '  ' in text:
+        text = text.replace('  ', ' ')
     return jsonify({'success': True, 'insights': text, 'provider': provider,
                     'generated_at': datetime.now().isoformat(),
                     'figures_used': {'officers': len(officers), 'overall': overall}})

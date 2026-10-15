@@ -91,6 +91,7 @@
         .legend-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 7px 12px; border-radius: 20px; border: 1px solid var(--border); background: var(--white); cursor: pointer; min-height: 36px; transition: all 0.15s; }
         .legend-chip:active { transform: scale(0.97); }
         .legend-chip.off { opacity: 0.4; }
+        .legend-chip.legend-on { outline: 2px solid var(--green-dark); outline-offset: 1px; }
         .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
         .graph-tip { position: absolute; pointer-events: none; background: var(--green-dark); color: #fff; font-size: 11.5px; font-weight: 600; padding: 8px 12px; border-radius: 8px; white-space: nowrap; z-index: 5; opacity: 0; transition: opacity 0.15s; box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
         .graph-svg text { font-family: 'Plus Jakarta Sans', sans-serif; }
@@ -313,7 +314,11 @@ function fillOfficerFilter(officers) {
 
 function visibleSeries() {
     if (!_bmData) return [];
-    return (_bmData.series || []).filter(s => !_bmHidden.has(String(s.officer_id)));
+    let list = (_bmData.series || []).filter(s => !_bmHidden.has(String(s.officer_id)));
+    if (_bmBreachedOnly) {
+        list = list.filter(s => (s.points || []).some(p => (p.breaches || 0) > 0));
+    }
+    return list;
 }
 
 function prevTotals() {
@@ -375,10 +380,10 @@ function renderSummary() {
     const compTxt = comp == null ? '—' : comp + '%';
     const waitTxt = ov.weighted_avg_wait != null ? ov.weighted_avg_wait + ' min' : '—';
     el.innerHTML =
-        `<div class="stat-card"><div class="stat-num">${ov.total_served || 0}</div><div class="stat-lbl">Tokens served</div></div>` +
-        `<div class="stat-card"><div class="stat-num">${waitTxt}</div><div class="stat-lbl">Average wait (weighted)</div></div>` +
-        `<div class="stat-card"><div class="stat-num">${ov.total_breaches || 0}</div><div class="stat-lbl">Recorded breaches</div></div>` +
-        `<div class="stat-card"><div class="stat-num">${compTxt}</div><div class="stat-lbl">Target compliance</div></div>`;
+        `<div class="stat-card" style="cursor:pointer" onclick="sortByKey('served')" title="Sort rankings by served"><div class="stat-num">${ov.total_served || 0}</div><div class="stat-lbl">Tokens served</div></div>` +
+        `<div class="stat-card" style="cursor:pointer" onclick="sortByKey('wait')" title="Sort rankings by avg wait"><div class="stat-num">${waitTxt}</div><div class="stat-lbl">Average wait (weighted)</div></div>` +
+        `<div class="stat-card" style="cursor:pointer" onclick="toggleBreachedOnly();this.style.outline=_bmBreachedOnly?'2px solid var(--red)':''" title="Show only officers with breaches"><div class="stat-num">${ov.total_breaches || 0}</div><div class="stat-lbl">Recorded breaches${_bmBreachedOnly ? ' (filtered)' : ''}</div></div>` +
+        `<div class="stat-card" style="cursor:pointer" onclick="sortByKey('compliance')" title="Sort rankings by compliance"><div class="stat-num">${compTxt}</div><div class="stat-lbl">Target compliance</div></div>`;
 }
 
 function renderRankings() {
@@ -408,11 +413,13 @@ function renderRankings() {
         const compPill = a.compliance == null ? '<span class="pill pill-grey">—</span>'
             : `<span class="pill ${a.compliance >= 90 ? 'pill-green' : (a.compliance >= 70 ? 'pill-amber' : 'pill-red')}">${a.compliance}%</span>`;
         const hrs = (a.dutyMin / 60).toFixed(1);
-        return `<tr${offDuty ? ' style="opacity:0.55"' : ''}><td><strong>${i + 1}</strong></td>` +
+        const waitCell = a.avg_wait == null ? '—'
+            : `<span class="pill ${a.avg_wait <= 15 ? 'pill-green' : (a.avg_wait <= 22.5 ? 'pill-amber' : 'pill-red')}">${a.avg_wait} min</span>`;
+        return `<tr data-oid="${s.officer_id}" onclick="isolateOfficer('${s.officer_id}')" style="cursor:pointer;${offDuty ? 'opacity:0.55;' : ''}"><td><strong>${i + 1}</strong></td>` +
             `<td>${escapeHtml(s.officer_name || ('#' + s.officer_id))}${flagIdle ? ' <span class="pill pill-amber">needs review</span>' : ''}${offDuty ? ' <span class="pill pill-grey">off duty</span>' : ''}</td>` +
             `<td>${escapeHtml(s.office_name || '—')}</td>` +
             `<td><strong>${a.served}</strong></td>` +
-            `<td>${a.avg_wait != null ? a.avg_wait + ' min' : '—'}<br>${deltaPill(a.avg_wait, p.avg_wait, 'wait', true)}</td>` +
+            `<td>${waitCell}<br>${deltaPill(a.avg_wait, p.avg_wait, 'wait', true)}</td>` +
             `<td>${a.breaches > 0 ? `<span class="pill pill-red">${a.breaches}</span>` : '<span class="pill pill-green">0</span>'}</td>` +
             `<td>${compPill}</td>` +
             `<td>${hrs}h</td>` +
@@ -434,7 +441,10 @@ function renderWaitChart() {
     const series = visibleSeries();
     if (!series.length || !_bmData) { svg.style.display = 'none'; empty.style.display = ''; empty.textContent = 'Load a range to see waiting-time performance.'; return; }
     const buckets = [];
-    series.forEach(s => s.points.forEach(p => { if (!buckets.includes(p.bucket)) buckets.push(p.bucket); }));
+    series.forEach(s => s.points.forEach(p => {
+        const k = normBucket(p.bucket);
+        if (!buckets.includes(k)) buckets.push(k);
+    }));
     buckets.sort();
     if (!buckets.length) { svg.style.display = 'none'; empty.style.display = ''; return; }
     empty.style.display = 'none';
@@ -445,12 +455,12 @@ function renderWaitChart() {
     const bAvg = buckets.map(b => {
         let tw = 0, wN = 0;
         series.forEach(s => {
-            const p = s.points.find(q => q.bucket === b);
+            const p = s.points.find(q => normBucket(q.bucket) === b);
             if (p && p.avg_wait != null && p.valid_waits) { tw += p.avg_wait * p.valid_waits; wN += p.valid_waits; }
         });
-        return wN ? tw / wN : null;
+        return wN ? { v: tw / wN, n: wN } : null;
     });
-    bAvg.forEach(v => { if (v != null && v > yMax) yMax = Math.ceil(v * 1.15); });
+    bAvg.forEach(o => { const v = o ? o.v : null; if (v != null && v > yMax) yMax = Math.ceil(v * 1.15); });
     const x = i => buckets.length === 1 ? padL + (W - padL - padR) / 2 : padL + (W - padL - padR) * (i / (buckets.length - 1));
     const y = v => padT + (H - padT - padB) * (1 - v / yMax);
     let html = '';
@@ -467,7 +477,7 @@ function renderWaitChart() {
         if (i % skip !== 0 && i !== buckets.length - 1) return;
         html += `<text x="${x(i)}" y="${H - 12}" font-size="10" fill="#4a5a6e" text-anchor="middle">${escapeHtml(String(b).slice(5))}</text>`;
     });
-    const pts = bAvg.map((v, i) => v == null ? null : [x(i), y(v)]);
+    const pts = bAvg.map((o, i) => o == null ? null : [x(i), y(o.v)]);
     const defined = pts.map((p, i) => p ? `${p[0].toFixed(1)},${p[1].toFixed(1)}` : null);
     let segStart = -1;
     for (let i = 0; i <= defined.length; i++) {
@@ -477,16 +487,63 @@ function renderWaitChart() {
             segStart = -1;
         }
     }
-    bAvg.forEach((v, i) => {
-        if (v == null) return;
-        const bad = v > TARGET;
-        html += `<circle cx="${x(i)}" cy="${y(v)}" r="${bad ? 6 : 4}" fill="${bad ? '#e53935' : '#1565c0'}" stroke="#fff" stroke-width="2"><title>${buckets[i]}: ${v.toFixed(1)} min avg wait${bad ? ' — BREACH' : ''}</title></circle>`;
+    const dots = [];
+    bAvg.forEach((o, i) => {
+        if (o == null) return;
+        const bad = o.v > TARGET;
+        dots.push({ i, v: o.v, n: o.n, bad });
+        html += `<circle class="wait-dot" data-wbi="${i}" cx="${x(i)}" cy="${y(o.v)}" r="${bad ? 6 : 4}" fill="${bad ? '#e53935' : '#1565c0'}" stroke="#fff" stroke-width="2"><title>${buckets[i]}: ${o.v.toFixed(1)} min avg wait over ${o.n} valid waits${bad ? ' — BREACH' : ''}</title></circle>`;
     });
+    buckets.forEach((b, i) => {
+        html += `<rect x="${(x(i) - (W / Math.max(buckets.length, 1)) / 2).toFixed(1)}" y="${padT}" width="${(W / Math.max(buckets.length, 1)).toFixed(1)}" height="${H - padT - padB}" fill="transparent" data-wbi="${i}"/>`;
+    });
+    window._bmWaitDots = dots;
+    window._bmWaitGeom = { buckets, H };
     svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
     svg.style.width = '100%';
     svg.style.height = 'auto';
     svg.innerHTML = html;
+    svg.querySelectorAll('rect[data-wbi], circle.wait-dot').forEach(el => {
+        el.addEventListener('mousemove', onWaitHover);
+        el.addEventListener('mouseleave', hideWaitTip);
+        el.addEventListener('click', onWaitHover);
+    });
     document.getElementById('bmWaitLbl').textContent = `avg vs ${TARGET}m target`;
+}
+
+function onWaitHover(ev) {
+    let bi = ev.target.dataset.wbi;
+    if (bi == null) {
+        const c = ev.target.closest ? ev.target.closest('circle.wait-dot') : null;
+        bi = c ? c.dataset.wbi : null;
+    }
+    bi = parseInt(bi);
+    const buckets = (window._bmWaitGeom && window._bmWaitGeom.buckets) || [];
+    const dots = window._bmWaitDots || [];
+    const b = buckets[bi];
+    const d = dots.find(q => q.i === bi);
+    if (b == null || !d) return;
+    const tip = document.getElementById('bmWaitTip');
+    if (!tip) return;
+    const wrapEl = document.getElementById('bmWaitWrap');
+    const wr = wrapEl ? wrapEl.getBoundingClientRect() : { left: 0, top: 0, width: 800 };
+    tip.innerHTML = `<strong>${escapeHtml(b)}</strong><br>Avg wait: <strong>${d.v.toFixed(1)} min</strong> (over ${d.n} valid waits)` +
+        (d.bad ? `<br><span style="color:#ff8a80">Above 15m target — BREACH</span>` : `<br><span style="color:#a5d6a7">Within target</span>`);
+    tip.style.opacity = '1';
+    let lx = ev.clientX - wr.left + 14, ly = ev.clientY - wr.top - 10;
+    if (lx + 220 > wr.width) lx -= 230;
+    tip.style.left = lx + 'px';
+    tip.style.top = Math.max(ly, 4) + 'px';
+    document.querySelectorAll('#bmWaitGraph circle.wait-dot').forEach(c => { c.style.opacity = '0.35'; });
+    document.querySelectorAll('#bmWaitGraph circle.wait-dot[data-wbi="' + bi + '"]').forEach(c => {
+        c.style.opacity = '1';
+        c.setAttribute('r', '8');
+    });
+}
+function hideWaitTip() {
+    const tip = document.getElementById('bmWaitTip');
+    if (tip) tip.style.opacity = '0';
+    document.querySelectorAll('#bmWaitGraph circle.wait-dot').forEach(c => { c.style.opacity = '1'; c.setAttribute('r', c.getAttribute('fill') === '#e53935' ? '6' : '4'); });
 }
 
 async function loadAIInsights() {
@@ -688,8 +745,8 @@ function renderGraph() {
     svg.querySelectorAll('rect[data-bi]').forEach(r => {
         r.addEventListener('mousemove', onGraphHover);
         r.addEventListener('mouseleave', hideTip);
+        r.addEventListener('click', onGraphHover);
     });
-    const _rankEl = document.getElementById('bmRankLbl');
     renderLegend();
 }
 
@@ -715,6 +772,14 @@ function onGraphHover(ev) {
     if (!best) return;
     const s = best.s;
     const p = s.points.find(q => normBucket(q.bucket) === b) || { served: 0 };
+    // active series: dim the rest, light its legend chip — display follows data
+    const activeId = String(s.officer_id);
+    svg.querySelectorAll('.graph-line').forEach((pl, i) => {
+        pl.style.opacity = (series[i] && String(series[i].officer_id) === activeId) ? '1' : '0.2';
+    });
+    document.querySelectorAll('#bmLegend .legend-chip').forEach(ch => {
+        ch.classList.toggle('legend-on', ch.dataset.oid === activeId);
+    });
     const tip = document.getElementById('bmTip');
     const wrap = document.getElementById('bmGraphWrap').getBoundingClientRect();
     tip.innerHTML = `<strong>${escapeHtml(s.officer_name || ('#' + s.officer_id))}</strong><br>${escapeHtml(b)}<br>Served: <strong>${p.served}</strong> (of ${s.total_served || 0} total)` +
@@ -727,7 +792,38 @@ function onGraphHover(ev) {
     tip.style.left = lx + 'px';
     tip.style.top = Math.max(ly, 4) + 'px';
 }
-function hideTip() { document.getElementById('bmTip').style.opacity = '0'; }
+function hideTip() {
+    document.getElementById('bmTip').style.opacity = '0';
+    document.querySelectorAll('#bmGraph .graph-line').forEach(pl => { pl.style.opacity = '1'; });
+    document.querySelectorAll('#bmLegend .legend-chip').forEach(ch => { ch.classList.remove('legend-on'); });
+}
+
+let _bmBreachedOnly = false;
+function isolateOfficer(id) {
+    id = String(id);
+    const ids = (_bmData.series || []).map(s => String(s.officer_id));
+    const isolated = _bmHidden.size === ids.length - 1 && !_bmHidden.has(id);
+    if (isolated) {
+        _bmHidden = new Set();
+    } else {
+        _bmHidden = new Set(ids.filter(x => x !== id));
+    }
+    renderGraph();
+    renderWaitChart();
+    renderRankings();
+}
+function toggleBreachedOnly() {
+    _bmBreachedOnly = !_bmBreachedOnly;
+    renderGraph();
+    renderWaitChart();
+    renderRankings();
+    renderSummary();
+}
+function sortByKey(k) {
+    if (_bmSortKey === k) _bmSortDir *= -1;
+    else { _bmSortKey = k; _bmSortDir = (k === 'wait') ? 1 : -1; }
+    renderRankings();
+}
 
 function renderLegend() {
     const lg = document.getElementById('bmLegend');
@@ -735,7 +831,7 @@ function renderLegend() {
     lg.innerHTML = _bmData.series.map((s, si) => {
         const color = LINE_COLORS[si % LINE_COLORS.length];
         const off = _bmHidden.has(String(s.officer_id));
-        return `<button class="legend-chip${off ? ' off' : ''}" onclick="toggleOfficer('${s.officer_id}')"><span class="legend-dot" style="background:${color}"></span>${escapeHtml(s.officer_name || ('#' + s.officer_id))} (${s.total_served})</button>`;
+        return `<button class="legend-chip${off ? ' off' : ''}" data-oid="${s.officer_id}" onclick="toggleOfficer('${s.officer_id}')"><span class="legend-dot" style="background:${color}"></span>${escapeHtml(s.officer_name || ('#' + s.officer_id))} (${s.total_served})</button>`;
     }).join('');
 }
 function toggleOfficer(id) {
