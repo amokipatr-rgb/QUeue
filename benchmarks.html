@@ -153,7 +153,11 @@
             </div>
             <select class="sel-input" id="bmOfficer"><option value="">All officers</option></select>
             <button class="btn btn-primary" id="bmLoadBtn" onclick="loadBenchmarks()">Load</button>
+            <button class="btn btn-outline" onclick="exportBenchmarkCSV()">CSV</button>
+            <button class="btn btn-outline" onclick="window.print()">Print / PDF</button>
         </div>
+
+        <div class="stat-row" id="bmSummary" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:20px"></div>
 
         <div class="section">
             <div class="section-header"><div class="section-title">Tokens Served Over Time</div><span class="pill pill-grey" id="bmRangeLbl"></span></div>
@@ -166,11 +170,32 @@
         </div>
 
         <div class="section">
-            <div class="section-header"><div class="section-title">Officer Rankings</div><span class="pill pill-grey" id="bmRankLbl"></span></div>
-            <div class="table-wrap"><table class="data-table">
-                <thead><tr><th>#</th><th>Officer</th><th>Office</th><th>Served</th><th>Avg Wait</th><th>Breaches</th><th>On Duty</th><th>vs Prev</th></tr></thead>
-                <tbody id="bmRankRows"><tr><td colspan="8"><div class="empty-box">No data yet — load a range above.</div></td></tr></tbody>
+            <div class="section-header"><div class="section-title">Average Wait vs Target</div><span class="pill pill-grey" id="bmWaitLbl"></span></div>
+            <div class="graph-wrap" style="position:relative" id="bmWaitWrap">
+                <div class="empty-box" id="bmWaitEmpty">Load a range to see waiting-time performance against the 15-minute default target.</div>
+                <svg id="bmWaitGraph" class="graph-svg" style="display:none" role="img" aria-label="Average waiting time chart"></svg>
+                <div class="graph-tip" id="bmWaitTip"></div>
+            </div>
+        </div>
+
+        <div class="section">
+            <div class="section-header"><div class="section-title">AI Performance Insights</div><button class="btn-sm" id="aiRegenBtn" onclick="loadAIInsights()">Regenerate</button></div>
+            <div id="aiBody"><div class="empty-box">Load a report to generate a grounded executive summary. Figures first — the AI only explains loaded data.</div></div>
+        </div>
+
+        <div class="section">
+            <div class="section-header"><div class="section-title">Officer Rankings</div><span class="pill pill-grey" id="bmRankLbl"></span><span style="font-size:11px;color:var(--text-muted)">Click a header to sort</span></div>
+            <div class="table-wrap"><table class="data-table" id="bmRankTable">
+                <thead><tr><th>#</th><th>Officer</th><th>Office</th><th data-sort="served" style="cursor:pointer">Served ↕</th><th data-sort="wait" style="cursor:pointer">Avg Wait ↕</th><th data-sort="breaches" style="cursor:pointer">Breaches ↕</th><th data-sort="compliance" style="cursor:pointer">Compliance ↕</th><th data-sort="duty" style="cursor:pointer">On Duty ↕</th><th>vs Prev</th></tr></thead>
+                <tbody id="bmRankRows"><tr><td colspan="9"><div class="empty-box">No data yet — load a range above.</div></td></tr></tbody>
             </table></div>
+        </div>
+
+        <div class="section">
+            <div class="section-header"><div class="section-title">How to Read This Report</div></div>
+            <div style="padding:16px 20px;font-size:13px;line-height:1.7;color:var(--text-secondary)">
+                <p><strong>Served</strong> — completed tokens assigned to the officer in range. <strong>Avg Wait</strong> — mean minutes from token request to service start, across valid waits only (a wait is valid when service actually started; weighted by wait count, not a plain average of averages). <strong>Target</strong> — each token's own service estimate (default 15 min); the wait chart draws the 15-minute reference line because per-service targets vary. <strong>Breaches</strong> — individual waits exceeding that token's target. An average below target can still hide breaches — the count and red dots show them. <strong>Compliance</strong> — valid waits within target ÷ valid waits. <strong>On Duty</strong> — session hours overlapping the range. <strong>vs Prev</strong> — same-length prior period; labeled per metric (e.g. Avg wait −12%). <strong>Zero served + duty hours</strong> is flagged amber (needs investigation); <strong>zero served + zero duty</strong> is greyed as off duty, not poor performance. Rankings sort by any column — volume alone never decides.</p>
+            </div>
         </div>
     </div>
 
@@ -183,6 +208,9 @@ let _bmData = null;
 let _bmPrev = null;
 let _bmHidden = new Set();
 let _bmBucket = 'day';
+let _bmSortKey = 'served';
+let _bmSortDir = -1;
+let _bmAI = null;
 
 function checkLogin() {
     const loggedIn = sessionStorage.getItem('loggedInUser');
@@ -262,7 +290,10 @@ async function loadBenchmarks() {
         } catch (e) { _bmPrev = null; }
         fillOfficerFilter(data.officers || []);
         renderGraph();
+        renderWaitChart();
         renderRankings();
+        renderSummary();
+        loadAIInsights();
         document.getElementById('bmRangeLbl').textContent = `${from} → ${to} · ${_bmBucket}`;
     } catch (e) {
         showToast('Network error', 'error');
@@ -289,6 +320,244 @@ function prevTotals() {
     const m = {};
     if (_bmPrev && _bmPrev.series) _bmPrev.series.forEach(s => { m[String(s.officer_id)] = s.total_served || 0; });
     return m;
+}
+
+function prevStats() {
+    const m = {};
+    if (_bmPrev && _bmPrev.series) _bmPrev.series.forEach(s => {
+        let tw = 0, wN = 0, tb = 0;
+        (s.points || []).forEach(p => {
+            if (p.avg_wait != null) { tw += p.avg_wait * (p.valid_waits || 0); wN += (p.valid_waits || 0); }
+            tb += p.breaches || 0;
+        });
+        m[String(s.officer_id)] = {
+            served: s.total_served || 0,
+            avg_wait: wN ? tw / wN : null,
+            breaches: tb,
+            compliance: wN ? (wN - tb) / wN * 100 : null
+        };
+    });
+    return m;
+}
+
+function officerAgg(s) {
+    let tw = 0, wN = 0, tb = 0, dutyMin = 0;
+    s.points.forEach(p => {
+        if (p.avg_wait != null && p.valid_waits) { tw += p.avg_wait * p.valid_waits; wN += p.valid_waits; }
+        else if (p.avg_wait != null) { tw += p.avg_wait; wN++; }
+        tb += p.breaches || 0;
+        dutyMin += p.on_duty_min || 0;
+    });
+    const avgW = wN ? tw / wN : null;
+    return {
+        served: s.total_served || 0,
+        avg_wait: avgW != null ? Math.round(avgW * 10) / 10 : null,
+        breaches: tb,
+        valid: wN,
+        compliance: wN ? Math.round((wN - tb) / wN * 1000) / 10 : null,
+        dutyMin: Math.round(dutyMin)
+    };
+}
+
+function deltaPill(cur, prev, suffix, invert) {
+    if (prev == null) return '<span class="pill pill-grey">—</span>';
+    if (prev === 0 && cur > 0) return '<span class="pill pill-green">new</span>';
+    if (prev === 0) return '<span class="pill pill-grey">—</span>';
+    const pc = Math.round(((cur - prev) / prev) * 100);
+    const good = invert ? pc <= 0 : pc >= 0;
+    return `<span class="pill ${good ? 'pill-green' : 'pill-red'}">${pc >= 0 ? '+' : ''}${pc}%${suffix ? ' ' + suffix : ''}</span>`;
+}
+
+function renderSummary() {
+    const el = document.getElementById('bmSummary');
+    const ov = (_bmData && _bmData.overall) || {};
+    const comp = ov.compliance_pct;
+    const compTxt = comp == null ? '—' : comp + '%';
+    const waitTxt = ov.weighted_avg_wait != null ? ov.weighted_avg_wait + ' min' : '—';
+    el.innerHTML =
+        `<div class="stat-card"><div class="stat-num">${ov.total_served || 0}</div><div class="stat-lbl">Tokens served</div></div>` +
+        `<div class="stat-card"><div class="stat-num">${waitTxt}</div><div class="stat-lbl">Average wait (weighted)</div></div>` +
+        `<div class="stat-card"><div class="stat-num">${ov.total_breaches || 0}</div><div class="stat-lbl">Recorded breaches</div></div>` +
+        `<div class="stat-card"><div class="stat-num">${compTxt}</div><div class="stat-lbl">Target compliance</div></div>`;
+}
+
+function renderRankings() {
+    const tb = document.getElementById('bmRankRows');
+    const series = visibleSeries();
+    const prev = prevStats();
+    document.getElementById('bmRankLbl').textContent = series.length + ' officers';
+    if (!series.length) { tb.innerHTML = '<tr><td colspan="9"><div class="empty-box">No officers in range.</div></td></tr>'; return; }
+    const rows = series.map(s => ({ s, a: officerAgg(s) }));
+    const key = _bmSortKey, dir = _bmSortDir;
+    rows.sort((x, y) => {
+        const va = key === 'wait' ? (x.a.avg_wait == null ? -1 : x.a.avg_wait)
+            : key === 'breaches' ? x.a.breaches
+            : key === 'compliance' ? (x.a.compliance == null ? -1 : x.a.compliance)
+            : key === 'duty' ? x.a.dutyMin : x.served;
+        const vb = key === 'wait' ? (y.a.avg_wait == null ? -1 : y.a.avg_wait)
+            : key === 'breaches' ? y.a.breaches
+            : key === 'compliance' ? (y.a.compliance == null ? -1 : y.a.compliance)
+            : key === 'duty' ? y.a.dutyMin : y.served;
+        return (va - vb) * dir;
+    });
+    tb.innerHTML = rows.map((r, i) => {
+        const s = r.s, a = r.a;
+        const p = prev[String(s.officer_id)] || {};
+        const offDuty = a.served === 0 && a.dutyMin === 0;
+        const flagIdle = a.served === 0 && a.dutyMin > 0;
+        const compPill = a.compliance == null ? '<span class="pill pill-grey">—</span>'
+            : `<span class="pill ${a.compliance >= 90 ? 'pill-green' : (a.compliance >= 70 ? 'pill-amber' : 'pill-red')}">${a.compliance}%</span>`;
+        const hrs = (a.dutyMin / 60).toFixed(1);
+        return `<tr${offDuty ? ' style="opacity:0.55"' : ''}><td><strong>${i + 1}</strong></td>` +
+            `<td>${escapeHtml(s.officer_name || ('#' + s.officer_id))}${flagIdle ? ' <span class="pill pill-amber">needs review</span>' : ''}${offDuty ? ' <span class="pill pill-grey">off duty</span>' : ''}</td>` +
+            `<td>${escapeHtml(s.office_name || '—')}</td>` +
+            `<td><strong>${a.served}</strong></td>` +
+            `<td>${a.avg_wait != null ? a.avg_wait + ' min' : '—'}<br>${deltaPill(a.avg_wait, p.avg_wait, 'wait', true)}</td>` +
+            `<td>${a.breaches > 0 ? `<span class="pill pill-red">${a.breaches}</span>` : '<span class="pill pill-green">0</span>'}</td>` +
+            `<td>${compPill}</td>` +
+            `<td>${hrs}h</td>` +
+            `<td>${deltaPill(a.served, p.served, 'served', false)}</td></tr>`;
+    }).join('');
+    document.querySelectorAll('#bmRankTable thead th[data-sort]').forEach(th => {
+        th.onclick = function() {
+            const k = th.dataset.sort;
+            if (_bmSortKey === k) _bmSortDir *= -1;
+            else { _bmSortKey = k; _bmSortDir = (k === 'wait') ? 1 : -1; }
+            renderRankings();
+        };
+    });
+}
+
+function renderWaitChart() {
+    const svg = document.getElementById('bmWaitGraph');
+    const empty = document.getElementById('bmWaitEmpty');
+    const series = visibleSeries();
+    if (!series.length || !_bmData) { svg.style.display = 'none'; empty.style.display = ''; empty.textContent = 'Load a range to see waiting-time performance.'; return; }
+    const buckets = [];
+    series.forEach(s => s.points.forEach(p => { if (!buckets.includes(p.bucket)) buckets.push(p.bucket); }));
+    buckets.sort();
+    if (!buckets.length) { svg.style.display = 'none'; empty.style.display = ''; return; }
+    empty.style.display = 'none';
+    svg.style.display = 'block';
+    const TARGET = 15;
+    const W = 920, H = 280, padL = 44, padR = 16, padT = 16, padB = 40;
+    let yMax = TARGET * 1.5;
+    const bAvg = buckets.map(b => {
+        let tw = 0, wN = 0;
+        series.forEach(s => {
+            const p = s.points.find(q => q.bucket === b);
+            if (p && p.avg_wait != null && p.valid_waits) { tw += p.avg_wait * p.valid_waits; wN += p.valid_waits; }
+        });
+        return wN ? tw / wN : null;
+    });
+    bAvg.forEach(v => { if (v != null && v > yMax) yMax = Math.ceil(v * 1.15); });
+    const x = i => buckets.length === 1 ? padL + (W - padL - padR) / 2 : padL + (W - padL - padR) * (i / (buckets.length - 1));
+    const y = v => padT + (H - padT - padB) * (1 - v / yMax);
+    let html = '';
+    for (let g = 0; g <= 4; g++) {
+        const v = Math.round(yMax * g / 4), yy = y(v);
+        html += `<line x1="${padL}" y1="${yy}" x2="${W - padR}" y2="${yy}" stroke="#e4e8ee" stroke-width="1"/>` +
+                `<text x="${padL - 8}" y="${yy + 4}" font-size="10" fill="#4a5a6e" text-anchor="end">${v}m</text>`;
+    }
+    const yT = y(Math.min(TARGET, yMax));
+    html += `<line x1="${padL}" y1="${yT}" x2="${W - padR}" y2="${yT}" stroke="#00a84f" stroke-width="2" stroke-dasharray="7 5"/>` +
+            `<text x="${W - padR}" y="${yT - 6}" font-size="10" font-weight="700" fill="#00a84f" text-anchor="end">target ${TARGET}m</text>`;
+    const skip = Math.max(1, Math.ceil(buckets.length / 8));
+    buckets.forEach((b, i) => {
+        if (i % skip !== 0 && i !== buckets.length - 1) return;
+        html += `<text x="${x(i)}" y="${H - 12}" font-size="10" fill="#4a5a6e" text-anchor="middle">${escapeHtml(String(b).slice(5))}</text>`;
+    });
+    const pts = bAvg.map((v, i) => v == null ? null : [x(i), y(v)]);
+    const defined = pts.map((p, i) => p ? `${p[0].toFixed(1)},${p[1].toFixed(1)}` : null);
+    let segStart = -1;
+    for (let i = 0; i <= defined.length; i++) {
+        if (defined[i] && segStart === -1) segStart = i;
+        if ((!defined[i] || i === defined.length) && segStart !== -1) {
+            html += `<polyline class="graph-line" points="${defined.slice(segStart, i).join(' ')}" stroke="#1565c0" style="animation-delay:0.1s"/>`;
+            segStart = -1;
+        }
+    }
+    bAvg.forEach((v, i) => {
+        if (v == null) return;
+        const bad = v > TARGET;
+        html += `<circle cx="${x(i)}" cy="${y(v)}" r="${bad ? 6 : 4}" fill="${bad ? '#e53935' : '#1565c0'}" stroke="#fff" stroke-width="2"><title>${buckets[i]}: ${v.toFixed(1)} min avg wait${bad ? ' — BREACH' : ''}</title></circle>`;
+    });
+    svg.setAttribute('viewBox', `0 0 ${W} ${H}`);
+    svg.style.width = '100%';
+    svg.style.height = 'auto';
+    svg.innerHTML = html;
+    document.getElementById('bmWaitLbl').textContent = `avg vs ${TARGET}m target`;
+}
+
+async function loadAIInsights() {
+    const body = document.getElementById('aiBody');
+    const btn = document.getElementById('aiRegenBtn');
+    if (!_bmData || !visibleSeries().length) {
+        body.innerHTML = '<div class="empty-box">Load a report first — the AI explains only loaded figures.</div>';
+        return;
+    }
+    setLoading(btn, true);
+    body.innerHTML = '<div style="padding:20px"><div class="skel" style="height:14px;margin-bottom:10px"></div><div class="skel" style="height:14px;width:85%;margin-bottom:10px"></div><div class="skel" style="height:14px;width:70%"></div></div>';
+    try {
+        const from = document.getElementById('bmFrom').value;
+        const to = document.getElementById('bmTo').value;
+        const prev = prevStats();
+        const payload = {
+            from, to, bucket: _bmBucket,
+            overall: _bmData.overall || {},
+            officers: visibleSeries().map(s => {
+                const a = officerAgg(s);
+                const p = prev[String(s.officer_id)] || {};
+                return {
+                    officer_name: s.officer_name, office_name: s.office_name,
+                    total_served: a.served, avg_wait: a.avg_wait,
+                    breaches: a.breaches, compliance_pct: a.compliance,
+                    on_duty_min: a.dutyMin,
+                    delta_pct: (p.served != null && p.served > 0) ? Math.round(((a.served - p.served) / p.served) * 100) : null
+                };
+            })
+        };
+        const res = await fetch(`${API_BASE_URL}/api/admin/ai-performance-insights`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (!data.success) {
+            body.innerHTML = `<div class="empty-box">${escapeHtml(data.message || 'AI unavailable')}<br><button class="btn-sm" style="margin-top:10px" onclick="loadAIInsights()">Retry</button></div>`;
+            return;
+        }
+        const paras = data.insights.split(/\n\s*\n/).filter(Boolean);
+        body.innerHTML = `<div style="padding:18px 20px;font-size:13.5px;line-height:1.75;color:var(--text-secondary)">` +
+            paras.map(p => `<p style="margin-bottom:10px">${escapeHtml(p)}</p>`).join('') +
+            `<div style="font-size:11px;color:var(--text-muted);margin-top:6px">Generated ${escapeHtml(data.generated_at || '')} via ${escapeHtml(data.provider || 'AI')} from ${data.figures_used ? data.figures_used.officers : 0} officer records · figures verified server-side before explanation.</div></div>`;
+    } catch (e) {
+        body.innerHTML = '<div class="empty-box">Network error. <button class="btn-sm" onclick="loadAIInsights()">Retry</button></div>';
+    } finally {
+        setLoading(btn, false);
+    }
+}
+
+function exportBenchmarkCSV() {
+    if (!_bmData) { showToast('Load a report first', 'error'); return; }
+    const series = visibleSeries();
+    const lines = [['Officer', 'Office', 'Served', 'Avg wait (min)', 'Breaches', 'Compliance %', 'On duty (min)'].join(',')];
+    series.forEach(s => {
+        const a = officerAgg(s);
+        lines.push([s.officer_name, s.office_name, a.served, a.avg_wait == null ? '' : a.avg_wait,
+            a.breaches, a.compliance == null ? '' : a.compliance, a.dutyMin]
+            .map(v => { v = v == null ? '' : String(v); return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; }).join(','));
+    });
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `officer-benchmarks-${document.getElementById('bmFrom').value}-to-${document.getElementById('bmTo').value}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+    showToast('CSV downloaded');
 }
 
 function renderRankings() {

@@ -27,6 +27,9 @@ EMAIL_FROM = os.environ.get('EMAIL_FROM', 'SMQSS <smqss82@gmail.com>')
 # ── AI ──
 GROQ_API_KEY = os.environ.get('GROQ_API_KEY', '')
 GROQ_MODEL = os.environ.get('GROQ_MODEL', 'openai/gpt-oss-120b')
+GROK_API_KEY = os.environ.get('GROK_API_KEY', '') or os.environ.get('XAI_API_KEY', '')
+GROK_MODEL = os.environ.get('GROK_MODEL', 'grok-4')
+GROK_API_URL = os.environ.get('GROK_API_URL', 'https://api.x.ai/v1/chat/completions')
 # SMTP fallback (Brevo SMTP relay)
 SMTP_HOST = os.environ.get('BREVO_SMTP_HOST', 'smtp-relay.brevo.com')
 SMTP_PORT = int(os.environ.get('BREVO_SMTP_PORT', '587'))
@@ -2463,6 +2466,58 @@ def send_email_via_brevo(to_email, subject, body, html_body=None):
         return False, f'Brevo API returned HTTP {e.code}: {detail}'
     except Exception as e:
         return False, str(e)
+
+
+def call_grok_ai(prompt, max_tokens=800, temperature=0.3):
+    """xAI Grok API call (OpenAI-compatible). Returns (text, error)."""
+    if not GROK_API_KEY:
+        return None, 'AI not configured (set GROK_API_KEY in env vars)'
+    try:
+        payload = {
+            'model': GROK_MODEL,
+            'messages': [{'role': 'user', 'content': prompt}],
+            'temperature': temperature,
+            'max_tokens': max_tokens
+        }
+        req = urllib.request.Request(
+            GROK_API_URL,
+            data=json.dumps(payload).encode('utf-8'),
+            headers={
+                'Authorization': f'Bearer {GROK_API_KEY}',
+                'Content-Type': 'application/json',
+                'User-Agent': 'Mozilla/5.0 (SMQSS-Server)'
+            },
+            method='POST'
+        )
+        with urllib.request.urlopen(req, timeout=45) as r:
+            data = json.loads(r.read().decode('utf-8', errors='replace'))
+        text = ((data.get('choices') or [{}])[0].get('message', {}).get('content') or '').strip()
+        if not text:
+            return None, 'AI returned an empty response. Try again.'
+        return text, None
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode('utf-8', errors='replace')[:300]
+        return None, f'Grok API returned HTTP {e.code}: {detail}'
+    except Exception as e:
+        return None, f'AI request failed: {e}'
+
+
+def call_ai_insights(prompt, max_tokens=700, temperature=0.3):
+    """Performance-insights dispatcher: Grok primary, Groq fallback.
+    Returns (text, error, provider)."""
+    if GROK_API_KEY:
+        text, err = call_grok_ai(prompt, max_tokens, temperature)
+        if text:
+            return text, None, 'grok'
+        grok_err = err
+    else:
+        grok_err = 'Grok not configured (set GROK_API_KEY)'
+    if GROQ_API_KEY:
+        text, err = call_groq_ai(prompt, max_tokens, temperature)
+        if text:
+            return text, None, 'groq'
+        return None, f'Grok unavailable ({grok_err}); Groq fallback also failed: {err}', None
+    return None, f'No AI provider configured. {grok_err}', None
 
 
 def call_groq_ai(prompt, max_tokens=800, temperature=0.5):
@@ -5537,6 +5592,7 @@ def admin_officer_activity_series():
                    {bucket_expr} AS bucket,
                    COUNT(*) AS served,
                    ROUND(AVG(TIMESTAMPDIFF(MINUTE, t.requested_at, t.serving_started_at)), 1) AS avg_wait,
+                   SUM(CASE WHEN t.serving_started_at IS NOT NULL THEN 1 ELSE 0 END) AS valid_waits,
                    SUM(CASE WHEN TIMESTAMPDIFF(MINUTE, t.requested_at, t.serving_started_at)
                                  > COALESCE(s.estimated_time_minutes, 15) THEN 1 ELSE 0 END) AS breaches
             FROM university_tokens t
@@ -5617,6 +5673,7 @@ def admin_officer_activity_series():
                     'served': int(r['served']) if r else 0,
                     'avg_wait': float(r['avg_wait']) if r and r['avg_wait'] is not None else None,
                     'breaches': int(r['breaches']) if r else 0,
+                    'valid_waits': int(r['valid_waits']) if r and r['valid_waits'] is not None else 0,
                     'on_duty_min': round(duty.get((oid, b), 0))
                 })
             series.append({'officer_id': oid,
@@ -5627,12 +5684,86 @@ def admin_officer_activity_series():
 
         series.sort(key=lambda s: s['total_served'], reverse=True)
 
+        # Overall compliance + weighted averages for summary cards + AI grounding.
+        tot_served = sum(s['total_served'] for s in series)
+        tot_breaches = sum(p['breaches'] for s in series for p in s['points'])
+        tot_valid = sum(p['valid_waits'] for s in series for p in s['points'])
+        wait_sum = sum((p['avg_wait'] or 0) * p['valid_waits'] for s in series for p in s['points'])
+        overall = {
+            'total_served': tot_served,
+            'total_breaches': tot_breaches,
+            'total_valid_waits': tot_valid,
+            'compliance_pct': round((tot_valid - tot_breaches) / tot_valid * 100, 1) if tot_valid > 0 else None,
+            'weighted_avg_wait': round(wait_sum / tot_valid, 1) if tot_valid > 0 else None,
+            'zero_service_officers': [
+                {'officer_id': s['officer_id'], 'officer_name': s['officer_name'],
+                 'office_name': s.get('office_name'),
+                 'on_duty_min': round(sum(p['on_duty_min'] for p in s['points']))}
+                for s in series
+                if s['total_served'] == 0 and sum(p['on_duty_min'] for p in s['points']) > 0
+            ]
+        }
+
         return jsonify({'success': True,
                         'from': from_d.isoformat(), 'to': to_d.isoformat(),
-                        'bucket': bucket, 'officers': officers, 'series': series})
+                        'bucket': bucket, 'officers': officers, 'series': series,
+                        'overall': overall})
     except Exception as e:
         logger.error(f"Error in officer_activity_series: {e}")
         return jsonify({'success': False, 'message': str(e)})
+
+
+@app.route('/api/admin/ai-performance-insights', methods=['POST'])
+def admin_ai_performance_insights():
+    """AI executive summary grounded ONLY in verified figures posted by the
+    Benchmarks page. Request JSON: {from, to, bucket, overall{...},
+    officers:[{officer_name, office_name, total_served, avg_wait, breaches,
+    compliance_pct, on_duty_min, delta_pct}]}"""
+    data = request.get_json(silent=True) or {}
+    overall = data.get('overall') or {}
+    officers = data.get('officers') or []
+    if not isinstance(officers, list):
+        return jsonify({'success': False, 'message': 'officers must be a list'}), 400
+
+    lines = [
+        f"Period: {data.get('from', '?')} to {data.get('to', '?')} (grouped by {data.get('bucket', 'day')}).",
+        f"Overall: {overall.get('total_served', 0)} served, "
+        f"{overall.get('total_breaches', 0)} breaches over "
+        f"{overall.get('total_valid_waits', 0)} valid waits, "
+        f"compliance {overall.get('compliance_pct', 'n/a')}%, "
+        f"weighted avg wait {overall.get('weighted_avg_wait', 'n/a')} min.",
+        "Per-officer (served / avg_wait_min / breaches / compliance% / on_duty_min / vs_prev%):",
+    ]
+    for o in officers[:20]:
+        lines.append(
+            f"- {o.get('officer_name', '?')} ({o.get('office_name', '?')}): "
+            f"{o.get('total_served', 0)} / {o.get('avg_wait', 'n/a')} / "
+            f"{o.get('breaches', 0)} / {o.get('compliance_pct', 'n/a')} / "
+            f"{o.get('on_duty_min', 0)} / {o.get('delta_pct', 'n/a')}")
+    zero_names = [o.get('officer_name', '?') for o in officers
+                  if (o.get('total_served') or 0) == 0 and (o.get('on_duty_min') or 0) > 0]
+    if zero_names:
+        lines.append("On duty with zero served: " + ", ".join(zero_names[:10]) + ".")
+
+    prompt = (
+        "You are a service-operations analyst writing for non-technical managers. "
+        "Using ONLY the verified figures below, write a concise executive summary with "
+        "exactly these sections: 1) Management summary (2-3 sentences: what happened). "
+        "2) Key findings (bullets: who/what deserves attention, citing numbers). "
+        "3) Changes (only if vs-prev data present; else say so). "
+        "4) Exceptions (zero-service-on-duty staff, breach clusters). "
+        "5) Recommended follow-ups (concrete checks a manager can do, e.g. verify target, "
+        "review specific records, investigate staffing). "
+        "Rules: never invent targets, causes, or numbers not listed. Never judge staff "
+        "character or effort — describe records only. If data is thin, say so plainly.\n\n"
+        "VERIFIED FIGURES:\n" + "\n".join(lines)
+    )
+    text, err, provider = call_ai_insights(prompt, max_tokens=700, temperature=0.3)
+    if err:
+        return jsonify({'success': False, 'message': err}), 502
+    return jsonify({'success': True, 'insights': text, 'provider': provider,
+                    'generated_at': datetime.now().isoformat(),
+                    'figures_used': {'officers': len(officers), 'overall': overall}})
 
 
 @app.route('/api/admin/attendance-trends', methods=['GET'])
