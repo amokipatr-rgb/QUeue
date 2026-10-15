@@ -109,6 +109,13 @@
         .peak-dot { animation: pop 0.3s ease backwards; }
         @keyframes pop { from { opacity: 0; transform: scale(0.4); } to { opacity: 1; transform: scale(1); } }
         .graph-tip { position: absolute; pointer-events: none; background: var(--green-dark); color: #fff; font-size: 11.5px; font-weight: 600; padding: 8px 12px; border-radius: 8px; white-space: nowrap; z-index: 5; opacity: 0; transition: opacity 0.15s; box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
+        .rp-mini-card { background: var(--white); border: 1px solid var(--border); border-radius: 12px; padding: 14px 14px 12px; box-shadow: var(--shadow-sm); display: flex; flex-direction: column; animation: fadein 0.3s ease backwards; }
+        .rp-mini-name { font-size: 14px; font-weight: 800; color: var(--text-primary); }
+        .rp-mini-sub { font-size: 11.5px; color: var(--text-muted); margin-top: 2px; }
+        .rp-mini-wrap { position: relative; margin-top: 8px; }
+        .rp-mini-wrap svg { width: 100%; height: auto; display: block; }
+        .rp-mini-legend { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 600; color: var(--text-secondary); margin-top: auto; padding-top: 10px; }
+        .rp-mini-tip { position: absolute; pointer-events: none; background: var(--green-dark); color: #fff; font-size: 11.5px; font-weight: 600; padding: 8px 12px; border-radius: 8px; white-space: nowrap; z-index: 5; opacity: 0; transition: opacity 0.15s; box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
         .bar-row { display: flex; align-items: center; gap: 10px; padding: 7px 20px; font-size: 12px; }
         .bar-lbl { width: 92px; flex-shrink: 0; color: var(--text-muted); font-family: ui-monospace, monospace; font-size: 11px; }
         .bar-track { flex: 1; background: #eef1f4; border-radius: 6px; height: 22px; position: relative; overflow: hidden; }
@@ -677,11 +684,32 @@ function renderTraffic() {
         : '<span style="color:var(--text-muted)">No hard-traffic days in range — volumes look manageable.</span>';
 }
 
-function areaChartSVG(buckets, values, color, W, H, padL, padR, padT, padB, delayBase) {
-    let yMax = 5;
-    values.forEach(v => { if (v > yMax) yMax = v; });
-    yMax = Math.ceil(yMax * 1.15);
-    const x = i => buckets.length === 1 ? padL + (W - padL - padR) / 2 : padL + (W - padL - padR) * (i / (buckets.length - 1));
+const RP_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function fmtDayLbl(b) {
+    // "2026-09-16" -> "16 Sep"; month buckets -> "Sep 26". Short, horizontal, never clipped.
+    const s = String(b || '').trim();
+    const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (!m) return s;
+    const mon = RP_MONTHS[parseInt(m[2], 10) - 1] || '';
+    if (_rpBucket === 'month') return `${mon} ${m[1].slice(2)}`;
+    return `${parseInt(m[3], 10)} ${mon}`;
+}
+function niceCeil(v) {
+    // Round the Y maximum up to a 1/2/5 step so ticks land on even intervals.
+    if (v <= 5) return 5;
+    const pow = Math.pow(10, Math.floor(Math.log10(v)));
+    const n = v / pow;
+    const step = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10;
+    return step * pow;
+}
+
+function areaChartSVG(buckets, values, color, W, H, padL, padR, padT, padB, delayBase, extra) {
+    const cfg = extra || {};
+    const idpfx = cfg.idpfx || '';
+    const maxLbl = cfg.maxLbl || 6;
+    const n = buckets.length;
+    const yMax = niceCeil(Math.max(1, ...values));
+    const x = i => n === 1 ? padL + (W - padL - padR) / 2 : padL + (W - padL - padR) * (i / (n - 1));
     const y = v => padT + (H - padT - padB) * (1 - v / yMax);
     let html = '';
     for (let g = 0; g <= 4; g++) {
@@ -689,15 +717,26 @@ function areaChartSVG(buckets, values, color, W, H, padL, padR, padT, padB, dela
         html += `<line x1="${padL}" y1="${yy}" x2="${W - padR}" y2="${yy}" stroke="#e4e8ee" stroke-width="1"/>` +
                 `<text x="${padL - 8}" y="${yy + 4}" font-size="10" fill="#4a5a6e" text-anchor="end">${v}</text>`;
     }
-    const skip = Math.max(1, Math.ceil(buckets.length / 8));
+    // Auto date interval (~maxLbl labels, always first + last, horizontal).
+    // Edge labels anchor inward so they can never clip at the card boundary.
+    const skip = Math.max(1, Math.ceil(n / maxLbl));
     buckets.forEach((b, i) => {
-        if (i % skip !== 0 && i !== buckets.length - 1) return;
-        html += `<text x="${x(i)}" y="${H - 12}" font-size="10" fill="#4a5a6e" text-anchor="middle">${escapeHtml(prettyBucket(b))}</text>`;
+        if (i % skip !== 0 && i !== n - 1) return;
+        const anchor = i === 0 ? 'start' : (i === n - 1 ? 'end' : 'middle');
+        const xx = i === 0 ? padL : (i === n - 1 ? (W - padR) : x(i));
+        html += `<text x="${xx.toFixed(1)}" y="${H - 10}" font-size="10" fill="#4a5a6e" text-anchor="${anchor}">${escapeHtml(fmtDayLbl(b))}</text>`;
     });
     const pts = values.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ');
     const base = H - padB;
-    html += `<polygon points="${padL},${base} ${pts} ${x(values.length - 1).toFixed(1)},${base}" fill="${color}" opacity="0.15" style="animation:fadein 0.6s ease backwards;animation-delay:${delayBase}s"/>` +
+    html += `<polygon points="${padL},${base} ${pts} ${x(n - 1).toFixed(1)},${base}" fill="${color}" opacity="0.15" style="animation:fadein 0.6s ease backwards;animation-delay:${delayBase}s"/>` +
             `<polyline class="graph-line" points="${pts}" stroke="${color}" style="animation-delay:${delayBase}s"/>`;
+    values.forEach((v, i) => {
+        html += `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="3.5" fill="${color}" stroke="#fff" stroke-width="2"><title>${escapeHtml(fmtDayLbl(buckets[i]))}: ${v} served</title></circle>`;
+    });
+    buckets.forEach((b, i) => {
+        const w = n ? (W - padL - padR) / n : (W - padL - padR);
+        html += `<rect x="${(x(i) - w / 2).toFixed(1)}" y="${padT}" width="${w.toFixed(1)}" height="${(H - padT - padB).toFixed(1)}" fill="transparent" data-rpmi="${idpfx}" data-rbi="${i}"/>`;
+    });
     return { html, yMax };
 }
 
@@ -756,23 +795,52 @@ function renderOfficers() {
     const el = document.getElementById('rpOfficers');
     const list = officerDayPoints();
     document.getElementById('rpOffCount').textContent = list.length + ' officers';
-    if (!list.length) { el.innerHTML = '<div class="empty-box">No officer activity in range.</div>'; return; }
+    if (!list.length) { el.innerHTML = '<div class="empty-box">No officer activity in range.</div>'; window._rpMini = {}; return; }
     const colors = ['#00a84f', '#1565c0', '#7c3aed', '#ef6c00', '#0d9488', '#e53935', '#b8960a', '#64748b'];
+    window._rpMini = {};
     el.innerHTML = list.map(function(s, si) {
         const color = colors[si % colors.length];
         const buckets = s.points.map(p => p.bucket);
         const values = s.points.map(p => p.served);
-        const W = 300, H = 130, padL = 30, padR = 10, padT = 8, padB = 22;
-        const r = areaChartSVG(buckets, values, color, W, H, padL, padR, padT, padB, si * 0.05);
+        const W = 320, H = 170, padL = 38, padR = 12, padT = 12, padB = 32;
+        const r = areaChartSVG(buckets, values, color, W, H, padL, padR, padT, padB, si * 0.05, { idpfx: 'm' + si, maxLbl: 4 });
         const avg = (s.total_served / Math.max(values.length, 1)).toFixed(1);
         const mx = values.length ? Math.max.apply(null, values) : 0;
-        return `<div style="background:var(--white);border:1px solid var(--border);border-radius:12px;padding:14px 14px 10px;box-shadow:var(--shadow-sm)">` +
-            `<div style="font-size:13px;font-weight:800">${escapeHtml(s.officer_name || ('#' + s.officer_id))}</div>` +
-            `<div style="font-size:11px;color:var(--text-muted);margin-bottom:6px">${escapeHtml(s.office_name || '')}</div>` +
-            `<svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto" role="img" aria-label="Activity for ${escapeHtml(s.officer_name || '')}">${r.html}</svg>` +
-            `<div style="font-size:11px;color:var(--text-muted);margin-top:4px"><span style="display:inline-block;width:18px;height:3px;background:${color};border-radius:2px;vertical-align:middle"></span> Served&nbsp;&nbsp;Avg ${avg}&nbsp;&nbsp;Max ${mx}</div>` +
+        window._rpMini['m' + si] = { buckets, values, name: s.officer_name || ('#' + s.officer_id) };
+        return `<div class="rp-mini-card">` +
+            `<div class="rp-mini-name">${escapeHtml(s.officer_name || ('#' + s.officer_id))}</div>` +
+            `<div class="rp-mini-sub">${escapeHtml(s.office_name || '')}</div>` +
+            `<div class="rp-mini-wrap"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Activity for ${escapeHtml(s.officer_name || '')}">${r.html}</svg>` +
+            `<div class="rp-mini-tip" id="rptip-m${si}"></div></div>` +
+            `<div class="rp-mini-legend"><span style="display:inline-block;width:18px;height:3px;background:${color};border-radius:2px"></span>Services Served&nbsp;&nbsp;|&nbsp;&nbsp;Average: ${avg}&nbsp;&nbsp;|&nbsp;&nbsp;Maximum: ${mx}</div>` +
             `</div>`;
     }).join('');
+    el.querySelectorAll('rect[data-rbi]').forEach(function(rc) {
+        rc.addEventListener('mousemove', onRpMiniHover);
+        rc.addEventListener('mouseleave', hideRpMiniTips);
+        rc.addEventListener('click', onRpMiniHover);
+    });
+}
+function onRpMiniHover(ev) {
+    const mi = (ev.target.dataset && ev.target.dataset.rpmi) || '';
+    const bi = parseInt(ev.target.dataset.rbi);
+    const reg = (window._rpMini || {})[mi];
+    if (!reg) return;
+    const b = reg.buckets[bi];
+    const v = (reg.values || [])[bi];
+    if (b == null || v == null) return;
+    const tip = document.getElementById('rptip-' + mi);
+    if (!tip) return;
+    const wrap = tip.parentElement.getBoundingClientRect();
+    tip.innerHTML = `<strong>${escapeHtml(reg.name)}</strong><br>${escapeHtml(fmtDayLbl(b))}<br>Served: <strong>${v}</strong>`;
+    tip.style.opacity = '1';
+    let lx = ev.clientX - wrap.left + 14, ly = ev.clientY - wrap.top - 10;
+    if (lx + 190 > wrap.width) lx -= 200;
+    tip.style.left = lx + 'px';
+    tip.style.top = Math.max(ly, 4) + 'px';
+}
+function hideRpMiniTips() {
+    document.querySelectorAll('.rp-mini-tip').forEach(function(t) { t.style.opacity = '0'; });
 }
 
 function csvEscape(v) {
