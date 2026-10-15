@@ -535,10 +535,10 @@ function renderGraph() {
     svg.style.display = 'block';
     window._rpDots = {};
     window._rpGeom = null;
-    const W = 920, H = 320, padL = 44, padR = 16, padT = 16, padB = 40;
+    const W = 920, H = 340, padL = 54, padR = 16, padT = 16, padB = 58;
     let yMax = 5;
     series.forEach(s => s.points.forEach(p => { if (p.served > yMax) yMax = p.served; }));
-    yMax = Math.ceil(yMax * 1.15);
+    yMax = niceCeil(yMax);
     const x = i => buckets.length === 1 ? padL + (W - padL - padR) / 2 : padL + (W - padL - padR) * (i / (buckets.length - 1));
     const y = v => padT + (H - padT - padB) * (1 - v / yMax);
     let html = '';
@@ -547,11 +547,17 @@ function renderGraph() {
         html += `<line x1="${padL}" y1="${yy}" x2="${W - padR}" y2="${yy}" stroke="#e4e8ee" stroke-width="1"/>` +
                 `<text x="${padL - 8}" y="${yy + 4}" font-size="10" fill="#4a5a6e" text-anchor="end">${v}</text>`;
     }
-    const skip = Math.max(1, Math.ceil(buckets.length / 10));
+    // Axis titles: what each axis measures.
+    const midY = padT + (H - padT - padB) / 2;
+    html += `<text transform="rotate(-90 14 ${midY})" x="14" y="${midY}" font-size="11" font-weight="700" fill="#4a5a6e" text-anchor="middle">Tokens served</text>`;
+    html += `<text x="${((padL + W - padR) / 2).toFixed(1)}" y="${H - 8}" font-size="11" font-weight="700" fill="#4a5a6e" text-anchor="middle">Date</text>`;
+    const skip = Math.max(1, Math.ceil(buckets.length / 6));
     const drillable = (_rpBucket === 'month' || _rpBucket === 'week');
     buckets.forEach((b, i) => {
         if (i % skip !== 0 && i !== buckets.length - 1) return;
-        html += `<text x="${x(i)}" y="${H - 12}" font-size="10" fill="${drillable ? '#1565c0' : '#4a5a6e'}" text-anchor="middle"${drillable ? ` style="cursor:pointer;font-weight:700" onclick="drillInto('${escapeHtml(b)}')"` : ''}>${escapeHtml(prettyBucket(b))}</text>`;
+        const anchor = i === 0 ? 'start' : (i === buckets.length - 1 ? 'end' : 'middle');
+        const xx = i === 0 ? padL : (i === buckets.length - 1 ? (W - padR) : x(i));
+        html += `<text x="${xx.toFixed(1)}" y="${H - 28}" font-size="10" fill="${drillable ? '#1565c0' : '#4a5a6e'}" text-anchor="${anchor}"${drillable ? ` style="cursor:pointer;font-weight:700" onclick="drillInto('${escapeHtml(b)}')"` : ''}>${escapeHtml(fmtDayLbl(b))}</text>`;
     });
     series.forEach((s, si) => {
         const color = rpColor(s.office_id);
@@ -599,7 +605,8 @@ function onGraphHover(ev) {
     // nearest plotted dot by vertical distance — identity follows the visual point
     const svg = document.getElementById('rpGraph');
     const rect = svg.getBoundingClientRect();
-    const scaleY = 320 / Math.max(rect.height, 1);
+    const H = (window._rpGeom && window._rpGeom.H) || 340;
+    const scaleY = H / Math.max(rect.height, 1);
     const mouseY = (ev.clientY - rect.top) * scaleY;
     const dots = (window._rpDots && window._rpDots[bi]) || [];
     let best = null, bestDist = Infinity;
@@ -615,7 +622,7 @@ function onGraphHover(ev) {
     const v = p ? p.served : 0;
     const tip = document.getElementById('rpTip');
     const wrap = document.getElementById('rpGraphWrap').getBoundingClientRect();
-    tip.innerHTML = `<strong>${escapeHtml(s.office_name)}</strong><br>${escapeHtml(b)}<br>Served: <strong>${v}</strong> (of ${s.total_served || 0} total)`;
+    tip.innerHTML = `<strong>${escapeHtml(s.office_name)}</strong><br>${escapeHtml(fmtDayLbl(b))}<br>Served: <strong>${v}</strong> (of ${s.total_served || 0} total)`;
     tip.style.opacity = '1';
     let lx = ev.clientX - wrap.left + 14, ly = ev.clientY - wrap.top - 10;
     if (lx + 190 > wrap.width) lx -= 200;
