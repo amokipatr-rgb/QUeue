@@ -112,6 +112,7 @@
         .legend-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; padding: 7px 12px; border-radius: 20px; border: 1px solid var(--border); background: var(--white); cursor: pointer; min-height: 36px; transition: all 0.15s; font-family: inherit; }
         .legend-chip:active { transform: scale(0.97); }
         .legend-chip.off { opacity: 0.4; }
+        .legend-chip.solo { border-color: var(--green-dark); box-shadow: 0 0 0 2px var(--green-light, #e8f5e9); font-weight: 800; }
         .legend-dot { width: 10px; height: 10px; border-radius: 50%; }
         .graph-svg text { font-family: 'Plus Jakarta Sans', sans-serif; }
         .graph-line { fill: none; stroke-width: 2.5; stroke-linecap: round; stroke-linejoin: round; animation: draw 0.9s ease backwards; }
@@ -553,13 +554,21 @@ function renderGraph() {
         html += `<text x="${x(i)}" y="${H - 12}" font-size="10" fill="${drillable ? '#1565c0' : '#4a5a6e'}" text-anchor="middle"${drillable ? ` style="cursor:pointer;font-weight:700" onclick="drillInto('${escapeHtml(b)}')"` : ''}>${escapeHtml(prettyBucket(b))}</text>`;
     });
     series.forEach((s, si) => {
-        const color = LINE_COLORS[si % LINE_COLORS.length];
+        const color = rpColor(s.office_id);
         const vals = buckets.map(b => { const p = s.points.find(q => normBucket(q.bucket) === b); return p ? p.served : 0; });
         const mappedSum = vals.reduce((a, v) => a + v, 0);
         if (mappedSum !== (s.total_served || 0)) {
             console.warn(`[reports] plot mismatch for ${s.office_name}: mapped ${mappedSum} vs server ${s.total_served}`);
         }
-        html += `<polyline class="graph-line" points="${vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')}" stroke="${color}" style="animation-delay:${si * 0.1}s"/>`;
+        const allZero = vals.length > 0 && vals.every(v => !v);
+        html += `<polyline class="graph-line" points="${vals.map((v, i) => `${x(i).toFixed(1)},${y(v).toFixed(1)}`).join(' ')}" stroke="${color}"${allZero ? ' stroke-dasharray="6 4"' : ''} style="animation-delay:${si * 0.1}s"/>`;
+        if (allZero) {
+            // A flat zero line sits exactly on the axis and would be invisible —
+            // mark every bucket with a dot so a 0-series is clearly seen.
+            vals.forEach((v, i) => {
+                html += `<circle cx="${x(i).toFixed(1)}" cy="${y(v).toFixed(1)}" r="4" fill="${color}" stroke="#fff" stroke-width="2"><title>${escapeHtml(s.office_name)}: 0 served on ${escapeHtml(prettyBucket(buckets[i]))}</title></circle>`;
+            });
+        }
         if (s.peak && s.peak.served > 0) {
             const pi = buckets.indexOf(normBucket(s.peak.bucket));
             if (pi >= 0) html += `<circle class="peak-dot" cx="${x(pi)}" cy="${y(s.peak.served)}" r="6" fill="${color}" stroke="#fff" stroke-width="2.5" style="animation-delay:${si * 0.1 + 0.4}s"><title>Peak: ${s.peak.served} on ${s.peak.bucket}</title></circle>`;
@@ -640,11 +649,29 @@ function renderBars() {
 function renderLegend() {
     const lg = document.getElementById('rpLegend');
     if (!_rpData || !_rpData.series) { lg.innerHTML = ''; return; }
-    lg.innerHTML = _rpData.series.map((s, si) => {
-        const color = LINE_COLORS[si % LINE_COLORS.length];
+    const ids = _rpData.series.map(s => String(s.office_id));
+    const soloId = (_rpHidden.size === ids.length - 1 && ids.length > 1)
+        ? ids.find(x => !_rpHidden.has(x)) : null;
+    lg.innerHTML = _rpData.series.map((s) => {
+        const color = rpColor(s.office_id);
         const off = _rpHidden.has(String(s.office_id));
-        return `<button class="legend-chip${off ? ' off' : ''}" onclick="toggleOffice('${s.office_id}')"><span class="legend-dot" style="background:${color}"></span>${escapeHtml(s.office_name)} (${s.total_served})</button>`;
+        const solo = soloId != null && String(s.office_id) === soloId;
+        const zero = !(s.total_served > 0);
+        const hint = solo ? 'Click to restore all offices' : 'Click to show only this office';
+        return `<button class="legend-chip${off ? ' off' : ''}${solo ? ' solo' : ''}" onclick="isolateOffice('${s.office_id}')" title="${hint}"><span class="legend-dot" style="background:${color}"></span>${escapeHtml(s.office_name)} (${s.total_served})${zero ? ' · all zero' : ''}</button>`;
     }).join('');
+}
+function isolateOffice(id) {
+    // Legend click = solo that office's line; clicking the solo office restores all.
+    // (Hide/show single offices stays in the Total-served trace modal rows.)
+    id = String(id);
+    const ids = (_rpData.series || []).map(s => String(s.office_id));
+    const isolated = _rpHidden.size === ids.length - 1 && !_rpHidden.has(id);
+    _rpHidden = isolated ? new Set() : new Set(ids.filter(x => x !== id));
+    renderMain();
+    renderCards();
+    renderTable();
+    renderTraffic();
 }
 function toggleOffice(id) {
     id = String(id);
