@@ -174,6 +174,7 @@
         <div class="search-row">
             <input id="custEmailInput" placeholder="Search by phone, ID, or name..." autocomplete="off">
             <button class="btn btn-primary" id="custSearchBtn" onclick="searchCustomer()">Search</button>
+            <button class="btn" id="custHistoryBtn" onclick="viewHistory()" style="background:var(--white);border:1px solid var(--border);color:var(--green-dark)">View History</button>
         </div>
 
         <div id="custBody"><div class="empty-box" style="background:var(--white);border-radius:var(--radius);box-shadow:var(--shadow-sm)">Enter a phone number, ID, or name above to pull a customer 360: profile, visits, journey traces, complaints.</div></div>
@@ -285,12 +286,12 @@ function renderCustomer(data) {
         `<div class="stat-card"><div class="stat-num">${p.escalated_tokens || 0}</div><div class="stat-lbl">Escalated</div></div>` +
         `<div class="stat-card"><div class="stat-num">${p.complaints || 0}</div><div class="stat-lbl">Complaints</div></div>` +
         `</div>` +
-        `<div class="section"><div class="section-header"><div class="section-title">Profile</div><span class="pill pill-blue mono">${escapeHtml(data.query || data.email || '')}</span></div>` +
+        `<div class="section"><div class="section-header"><div class="section-title">Profile</div><span class="pill pill-blue mono">${escapeHtml(data.query || data.email || '')}</span><button class="btn-sm" style="margin-left:auto" onclick="scrollToHistory()">View History</button></div>` +
         `<div style="padding:16px 20px;font-size:13px;display:flex;gap:16px;flex-wrap:wrap">` +
         `<span><strong>Names:</strong> ${escapeHtml((p.names || []).join(', ') || '—')}</span>` +
         `<span><strong>Phones:</strong> ${escapeHtml((p.phones || []).join(', ') || '—')}</span>` +
         `</div></div>` +
-        `<div class="section"><div class="section-header"><div class="section-title">Visit History</div><span class="pill pill-grey" id="visitCountPill">${(data.visits || []).length} visits</span><input id="visitFilterInput" placeholder="Filter by name..." autocomplete="off" oninput="filterVisits()" style="margin-left:auto;max-width:240px;padding:8px 12px;border:1px solid var(--border);border-radius:7px;font-size:12px;font-family:inherit;min-height:38px"></div>` +
+        `<div class="section" id="visitHistorySection"><div class="section-header"><div class="section-title">Visit History</div><span class="pill pill-grey" id="visitCountPill">${(data.visits || []).length} visits</span><input id="visitFilterInput" placeholder="Filter by name..." autocomplete="off" oninput="filterVisits()" style="margin-left:auto;max-width:240px;padding:8px 12px;border:1px solid var(--border);border-radius:7px;font-size:12px;font-family:inherit;min-height:38px"></div>` +
         `<div class="table-wrap"><table class="data-table"><thead><tr><th>Token</th><th>Name</th><th>Date</th><th>Office</th><th>Service</th><th>Status</th><th>Rating</th><th></th></tr></thead><tbody id="visitRows">`;
 
     window._custVisits = data.visits || [];
@@ -357,6 +358,18 @@ function clearVisitFilter() {
     const input = document.getElementById('visitFilterInput');
     if (input) input.value = '';
     filterVisits();
+}
+function scrollToHistory() {
+    const el = document.getElementById('visitHistorySection');
+    if (!el) { showToast('Search for a customer first', 'error'); return; }
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+async function viewHistory() {
+    if (document.getElementById('visitHistorySection')) { scrollToHistory(); return; }
+    const btn = document.getElementById('custHistoryBtn');
+    setLoading(btn, true);
+    try { await searchCustomer(); } finally { setLoading(btn, false); }
+    scrollToHistory();
 }
 
 /* ── TRACE RAIL (shared pattern with SLA page) ── */
