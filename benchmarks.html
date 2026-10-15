@@ -629,7 +629,7 @@ async function loadAIInsights() {
         const paras = data.insights.split(/\n\s*\n/).filter(Boolean);
         body.innerHTML = `<div style="padding:18px 20px;font-size:13.5px;line-height:1.75;color:var(--text-secondary)">` +
             paras.map(p => `<p style="margin-bottom:10px">${escapeHtml(p)}</p>`).join('') +
-            `<div style="font-size:11px;color:var(--text-muted);margin-top:6px">Generated ${escapeHtml(data.generated_at || '')} via ${escapeHtml(data.provider || 'AI')} from ${data.figures_used ? data.figures_used.officers : 0} officer records · figures verified server-side before explanation.</div></div>`;
+            `<div style="font-size:11px;color:var(--text-muted);margin-top:6px">Generated ${escapeHtml(data.generated_at || '')} by SMQSS AI from ${data.figures_used ? data.figures_used.officers : 0} officer records · figures verified server-side before explanation.</div></div>`;
     } catch (e) {
         body.innerHTML = '<div class="empty-box">Network error. <button class="btn-sm" onclick="loadAIInsights()">Retry</button></div>';
     } finally {

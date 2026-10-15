@@ -309,7 +309,7 @@ async function sendChat() {
             return;
         }
         const p = data.period || {};
-        const meta = `Analyst · ${data.provider || 'AI'} · ${fmtTime(data.generated_at)} · figures ${p.from || ''} to ${p.to || ''}`;
+        const meta = `SMQSS AI Analyst · ${fmtTime(data.generated_at)} · figures ${p.from || ''} to ${p.to || ''}`;
         addAiMsg(data.reply, meta);
         document.getElementById('aiPeriodLbl').textContent = `Figures: ${p.from || ''} → ${p.to || ''}`;
         _chatHistory.push({ role: 'user', content: message });
@@ -333,7 +333,7 @@ if (currentAdmin) {
     const t = new Date();
     document.getElementById('aiTo').value = isoDay(t);
     document.getElementById('aiFrom').value = isoDay(new Date(t.getTime() - 29 * 86400000));
-    addAiMsg('Hello. I read live system figures for any period you pick above. Ask me who served most, which service is busiest, when peaks hit, how breaches look against target, or anything else in the data.', 'Analyst · ready');
+    addAiMsg('Hello. I read live system figures for any period you pick above. Ask me who served most, which service is busiest, when peaks hit, how breaches look against target, or anything else in the data.', 'SMQSS AI Analyst · ready');
 }
 </script>
 </body>
