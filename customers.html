@@ -365,11 +365,45 @@ function scrollToHistory() {
     el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 async function viewHistory() {
-    if (document.getElementById('visitHistorySection')) { scrollToHistory(); return; }
     const btn = document.getElementById('custHistoryBtn');
+    const q = ((document.getElementById('custEmailInput') || {}).value || '').trim();
     setLoading(btn, true);
-    try { await searchCustomer(); } finally { setLoading(btn, false); }
+    try {
+        if (q) {
+            if (!document.getElementById('visitHistorySection')) await searchCustomer();
+        } else {
+            await loadRecentVisits();
+        }
+    } finally { setLoading(btn, false); }
     scrollToHistory();
+}
+async function loadRecentVisits() {
+    const body = document.getElementById('custBody');
+    body.innerHTML = '<div class="section"><div class="skel" style="height:120px;margin:20px"></div></div>';
+    try {
+        const res = await fetch(`${API_BASE_URL}/api/admin/recent-visits?limit=100`);
+        const data = await res.json();
+        if (!data.success) { body.innerHTML = `<div class="empty-box" style="background:var(--white);border-radius:var(--radius)">${escapeHtml(data.message || 'Load failed')}</div>`; return; }
+        renderAllVisits(data.visits || []);
+    } catch (e) {
+        body.innerHTML = '<div class="empty-box" style="background:var(--white);border-radius:var(--radius)">Network error. <button class="btn-sm" onclick="viewHistory()">Retry</button></div>';
+    }
+}
+function renderAllVisits(visits) {
+    const body = document.getElementById('custBody');
+    const done = visits.filter(v => v.status === 'completed').length;
+    body.innerHTML =
+        `<div class="stat-row">` +
+        `<div class="stat-card"><div class="stat-num">${visits.length}</div><div class="stat-lbl">Recent visits</div></div>` +
+        `<div class="stat-card"><div class="stat-num">${done}</div><div class="stat-lbl">Completed</div></div>` +
+        `</div>` +
+        `<div class="section"><div class="section-header"><div class="section-title">Profile</div><span class="pill pill-blue">All recent visitors</span><button class="btn-sm" style="margin-left:auto" onclick="scrollToHistory()">View History</button></div>` +
+        `<div style="padding:16px 20px;font-size:13px">Showing the ${visits.length} most recent visits across all offices. Use the in-section filter to narrow by name.</div></div>` +
+        `<div class="section" id="visitHistorySection"><div class="section-header"><div class="section-title">Visit History</div><span class="pill pill-grey" id="visitCountPill"></span><input id="visitFilterInput" placeholder="Filter by name..." autocomplete="off" oninput="filterVisits()" style="margin-left:auto;max-width:240px;padding:8px 12px;border:1px solid var(--border);border-radius:7px;font-size:12px;font-family:inherit;min-height:38px"></div>` +
+        `<div class="table-wrap"><table class="data-table"><thead><tr><th>Token</th><th>Name</th><th>Date</th><th>Office</th><th>Service</th><th>Status</th><th>Rating</th><th></th></tr></thead><tbody id="visitRows"></tbody></table></div></div>` +
+        `<div class="section"><div class="section-header"><div class="section-title">Journey Trace</div></div><div id="custTraceBody"><div class="empty-box">Press Trace on any visit to see its journey rail here.</div></div></div>`;
+    window._custVisits = visits;
+    filterVisits();
 }
 
 /* ── TRACE RAIL (shared pattern with SLA page) ── */

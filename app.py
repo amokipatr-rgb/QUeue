@@ -2281,6 +2281,49 @@ def admin_person_history():
         except: pass
 
 
+@app.route('/api/admin/recent-visits', methods=['GET'])
+def admin_recent_visits():
+    """Unfiltered recent visit list for the Customers View History button (works with an empty search field)."""
+    try:
+        limit = int(request.args.get('limit', 100))
+    except (TypeError, ValueError):
+        limit = 100
+    limit = max(1, min(limit, 200))
+
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute("""
+            SELECT t.token_number, t.token_date, t.student_name, t.student_id,
+                   t.student_phone, t.status, t.rating,
+                   t.requested_at, t.service_code,
+                   off.office_name, off.office_code,
+                   s.service_name
+            FROM university_tokens t
+            JOIN offices off ON off.id = t.office_id
+            LEFT JOIN services s ON s.id = t.service_id
+            ORDER BY t.requested_at DESC
+            LIMIT %s
+        """, (limit,))
+        visits = cursor.fetchall()
+        for v in visits:
+            if isinstance(v.get('requested_at'), datetime):
+                v['requested_at'] = v['requested_at'].isoformat()
+            if isinstance(v.get('token_date'), (datetime, date)):
+                v['token_date'] = v['token_date'].isoformat()
+        cursor.close()
+        conn.close()
+        return jsonify({'success': True, 'visits': visits})
+    except Exception as e:
+        logger.error(f"Recent visits error: {e}")
+        return jsonify({'success': False, 'message': str(e)}), 500
+    finally:
+        try: cursor.close()
+        except: pass
+        try: conn.close()
+        except: pass
+
+
 # ============================================
 # STUDENT FEEDBACK / RATING
 # ============================================
